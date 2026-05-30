@@ -1,0 +1,116 @@
+# =========================================
+# 1. パスの設定 (zsh array で初期化)
+# =========================================
+# 共通 PATH (PATH 末尾に追加するシステム系) と Homebrew 系の bootstrap。
+# keg-only ツール / scripts / PNPM_HOME 等は共通シェル層 (common.sh) で扱う。
+typeset -U path PATH
+# (N-/) は「存在するディレクトリだけ採用」する zsh の glob qualifier。
+# 多OS で同じ .zshrc を使うため、OS 固有の path も全部 (N-/) で gate する。
+path=(
+  /opt/homebrew/bin(N-/)
+  /opt/homebrew/sbin(N-/)
+  /home/linuxbrew/.linuxbrew/bin(N-/)
+  /home/linuxbrew/.linuxbrew/sbin(N-/)
+  /usr/local/bin(N-/)
+  /usr/local/sbin(N-/)
+  /Library/Apple/usr/bin(N-/)
+  $HOME/.yarn/bin(N-/)
+  $HOME/winapps/.bin(N-/)
+  /usr/bin
+  /usr/sbin
+  /bin
+  /sbin
+)
+
+# =========================================
+# 2. Zsh 固有 (補完 / プラグイン / 履歴 / setopt)
+# =========================================
+# 補完 FPATH（compinit より前に設定する必要がある）
+if type brew &>/dev/null; then
+  FPATH="$(brew --prefix)/share/zsh-completions:$FPATH"
+fi
+
+# compinit 高速化: 24h に 1 回だけフル検証、それ以外はキャッシュ利用
+autoload -Uz compinit
+_zcompdump="${ZDOTDIR:-$HOME}/.zcompdump"
+if [[ -n "$_zcompdump"(#qN.mh+24) ]]; then
+  compinit
+else
+  compinit -C
+fi
+unset _zcompdump
+
+# fzf shell integration
+# - macOS (公式 install): ~/.fzf.zsh
+# - Linux apt (Ubuntu/Debian): /usr/share/doc/fzf/examples/*.zsh
+if [ -f ~/.fzf.zsh ]; then
+  source ~/.fzf.zsh
+elif [ -f /usr/share/doc/fzf/examples/key-bindings.zsh ]; then
+  source /usr/share/doc/fzf/examples/key-bindings.zsh
+  [ -f /usr/share/doc/fzf/examples/completion.zsh ] \
+    && source /usr/share/doc/fzf/examples/completion.zsh
+fi
+
+# fzf-tab (chezmoi external が ~/.local/share/fzf-tab に clone・更新する。全 OS 共通)
+[ -f ~/.local/share/fzf-tab/fzf-tab.plugin.zsh ] && source ~/.local/share/fzf-tab/fzf-tab.plugin.zsh
+
+# zsh-autosuggestions
+# - macOS brew: $(brew --prefix)/share/zsh-autosuggestions/...
+# - Linux apt:  /usr/share/zsh-autosuggestions/...
+if command -v brew >/dev/null 2>&1 \
+  && [ -f "$(brew --prefix)/share/zsh-autosuggestions/zsh-autosuggestions.zsh" ]; then
+  source "$(brew --prefix)/share/zsh-autosuggestions/zsh-autosuggestions.zsh"
+elif [ -f /usr/share/zsh-autosuggestions/zsh-autosuggestions.zsh ]; then
+  source /usr/share/zsh-autosuggestions/zsh-autosuggestions.zsh
+fi
+
+# ヒストリーの設定
+export HISTFILE="$HOME/.zsh_history"
+export HISTSIZE=100000
+export SAVEHIST=100000        # ファイルに保存する履歴件数（旧 HISTFILESIZE は bash 用で無効だった）
+setopt INC_APPEND_HISTORY     # 実行後すぐに履歴をファイルに保存
+setopt SHARE_HISTORY          # 複数zshセッションで履歴を共有
+setopt HIST_IGNORE_ALL_DUPS   # 同一コマンドの重複を履歴から除去
+setopt HIST_IGNORE_SPACE      # 先頭スペースのコマンドは履歴に残さない
+setopt HIST_REDUCE_BLANKS     # 無駄な空白を除去
+setopt HIST_VERIFY            # !履歴展開を即時実行せず編集させる
+setopt EXTENDED_HISTORY       # タイムスタンプ付きで保存
+
+# ディレクトリ移動
+setopt AUTO_CD                # ディレクトリ名だけで cd
+setopt AUTO_PUSHD             # cd 時に自動 pushd
+setopt PUSHD_IGNORE_DUPS      # 重複する pushd を無視
+
+# =========================================
+# 3. 共通シェル層 (zsh / bash 共通の PATH / tool init / alias / 関数)
+# =========================================
+# brew shellenv, mise, direnv, starship, zoxide, yazi y(), pnpm 等はここに集約。
+# bash 側 (.bashrc) も同じファイルを source する。
+[ -f ~/.config/shell/common.sh ] && . ~/.config/shell/common.sh
+
+# =========================================
+# 4. キーバインド & 個人補完 (zsh 固有)
+# =========================================
+
+# Home / End を行頭・行末に
+# macOSのターミナルはHome/Endに何も割り当てず生のESCシーケンスを流すだけ。
+# しかも端末ごとに中身が違う(iTerm2=ESC[H/F, Ghostty=ESC[1~/4~)ので、
+# 端末側で設定せず zsh の ZLE 側で両パターン受けて吸収する横着HACK。
+bindkey "^[[H"  beginning-of-line   # iTerm2  Home
+bindkey "^[[F"  end-of-line         # iTerm2  End
+bindkey "^[[1~" beginning-of-line   # Ghostty Home
+bindkey "^[[4~" end-of-line         # Ghostty End
+
+# dora completion (~/.zfunc/_dora は `dora completion zsh` で生成済み)
+# fpath 追加後に compinit をもう一度呼んで _dora を取り込む。
+if [[ -f ~/.zfunc/_dora ]]; then
+  fpath=(~/.zfunc $fpath)
+  autoload -Uz compinit && compinit -u
+fi
+
+# =========================================
+# 5. ローカル/会社固有オーバーライド
+# =========================================
+# 会社固有の環境変数・エイリアス・起動スクリプトは別リポ (dotfiles-work) で管理。
+# symlink: ~/.zshrc.local -> dotfiles-work/home/.zshrc.local
+[ -f "$HOME/.zshrc.local" ] && source "$HOME/.zshrc.local"

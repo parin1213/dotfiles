@@ -1,0 +1,46 @@
+{{- $p := includeTemplate "profile" . | fromJson -}}
+# =============================================================================
+# Ghostty Config - Migrated from iTerm2
+# =============================================================================
+
+# --- Font ---
+font-family = HackGen Console NF
+font-style = Bold
+font-style-bold = Bold
+font-style-italic = Bold
+font-style-bold-italic = Bold
+# font-size の値は .chezmoidata.toml の envs.<env>.ghostty_font_size。判断軸:
+#   同じ pt でも見かけは「論理解像度 = パネル解像度 ÷ OS スケーリング」で決まる。
+#   高PPIノート(Surface Go3: 220PPI→GNOME 1.5→論理1280×853)は 24pt だと行数が半減して
+#   大きすぎる → 16pt。低PPI大画面(LG 49"TV: ~91PPI→100%→論理3072×1728)は 24pt が適正。
+#   新マシンは PPI×スケーリングから論理解像度を出し、行数が TV(24pt) 並みになる pt を選ぶ。
+font-size = {{ $p.ghostty_font_size }}
+# iTerm2の "Thin Strokes" = 3 相当
+font-thicken = true
+
+# --- Background Image ---
+background-image = ~/Pictures/sakura.jpg
+background-image-fit = cover
+background-image-opacity = 0.25
+
+# --- Window / UX ---
+# Alt+←→ などで単語移動を効かせる（macOSのOptionをAltとして送出）
+macos-option-as-alt = true
+# 選択しただけでコピー（右クリックでペースト）
+copy-on-select = true
+# 余白で視認性アップ
+window-padding-x = 8
+window-padding-y = 6
+# カーソル
+cursor-style = bar
+cursor-style-blink = false
+# 閉じる時の確認をオフ
+confirm-close-surface = false
+# ウィンドウ状態の復元
+window-save-state = always
+
+# --- Shell Integration ---
+# zsh のコマンド境界/所要時間/タイトル等を Ghostty に伝える
+# コマンド出力のスクロール・ジャンプ等が快適になる
+shell-integration = zsh
+shell-integration-features = cursor,sudo,title

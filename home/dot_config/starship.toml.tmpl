@@ -1,0 +1,100 @@
+{{- $p := includeTemplate "profile" . | fromJson -}}
+{{- $envseg := $p.starship_icon -}}
+{{- if ne $p.starship_label "" }}{{- $envseg = printf "%s %s" $p.starship_icon $p.starship_label -}}{{- end -}}
+{{- $bg := "#394260" -}}{{- /* env セグメント背景（全 env 共通）。既存 powerline パレット(#769ff0/#394260…)と同系の青灰で path と整合。出し分けは fg=env色＋ラベル */ -}}
+format = """
+[░▒▓](#769ff0)\
+$directory\
+[](fg:#769ff0 bg:{{ $bg }})\
+[ {{ $envseg }} ](fg:{{ $p.starship_color }} bg:{{ $bg }})\
+$git_branch\
+$git_status\
+[](fg:#394260 bg:#212736)\
+$nodejs\
+$ruby\
+$rust\
+$golang\
+$php\
+[](fg:#212736 bg:#1d2230)\
+$cmd_duration\
+$time\
+[ ](fg:#1d2230)\
+$status\
+$jobs\
+\n$character"""
+
+[directory]
+style = "fg:#e3e5e5 bg:#769ff0"
+format = "[ $path ]($style)"
+truncation_length = 3
+truncation_symbol = "…/"
+
+[directory.substitutions]
+"Documents" = "󰈙 "
+"Downloads" = " "
+"Music" = " "
+"Pictures" = " "
+
+[git_branch]
+style = "bg:#394260"
+format = '[[ $symbol $branch ](fg:#769ff0 bg:#394260)]($style)'
+
+[git_status]
+style = "bg:#394260"
+format = '[[($all_status$ahead_behind )](fg:#769ff0 bg:#394260)]($style)'
+
+[nodejs]
+style = "bg:#212736"
+format = '[[ $symbol ($version) ](fg:#769ff0 bg:#212736)]($style)'
+
+[ruby]
+style = "bg:#212736"
+format = '[[ $symbol ($version) ](fg:#769ff0 bg:#212736)]($style)'
+
+[rust]
+style = "bg:#212736"
+format = '[[ $symbol ($version) ](fg:#769ff0 bg:#212736)]($style)'
+
+[golang]
+style = "bg:#212736"
+format = '[[ $symbol ($version) ](fg:#769ff0 bg:#212736)]($style)'
+
+[php]
+style = "bg:#212736"
+format = '[[ $symbol ($version) ](fg:#769ff0 bg:#212736)]($style)'
+
+[cmd_duration]
+min_time = 2000
+style = "bg:#1d2230"
+format = '[[ ⏱ $duration ](fg:#f5c2e7 bg:#1d2230)]($style)'
+
+[time]
+disabled = false
+time_format = "%H:%M:%S"
+style = "bg:#1d2230"
+format = '[[  $time ](fg:#a0a9cb bg:#1d2230)]($style)'
+
+[status]
+disabled = false
+symbol = "✗"
+success_symbol = ""
+format = '[ $symbol$status ](bold red)'
+
+[jobs]
+symbol = "✦"
+format = '[ $symbol$number ](bold yellow)'
+
+[os]
+# env アイコンは starship_icon で先頭セグメントに出すため os モジュールは無効。
+disabled = true
+style = "fg:#090c0c"
+format = '[ $symbol ]($style)'
+
+[os.symbols]
+Windows = ""
+Macos = ""
+Ubuntu = ""
+# Debian: 実 Debian は Debian ロゴ、ただし raspi は OS=Debian でも Pi ロゴにする
+Debian = "{{ if hasPrefix "raspi" .chezmoi.hostname }}{{ else }}{{ end }}"
+Raspbian = ""
+Linux = ""

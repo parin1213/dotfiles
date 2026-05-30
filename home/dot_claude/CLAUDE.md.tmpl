@@ -1,0 +1,60 @@
+{{- /*
+  ~/.claude/CLAUDE.md — Claude Code 用グローバル指示。共通＋環境固有＋Claude 固有。
+  共通/環境固有は ~/.agents/AGENTS.md と同一（共有 partial 由来）。
+  共通指示の編集は source の .chezmoitemplates/agents-common.md / agents-env.md で。
+*/ -}}
+# Global instructions (Claude Code)
+
+{{ includeTemplate "agents-common.md" . }}
+
+---
+
+{{ includeTemplate "agents-env.md" . }}
+
+---
+
+# Claude Code 固有
+
+## Rate limit 自走停止 (5h / 7d 95%)
+
+Claude Code には **5 時間窓** と **7 日窓** の rate limit がある。
+
+- 自走 (loop / schedule / 長尺タスク) を常用するなら、使用率を dump する statusline を用意して判定に使う。
+  無ければ `/usage` を手動確認して 95% で止める運用。
+- 判定ルール: 5h または 7d の使用率が **95 以上**なら新規着手しない / 進行中はきれいに締める /
+  loop・schedule を止める / user に一言伝える。
+
+## Permissions
+
+- `settings.json` の `skipDangerousModePermissionPrompt` / `skipAutoPermissionPrompt`: 起動時ダイアログのスキップのみ。
+- CLI の `--dangerously-skip-permissions` は harness がブロックするため**使えない**。必要に見えたら個別 permission を緩める。
+
+## モデル運用
+
+- メインセッション: **Opus**（`settings.json: "model": "opus"`）
+- Agent tool のサブエージェント: **Sonnet 4.6**（`env.CLAUDE_CODE_SUBAGENT_MODEL=claude-sonnet-4-6`）
+- Agent tool 呼び出しは通常 `model` 省略でよい
+- 例外: 重い設計・長文読解は `model: "opus"`、定型作業は `model: "haiku"`
+
+### コンテキスト節約
+
+- **親 Opus にコンテキストを溜めない**が最優先
+- 親は coordinator、作業は子（Sonnet）
+- 子の出力はファイル経由で回収。親は `wc` / `head` / `tail` / `grep` で必要部分だけ読む。`cat` 全読みしない
+- 既読ファイル / Grep / Glob 結果を再取得しない
+
+## Codex レビューの呼び方（動く手順）
+
+**WSL で実行する**（Windows ネイティブは codex の sandbox が動かない）。bubblewrap が必須で **`bootstrap-linux.sh` が apt で導入**する（未導入だと read-only sandbox が panic）。以降これでレビューできる:
+
+```sh
+wsl -e bash -c 'export PATH="$HOME/.local/share/mise/shims:$PATH"; codex exec -s read-only --skip-git-repo-check -C ~/src/dotfiles "$(cat ~/.prompt)" < /dev/null'
+```
+
+- **`< /dev/null` 必須**（無いと stdin 待ちで無限ハング）。
+- **foreground で回す**（WSL の background は distro アイドル終了で死ぬ）。一時ファイルは **HOME(ext4)**。
+- **非対話 `wsl -e bash -c` は mise shim を PATH に乗せない** → 上記のように `export PATH="$HOME/.local/share/mise/shims:$PATH"` を前置（`codex`/`gh` が「見つからない」時はまずこれ）。
+- mise shim の untrusted `mise.toml` 警告は **neutral cwd（$HOME）＋ `-C <repo>`** で回避。
+- bwrap を入れられない時だけ bypass（`--dangerously-bypass-approvals-and-sandbox`）。Claude Code 分類器が自動拒否するので **ユーザーに実行/許可してもらう**。
+
+> ハマり履歴（端的）: companion / `codex:rescue` は Windows sandbox で全滅 / read-only は bwrap 必須（bootstrap で導入）/ 非対話 WSL は shim が PATH 外（要前置）/ stdin 開けっ放しで 0 CPU ハング。**新知見が出たらこの節を更新**。

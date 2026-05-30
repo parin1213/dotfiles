@@ -1,0 +1,54 @@
+# 環境ごとの設定の正本表（chezmoi data）。**全 env を明示列挙**する。
+# home/.chezmoitemplates/profile が os/kernel/hostname から env を判定し、この表の行を読む。
+# consumer（mise / ghostty / starship / agents-env）はその profile を読むだけ。
+# 設定変更・env 追加はこのファイルで完結（profile 側は「判定ロジック」のみ持つ）。
+#
+# フィールド:
+#   weight            : full/lite/slim（mise が入れるツール量＝資源と用途）
+#   ghostty_font_size : pt（PPI×スケーリングで決める。判断軸は ghostty/config.tmpl のコメント）
+#   starship_icon     : プロンプト先頭アイコン。Nerd Font を \uXXXX で指定（生グリフは書かない）。
+#   starship_label    : 続けて出す固有名詞（""=アイコンのみ）
+#   starship_color    : アイコン＋ラベルの **fg（フォント色）**。tokyo-night のベタ塗り背景を避け
+#                       fg で出し分ける（背景ブロックは廃止）。
+
+[envs.win]                      # Windows ネイティブ（machine=local-pc）
+weight = "full"
+ghostty_font_size = 24          # ※Windows は ghostty を .chezmoiignore で除外（値は参考）
+starship_icon = ""        # nf windows
+starship_label = ""             # Windows ロゴだけで一意 → アイコンのみ
+starship_color = "#a3aed2"
+
+[envs.wsl]                      # local-pc 上の WSL（machine=local-pc・kernel で判定）
+weight = "full"
+ghostty_font_size = 24
+starship_icon = ""  # nf windows + tux = WSL らしさ（Ubuntu ロゴを避ける）
+starship_label = "wsl"
+starship_color = "#00b8d4"
+
+[envs.surface]                  # Surface Go 3（machine=surface-go3）
+weight = "lite"
+ghostty_font_size = 16          # 220PPI/10.5"・150% → 24pt は大きすぎる
+starship_icon = ""        # nf ubuntu
+starship_label = "surface"
+starship_color = "#e95420"
+
+[envs.raspi]                    # Raspberry Pi（machine=raspi4）
+weight = "slim"
+ghostty_font_size = 24
+starship_icon = ""        # nf raspberry pi
+starship_label = "raspi"
+starship_color = "#c51a4a"
+
+[envs.mac]                      # macOS（仕事用・現在未接続）
+weight = "full"
+ghostty_font_size = 24
+starship_icon = ""        # nf apple
+starship_label = ""             # Apple ロゴだけで一意 → アイコンのみ
+starship_color = "#888888"
+
+[envs.linux]                    # 未分類の汎用 Linux（fallback）
+weight = "full"
+ghostty_font_size = 24
+starship_icon = ""        # nf tux
+starship_label = ""
+starship_color = "#a3aed2"

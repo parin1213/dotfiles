@@ -1,0 +1,14 @@
+{{- /*
+  mise install ブリッジ（Unix のみ）。
+  chezmoi が mise config を管理しているのは Unix だけなので、Windows では空レンダ→スキップ。
+  run_onchange は「スクリプト内容が変わった時だけ」再実行する。下に config.toml の
+  ハッシュを埋めてあるので、mise config を編集した apply のときだけ mise install が走る
+  （毎 apply では走らない）。sudo も使わない。mise 未導入(bootstrap前)なら何もしない。
+*/ -}}
+{{ if ne .chezmoi.os "windows" -}}
+#!/bin/sh
+# mise config hash: {{ include "dot_config/mise/config.toml.tmpl" | sha256sum }}
+if command -v mise >/dev/null 2>&1; then
+  mise install || true
+fi
+{{ end -}}

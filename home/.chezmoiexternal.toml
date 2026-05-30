@@ -1,0 +1,11 @@
+# chezmoi が管理する外部リソース（全 OS 共通で clone/更新）。
+# vendored な zsh プラグイン等はここに集約し、OS 別 bootstrap の clone ハックを排除する。
+# パスは $HOME 相対。
+
+# 配置先は chezmoi が完全所有する XDG data dir。~/src は junction の場合があり
+# （Windows: ~/src -> C:\dev\src）、chezmoi が reparse point を辿れず壊れるため避ける。
+[".local/share/fzf-tab"]
+    type = "git-repo"
+    url = "https://github.com/Aloxaf/fzf-tab.git"
+    # 週 1 で pull。.zshrc が ~/.local/share/fzf-tab/fzf-tab.plugin.zsh を source する。
+    refreshPeriod = "168h"

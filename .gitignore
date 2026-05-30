@@ -1,0 +1,25 @@
+.DS_Store
+*.swp
+*.backup-*
+
+# リポジトリ直下のローカル mise.toml（`mise use` が生成するプロジェクト固有設定）。
+# dotfiles の mise 設定は home/dot_config/mise/config.toml.tmpl が正本なので追跡しない。
+/mise.toml
+
+# 野良スキルの検収用 staging（採用したものだけ skills/ に移して追跡する）。
+/skills-staging/
+
+# global gitignore (~/.gitignore_global) が .claude/ を除外しているが、
+# このリポでは Claude Code のグローバル設定を管理するので上書きする
+!home/.claude/
+!home/.claude/**
+
+# クレデンシャルファイルの誤 add 防止（後勝ちで .claude/** 再追跡より優先）。
+# chezmoi は明示 add したファイルしか管理しないが、念のための多層防御。
+*.pem
+*.key
+id_rsa*
+.netrc
+*.credentials.json
+**/auth.json
+**/hosts.yml

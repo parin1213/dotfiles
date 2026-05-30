@@ -1,0 +1,53 @@
+# skills/manifest.toml — エージェントスキルの宣言（正本）。
+# restore 時に skills/setup.sh がこれを読み、type 別に導入する。
+#
+# type:
+#   tool    = コマンド付属（公式ツールの skill-install コマンドで配備。ツールは mise で導入）
+#   ghskill = gh skill 独立配布（信頼できる org の repo から pin して install）
+#   own     = 自作 or 野良から採用したもの（このリポの skills/<name>/ から from-local install）
+#
+# 配置先: setup.sh が ①③④ を Claude(~/.claude/skills, --agent claude-code) と
+# 共有(~/.agents/skills, --dir。Codex/Cursor/Gemini CLI 等が読む標準 dir) の両方へ入れる。
+# （gh skill の --agent codex は ~/.codex/skills へ入れるが Codex の標準読取は .agents/skills なので使わない）
+# ② tool は install コマンド自身が配置（ツール同梱の skill-deploy サブコマンドを実行）。
+#
+# 野良(未検証)skill は manifest に直接足さず、必ず検収フロー（README「スキル管理」参照）を
+# 通してから own(固める) か ghskill(信頼して pin) として登録する。
+
+[[skill]]
+name = "playwright-cli"
+type = "ghskill"
+# 公式上流から（npm @playwright/cli の repository が指す repo）。gh skill で pin install。
+# `playwright-cli install --skills` は内部で必ず --init-workspace（ブラウザ/ffmpeg DL）まで走る
+# “ワークスペース初期化器”なので skill 管理には使わない（program.js: install→runInitWorkspace）。
+repo = "microsoft/playwright-cli"
+skill = "playwright-cli"
+# pin 無し = 最新を追従（gh skill が最新 tagged release を解決）。公式上流なので latest でよい。
+# 特定版に固定したい時だけ pin = "vX.Y.Z" を足す。更新は gh skill update で。
+requires = "playwright-cli"   # このバイナリが無い環境（raspi slim 等）では skip（skill だけ入れても無意味）
+
+[[skill]]
+name = "sentry-cli"
+type = "ghskill"
+# Sentry 公式 CLI（getsentry/cli, mise: npm:sentry）が plugins/ 規約で同梱する skill。
+# gh skill が plugins/sentry-cli/skills/sentry-cli を発見し flat に展開（Claude＋共有の両方へ）。
+# 上流の第一推奨は Claude plugin marketplace（claude plugin marketplace add getsentry/cli）だが、
+# それは Claude 専用 plugin 機構で Codex(~/.agents/skills) を覆えず本リポの manifest 方式に乗らない。
+# よって gh skill を採用（sentry cli setup でも配備できるが skill version をバイナリに固定したい時用）。
+repo = "getsentry/cli"
+skill = "sentry-cli"
+# pin 無し = 最新 tagged release を追従（解決例: 0.35.0）。skill version は CLI version に概ね追従し
+# mise の npm:sentry=latest とほぼ整合。厳密に固定したい時だけ pin = "X.Y.Z"。更新は gh skill update。
+requires = "sentry"   # sentry バイナリ（mise: npm:sentry）が無い環境では skip
+
+# --- 将来の追加テンプレ（コメントアウト） ---
+# [[skill]]                       # ③ gh skill 独立配布（信頼 org を pin）
+# name = "documentation-writer"
+# type = "ghskill"
+# repo = "github/awesome-copilot"
+# skill = "documentation-writer"
+# pin = "v1.0.0"
+#
+# [[skill]]                       # ① 自作 / ④ 野良から採用（skills/<name>/ をこのリポから配備）
+# name = "my-skill"
+# type = "own"

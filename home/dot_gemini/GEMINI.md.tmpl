@@ -1,0 +1,11 @@
+{{- /*
+  ~/.gemini/GEMINI.md — Gemini CLI 用グローバル指示。共通＋環境固有。
+  共通/環境固有は ~/.agents/AGENTS.md と同一（共有 partial 由来）。
+*/ -}}
+# GEMINI.md
+
+{{ includeTemplate "agents-common.md" . }}
+
+---
+
+{{ includeTemplate "agents-env.md" . }}

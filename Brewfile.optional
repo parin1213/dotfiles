@@ -1,0 +1,137 @@
+# Brewfile.optional — opt-in パッケージ
+# 必須ではないが特定プロジェクト・特定用途で便利なもの。
+#
+# 使い方:
+#   brew bundle --file=Brewfile.optional
+#
+# Brewfile と合わせて全部入れたければ両方実行:
+#   brew bundle --file=Brewfile && brew bundle --file=Brewfile.optional
+
+# -----------------------------------------------------------------------------
+# Document / Media (PDF 処理、画像最適化、動画・SVG など)
+# -----------------------------------------------------------------------------
+brew "ghostscript"
+brew "poppler"
+brew "graphviz"
+brew "jpegoptim"
+brew "ffmpeg-full", link: true        # 動画/音声処理。link: true で keg-only を強制リンク
+brew "imagemagick-full", link: true   # ImageMagick 7系（yazi previewer 等が依存）
+brew "imagemagick@6"                  # 旧バージョン（rmagick gem 等の互換用）
+brew "resvg"                          # SVGレンダラ（yazi previewer 依存）
+
+# -----------------------------------------------------------------------------
+# Database (dev用ローカルDB)
+# -----------------------------------------------------------------------------
+brew "mysql"
+brew "mysql-client"
+
+# -----------------------------------------------------------------------------
+# Misc utility
+# -----------------------------------------------------------------------------
+brew "yamllint"
+brew "fswatch"                # ファイル変更監視
+brew "duti"                   # デフォルトアプリ設定
+brew "iperf3"                 # ネットワーク帯域テスト
+brew "fd"                     # find代替
+brew "ripgrep"                # grep代替（高速）
+brew "sevenzip"               # 7zアーカイブ
+brew "qrencode"               # QRコード生成
+brew "yazi"                   # ターミナルファイラー（.zshrcの y() 関数で使用）
+brew "zoxide"                 # cd補強（.zshrcで eval init）
+
+# -----------------------------------------------------------------------------
+# Wine (旧 Windows アプリ実行)
+# -----------------------------------------------------------------------------
+brew "winetricks"
+cask "wine-crossover"
+
+# -----------------------------------------------------------------------------
+# ブラウザ / OS ユーティリティ
+# -----------------------------------------------------------------------------
+cask "alt-tab"                # ウィンドウ切替強化
+cask "firefox"
+cask "chromedriver"           # playwright / selenium
+
+# -----------------------------------------------------------------------------
+# Editors / Terminals (Ghostty が primary terminal だが IDE は別)
+# -----------------------------------------------------------------------------
+cask "visual-studio-code"
+cask "cursor"
+
+cask "font-symbols-only-nerd-font"  # 既存 HackGen Nerd と併用するシンボル専用フォント
+
+# -----------------------------------------------------------------------------
+# Container / Runtime
+# -----------------------------------------------------------------------------
+cask "docker"                 # Docker Desktop（fig='docker compose' alias で使用）
+
+# -----------------------------------------------------------------------------
+# AI デスクトップクライアント / ローカルLLM
+# -----------------------------------------------------------------------------
+cask "chatgpt"
+cask "claude"
+cask "lm-studio"              # ローカルLLM。CLI (lms) を .zshrc/.bashrc で PATH 追加
+
+tap "voicevox/voicevox"
+cask "voicevox/voicevox/voicevox"   # 自作ツール `zd` (zundone-cli) の音声合成エンジン
+
+# -----------------------------------------------------------------------------
+# VS Code 拡張 (opt-in; 個人の好み強め)
+# -----------------------------------------------------------------------------
+# General / Editor UX
+vscode "eamodio.gitlens"
+vscode "github.vscode-pull-request-github"
+vscode "github.vscode-github-actions"
+vscode "github.copilot-chat"
+vscode "mhutchie.git-graph"
+vscode "folke.vscode-monorepo-workspace"
+vscode "ms-ceintl.vscode-language-pack-ja"
+vscode "oderwat.indent-rainbow"
+vscode "mrmlnc.vscode-json5"
+vscode "redhat.vscode-yaml"
+vscode "mechatroner.rainbow-csv"
+vscode "shd101wyy.markdown-preview-enhanced"
+vscode "simonsiefke.svg-preview"
+vscode "alexshen.classdiagram-ts"
+
+# Ruby / Rails
+# ruby-extensions-pack が ruby-lsp + rdbg + debug adapter 等を内包
+vscode "shopify.ruby-extensions-pack"
+vscode "shopify.ruby-lsp"
+vscode "kaiwood.endwise"
+vscode "hridoy.rails-snippets"
+vscode "bung87.vscode-gemfile"
+vscode "sianglim.slim"
+vscode "vayan.haml"
+
+# TypeScript / JS
+vscode "oxc.oxc-vscode"
+vscode "denoland.vscode-deno"
+vscode "orta.vscode-jest"
+vscode "graphql.vscode-graphql"
+vscode "graphql.vscode-graphql-syntax"
+
+# Python
+vscode "ms-python.python"
+vscode "ms-python.vscode-pylance"
+vscode "ms-python.debugpy"
+vscode "ms-python.vscode-python-envs"
+
+# Docker / Infra
+vscode "docker.docker"
+vscode "ms-azuretools.vscode-containers"
+vscode "hashicorp.terraform"
+
+# Remote (extension pack に remote-containers / remote-ssh 等が内包)
+vscode "ms-vscode-remote.vscode-remote-extensionpack"
+vscode "ms-vscode.remote-server"
+
+# Collaboration / Misc
+vscode "ms-vsliveshare.vsliveshare"
+vscode "ast-grep.ast-grep-vscode"
+vscode "skellock.just"
+
+# -----------------------------------------------------------------------------
+# Rust / Cargo
+# -----------------------------------------------------------------------------
+cargo "ci_utils"

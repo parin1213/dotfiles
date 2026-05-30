@@ -1,0 +1,14 @@
+{{- /*
+  apply ログ（Unix: WSL / macOS / raspi）。chezmoi apply のたびに 1 行追記する。
+  Windows ではこのファイルは空レンダリングされ、chezmoi がスキップする。
+  ログ先: マシンローカル ~/.config/chezmoi/apply-history.log（各環境独立）。
+  （以前は /mnt/c 共有だったが、repo を各環境 ~/src に clone する方針に変えたため廃止）
+  記録: UTC日時 / hostname / os/arch / source の git short sha。
+*/ -}}
+{{ if ne .chezmoi.os "windows" -}}
+#!/bin/sh
+log="$HOME/.config/chezmoi/apply-history.log"
+mkdir -p "$(dirname "$log")" 2>/dev/null   # 書き込み先は無ければ作る（安心設計）
+sha="$(git -C "{{ .chezmoi.sourceDir }}" rev-parse --short HEAD 2>/dev/null || echo '?')"
+printf '%s\t%s\t%s\tsrc=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$(hostname)" "{{ .chezmoi.os }}/{{ .chezmoi.arch }}" "$sha" >> "$log"
+{{ end -}}

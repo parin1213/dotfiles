@@ -1,0 +1,15 @@
+{{- /*
+  ~/.agents/AGENTS.md — 共通エージェント指示の正本（AGENTS.md 標準）。
+  各ツール（Claude/Codex/Gemini）も同じ共有 partial を取り込むため内容は一致する。
+  編集は source の home/.chezmoitemplates/agents-common.md（共通）/ agents-env.md（環境固有）。
+*/ -}}
+# AGENTS.md — 共通エージェント指示（正本）
+
+> chezmoi が生成。直接編集せず、source の `.chezmoitemplates/agents-common.md`（共通）/
+> `.chezmoitemplates/agents-env.md`（環境固有）を編集して `chezmoi apply`。
+
+{{ includeTemplate "agents-common.md" . }}
+
+---
+
+{{ includeTemplate "agents-env.md" . }}

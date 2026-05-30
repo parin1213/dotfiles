@@ -1,0 +1,19 @@
+{{- /* OS ごとに無視対象を切り替える（パスは $HOME 相対のターゲット） */ -}}
+{{ if ne .chezmoi.os "windows" -}}
+Documents
+AppData
+.claude/statusline.ps1
+{{ end -}}
+{{ if eq .chezmoi.os "windows" -}}
+.zshrc
+.zshenv
+.zprofile
+.tmux.conf
+.config/shell
+.config/ghostty
+.config/gh
+.claude/statusline.sh
+{{ end -}}
+{{ if eq .chezmoi.os "linux" -}}
+Pictures
+{{ end -}}

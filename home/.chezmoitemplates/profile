@@ -1,0 +1,52 @@
+{{- /*
+  環境判別の中央リゾルバ。判定プリミティブ（os / kernel / hostname）から env を決め、
+  設定の正本表（.chezmoidata.toml の envs.<env>）の行を読んで profile を JSON で返す。
+  ここは「判定ロジック」だけを持つ。設定値（weight/font/色/label）は .chezmoidata.toml に全列挙。
+
+  使い方（各テンプレ冒頭）:
+    {{- `{{- $p := includeTemplate "profile" . | fromJson -}}` }}
+    {{- `{{ $p.weight }}` }} / {{- `{{ $p.ghostty_font_size }}` }} / {{- `{{ $p.starship_label }}` }} ...
+
+  返すフィールド:
+    os                : windows/linux/darwin
+    isWSL             : bool（WSL 固有の癖: PATH 漏れ / codex sandbox 不可 / tmp は ext4）
+    machine           : 物理マシンの正規ラベル（hostname のばらつき吸収。SSH 自己参照等の分岐キー）
+    env               : win/wsl/surface/raspi/mac/linux（設定表 envs のキー）
+    weight / ghostty_font_size / starship_label / starship_color : envs.<env> の行から
+
+  新マシン追加: 設定値は .chezmoidata.toml の [envs.<name>] に書く。
+  hostname→machine→env の判定ルールだけは下の if に足す。
+*/ -}}
+{{- $host := .chezmoi.hostname -}}
+{{- $hostL := lower $host -}}
+{{- $isWSL := false -}}
+{{- if eq .chezmoi.os "linux" -}}
+{{-   if contains "microsoft" (lower (.chezmoi.kernel.osrelease | default "")) -}}{{- $isWSL = true -}}{{- end -}}
+{{- end -}}
+{{- /* machine: 物理マシンの正規ラベル */ -}}
+{{- $machine := $host -}}
+{{- if or (eq .chezmoi.os "windows") $isWSL -}}{{- $machine = "local-pc" -}}
+{{- else if hasPrefix "raspi" $hostL -}}{{- $machine = "raspi4" -}}
+{{- else if contains "surface" $hostL -}}{{- $machine = "surface-go3" -}}
+{{- end -}}
+{{- /* env: 設定表 envs のキー */ -}}
+{{- $env := "linux" -}}
+{{- if eq .chezmoi.os "windows" -}}{{- $env = "win" -}}
+{{- else if $isWSL -}}{{- $env = "wsl" -}}
+{{- else if eq .chezmoi.os "darwin" -}}{{- $env = "mac" -}}
+{{- else if eq $machine "raspi4" -}}{{- $env = "raspi" -}}
+{{- else if eq $machine "surface-go3" -}}{{- $env = "surface" -}}
+{{- end -}}
+{{- /* 設定行を読むだけ（envs.<env> は .chezmoidata.toml に全列挙済み） */ -}}
+{{- $row := index .envs $env -}}
+{{- dict
+      "os" .chezmoi.os
+      "isWSL" $isWSL
+      "machine" $machine
+      "env" $env
+      "weight" (index $row "weight")
+      "ghostty_font_size" (index $row "ghostty_font_size")
+      "starship_icon" (index $row "starship_icon")
+      "starship_label" (index $row "starship_label")
+      "starship_color" (index $row "starship_color")
+   | toJson -}}

@@ -1,0 +1,9 @@
+{{- /*
+  mise install ブリッジ（Windows）。非 Windows では空レンダ→chezmoi がスキップ。
+  config.toml.tmpl のハッシュを下に埋め、mise config が変わった apply のときだけ
+  mise install を走らせる（毎 apply では走らない）。mise 未導入なら何もしない。
+*/ -}}
+{{ if eq .chezmoi.os "windows" -}}
+# mise config hash: {{ include "dot_config/mise/config.toml.tmpl" | sha256sum }}
+if (Get-Command mise -ErrorAction SilentlyContinue) { mise install }
+{{ end -}}

@@ -1,0 +1,19 @@
+{{- /*
+  ~/.codex/AGENTS.md — Codex 用グローバル指示。共通＋環境固有＋Codex 固有。
+  共通/環境固有は ~/.agents/AGENTS.md と同一（共有 partial 由来）。
+*/ -}}
+# AGENTS.md (Codex)
+
+{{ includeTemplate "agents-common.md" . }}
+
+---
+
+{{ includeTemplate "agents-env.md" . }}
+
+---
+
+# Codex 固有
+
+- model / reasoning effort / personality は `~/.codex/config.toml` で管理（指示ファイルには書かない）。
+- skills は `~/.agents/skills/` 配下に置き、今後はここで作成・管理する。
+- approval / sandbox は project ごとに `~/.codex/config.toml` の `trust_level` / `sandbox_mode` で設定する。

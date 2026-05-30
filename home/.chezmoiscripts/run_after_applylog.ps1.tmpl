@@ -1,0 +1,21 @@
+{{- /*
+  apply ログ（Windows）。chezmoi apply のたびに 1 行追記する。
+  非 Windows では空レンダリングされ chezmoi がスキップする。
+  ログ先: マシンローカル %USERPROFILE%\.config\chezmoi\apply-history.log（各環境独立）。
+  （以前は C:\dev 共有だったが、repo を各環境 ~/src に clone する方針に変えたため廃止）
+  BOM 混入を避けるため UTF8(no BOM) で追記する。
+  実行行は ASCII のみ（レンダリング後の .ps1 は BOM 無しのため、日本語を入れると
+  PS5.1 が ANSI 誤認して文字化け/パース破綻しうる。説明はこの header にとどめる）。
+  ログ dir は無ければ作る（安心設計）。
+*/ -}}
+{{ if eq .chezmoi.os "windows" -}}
+$log = "$env:USERPROFILE\.config\chezmoi\apply-history.log"
+# ensure the log directory exists (create if missing)
+$logDir = Split-Path -Parent $log
+if (-not (Test-Path $logDir)) { New-Item -ItemType Directory -Force -Path $logDir | Out-Null }
+$sha = (git -C "{{ .chezmoi.sourceDir }}" rev-parse --short HEAD 2>$null)
+if (-not $sha) { $sha = "?" }
+$ts = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+$line = "$ts`t$env:COMPUTERNAME`t{{ .chezmoi.os }}/{{ .chezmoi.arch }}`tsrc=$sha`n"
+[System.IO.File]::AppendAllText($log, $line, (New-Object System.Text.UTF8Encoding $false))
+{{ end -}}

@@ -1,0 +1,3 @@
+# cargo (rust) が入っていない環境では存在しないので gate する。
+# .zshenv は非対話含む全 zsh で読まれるため、無条件 source だと毎回エラーになる。
+[ -f "$HOME/.cargo/env" ] && . "$HOME/.cargo/env"

@@ -1,0 +1,87 @@
+{{- /*
+  mise config（OS 別）。Windows の claude-code 行は mise 独自の {{ version }} /
+  {{ os(...) }} / {{ arch() }} 記法を含むため、Go テンプレートの raw 文字列
+  （バッククォート）で囲って chezmoi にそのまま素通しさせる。
+*/ -}}
+{{- $p := includeTemplate "profile" . | fromJson -}}
+{{- if eq .chezmoi.os "windows" -}}
+[tools]
+{{ `claude-code = { version = "latest", bin = "claude", platforms = { windows-x64 = { bin = "claude.exe", url = "https://storage.googleapis.com/claude-code-dist-86c565f3-f756-42ad-8dfa-d59b1c096819/claude-code-releases/{{ version }}/win32-x64/claude.exe" } }, url = 'https://storage.googleapis.com/claude-code-dist-86c565f3-f756-42ad-8dfa-d59b1c096819/claude-code-releases/{{ version }}/{{ os(macos="darwin") }}-{{ arch() }}/claude', version_list_url = "https://storage.googleapis.com/claude-code-dist-86c565f3-f756-42ad-8dfa-d59b1c096819/claude-code-releases/latest" }` }}
+codex = "latest"
+node = "latest"
+python = "latest"
+deno = "latest"
+rust = "latest"
+terraform = "latest"
+"npm:@playwright/cli" = "latest"
+"npm:pnpm" = "latest"
+"npm:zundone-cli" = "latest"
+"npm:sentry" = "latest"
+chezmoi = "latest"
+starship = "latest"
+zoxide = "latest"
+eza = "latest"
+ripgrep = "latest"
+fd = "latest"
+jq = "latest"
+yq = "latest"
+gitleaks = "latest"
+{{ else -}}
+[tools]
+# --- 全 Unix 共通: precompiled・軽量。slim 機でもこれだけは入れる ---
+# chezmoi は必ず config に載せる（orphaned shim 化→mise が PATH フォールバックで
+# 別 shim に再入してハングするのを防ぐ。WSL は Windows 側 shim も PATH に漏れ特に踏みやすい）。
+chezmoi = "latest"
+zoxide = "latest"
+starship = "latest"
+gitleaks = "latest"
+ripgrep = "latest"
+fd = "latest"
+eza = "latest"
+jq = "latest"
+yq = "latest"
+gh = "latest"
+ast-grep = "latest"
+"aqua:zellij-org/zellij" = "latest"
+{{ if ne $p.weight "slim" -}}
+# --- lite 以上（surface-go3 / WSL / mac / 通常 Linux）: agent core ＋ 軽い extras ＋ 個人 npm ---
+# slim 機（raspi 等・素のシェル用途）では除外。必要になったら個別に mise use する。
+# node/python は npm:/pipx: の前提。低スペック機でも agent 作業はできる範囲。
+deno = "latest"
+python = "latest"
+node = "latest"
+# pnpm は aqua 定義が古く、latest(v11.5.1 で .tar.gz 化)に対し資産名 pnpm-linux-x64 を探して
+# no asset found で落ちる。pnpm は本来 npm パッケージなので npm backend で導入（Windows と統一）。
+# aqua-registry の pnpm が .tar.gz 形式に追従したら pnpm = "latest" に戻してよい。(2026-06-02)
+"npm:pnpm" = "latest"
+codex = "latest"
+claude-code = "latest"
+# uv 0.11.9 で SLSA provenance 発行が止まり (GitHub trusted publisher 形式に変更)、
+# aqua-registry の signer_workflow 制約と不一致で attestation 検証が落ちる。
+# サプライチェーン観点で attestation を切るより pin が安全。
+# aqua-registry#53236 (https://github.com/aquaproj/aqua-registry/pull/53236) が
+# merge されて 0.11.9+ が通るようになったら "latest" に戻す。 (2026-05-05)
+uv = "0.11.8"
+"npm:difit" = "latest"
+"npm:ntn" = "latest"
+"npm:@playwright/cli" = "latest"
+"npm:sentry" = "latest"
+"pipx:markitdown" = "latest"
+"npm:zundone-cli" = "latest"
+"npm:helpdora" = "latest"
+{{ end -}}
+{{ if eq $p.weight "full" -}}
+# --- full 機（WSL / mac / 通常 Linux）のみ: 重い/クラウド系 ---
+# lite（surface-go3 等の低スペック機）では除外。理由: ruby は source compile で激重、
+# dotnet/gcloud/aws-cli は大型 DL、terraform/gemini-cli はニッチ。必要なら個別に mise use。
+ruby = "latest"
+terraform = "latest"
+aws-cli = { version = "latest", symlink_bins = "true" }
+gcloud = "latest"
+gemini-cli = "latest"
+dotnet = "8"
+{{ end -}}
+
+[env]
+MISE_PIPX_UVX = "1"
+{{ end -}}
