@@ -40,6 +40,23 @@ skill = "sentry-cli"
 # mise の npm:sentry=latest とほぼ整合。厳密に固定したい時だけ pin = "X.Y.Z"。更新は gh skill update。
 requires = "sentry"   # sentry バイナリ（mise: npm:sentry）が無い環境では skip
 
+[[skill]]
+name = "grill-me"
+type = "ghskill"
+# 野良(mattpocock/skills)を検収フローで採用（純プロンプト・スクリプト無し・低リスク）。
+# tag 無しリポのため moving な main でなく、検収した commit SHA で pin（上流の未検証変更を取り込まない）。
+repo = "mattpocock/skills"
+skill = "grill-me"
+pin = "aaf2453f"
+
+[[skill]]
+name = "grill-with-docs"
+type = "ghskill"
+# 同上。ADR/CONTEXT-FORMAT.md 付き。本文に禁則語を含むため repo に vendor せず上流から pin install。
+repo = "mattpocock/skills"
+skill = "grill-with-docs"
+pin = "aaf2453f"
+
 # --- 将来の追加テンプレ（コメントアウト） ---
 # [[skill]]                       # ③ gh skill 独立配布（信頼 org を pin）
 # name = "documentation-writer"
