@@ -1,4 +1,17 @@
 # =========================================
+# 0. SSH 接続時は zellij に自動アタッチ（単一 "main" セッション）
+# =========================================
+# 対話 SSH かつ未 zellij かつ zellij が PATH に居るときだけ起動する。
+# - 単一 "main" に統一: モバイル回線断→再接続で同じ作業に復帰できる。
+# - exec で置換: zellij を抜けると ssh も閉じる（余計なシェルを残さない）。
+# - 非対話 `ssh host <cmd>` は interactive 判定で素通り（provision を壊さない）。
+# - zellij が開く新ペイン内は $ZELLIJ がセット済みなので再入しない。
+# .zprofile(login) が mise activate 済みなので、この時点で zellij(shim) は PATH 上。
+if [[ -o interactive && -n "$SSH_CONNECTION" && -z "$ZELLIJ" ]] && command -v zellij >/dev/null 2>&1; then
+  exec zellij attach -c main
+fi
+
+# =========================================
 # 1. パスの設定 (zsh array で初期化)
 # =========================================
 # 共通 PATH (PATH 末尾に追加するシステム系) と Homebrew 系の bootstrap。
