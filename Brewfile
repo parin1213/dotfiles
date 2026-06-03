@@ -41,3 +41,6 @@ cask "font-hackgen-nerd"
 
 # --- Notes ---
 cask "obsidian"               # vault は別の private git repo を obsidian-git で同期
+
+# --- Secrets ---
+brew "1password-cli"          # op。vault 操作・op:// 参照のランタイム注入に使用（公式 formula）

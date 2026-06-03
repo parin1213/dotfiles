@@ -36,6 +36,9 @@
                                          },
                                          {
                                              "PackageIdentifier":  "Obsidian.Obsidian"
+                                         },
+                                         {
+                                             "PackageIdentifier":  "AgileBits.1Password.CLI"
                                          }
                                      ],
                         "SourceDetails":  {

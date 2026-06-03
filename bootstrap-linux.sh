@@ -26,6 +26,7 @@ PACKAGES=(
   git
   curl
   ca-certificates
+  gnupg                     # 1Password apt リポの GPG 鍵 dearmor に必要
   build-essential           # mise が ruby/python ビルドする際に必要
   pkg-config                # 同上
   fzf
@@ -70,6 +71,37 @@ if command -v snap >/dev/null 2>&1; then
 else
   echo "==> snap 無し → Obsidian はスキップ（headless 機）"
 fi
+
+# -----------------------------------------------------------------------------
+# 1.6 1Password CLI (op) — 公式 apt リポ
+# -----------------------------------------------------------------------------
+# 秘密の標準バックエンド。設計どおり raspi(slim) は対象外（op 統合は raspi 以外）。
+# CLI は mise でなく 1Password 公式チャネルから（署名・更新を本家に委譲＝サプライチェーン整合）。
+# サインイン/vault 操作・デスクトップ統合(生体認証)は別途ユーザーが行う（ここは CLI 導入まで）。
+case "$(hostname)" in
+  raspi*)
+    echo "==> op(1Password CLI): raspi は対象外（skip）"
+    ;;
+  *)
+    if command -v op >/dev/null 2>&1; then
+      echo "==> op(1Password CLI): 既にインストール済み"
+    else
+      echo "==> 1Password CLI を公式 apt リポから導入"
+      ARCH="$(dpkg --print-architecture)"
+      curl -sS https://downloads.1password.com/linux/keys/1password.asc \
+        | sudo gpg --dearmor --output /usr/share/keyrings/1password-archive-keyring.gpg
+      echo "deb [arch=${ARCH} signed-by=/usr/share/keyrings/1password-archive-keyring.gpg] https://downloads.1password.com/linux/debian/${ARCH} stable main" \
+        | sudo tee /etc/apt/sources.list.d/1password.list >/dev/null
+      sudo mkdir -p /etc/debsig/policies/AC2D62742012EA22/
+      curl -sS https://downloads.1password.com/linux/debian/debsig/1password.pol \
+        | sudo tee /etc/debsig/policies/AC2D62742012EA22/1password.pol >/dev/null
+      sudo mkdir -p /usr/share/debsig/keyrings/AC2D62742012EA22
+      curl -sS https://downloads.1password.com/linux/keys/1password.asc \
+        | sudo gpg --dearmor --output /usr/share/debsig/keyrings/AC2D62742012EA22/debsig.gpg
+      sudo apt update && sudo apt install -y 1password-cli
+    fi
+    ;;
+esac
 
 # -----------------------------------------------------------------------------
 # 2. mise (公式インストーラ)
