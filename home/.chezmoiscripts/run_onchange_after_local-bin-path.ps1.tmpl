@@ -1,0 +1,18 @@
+{{- /*
+  ~/.local/bin を User PATH に追加（Windows）。非 Windows では空レンダ→chezmoi がスキップ。
+  claude code のネイティブインストールは %USERPROFILE%\.local\bin に実体を置くが、
+  PATH を自動では通さない（/doctor が警告する）。ここで冪等に追加する。
+  本文は ASCII のみ（chezmoi が render した .ps1 を PowerShell 5.1 が BOM 無しで
+  正しく読めるように。日本語はこの chezmoi コメント内に留める）。
+*/ -}}
+{{ if eq .chezmoi.os "windows" -}}
+$dir = Join-Path $env:USERPROFILE ".local\bin"
+$cur = [Environment]::GetEnvironmentVariable("Path", "User")
+if (($cur -split ';') -notcontains $dir) {
+    $newPath = ($cur.TrimEnd(';')) + ";" + $dir
+    [Environment]::SetEnvironmentVariable("Path", $newPath, "User")
+    Write-Host "==> Added to User PATH: $dir (restart shell to apply)"
+} else {
+    Write-Host "==> Already in User PATH: $dir"
+}
+{{ end -}}
