@@ -82,6 +82,14 @@ gemini-cli = "latest"
 dotnet = "8"
 {{ end -}}
 
+# ruby は precompiled バイナリを使う。ソースビルドは openssl/zlib 等の -dev ヘッダ依存で
+# WSL(Ubuntu 24.04) 等で `zlib.h: No such file` → BUILD FAILED になり mise up が落ちるため。
+# precompiled でも GitHub artifact attestation 検証は通る。mise 2026.8.0 から precompiled が既定。
+# 戻す条件: 全対象機に ruby ビルド依存(zlib1g-dev/libssl-dev/libyaml-dev 等)を入れて
+# source ビルドに戻したくなったら ruby.compile を消す。(2026-06-03)
+[settings]
+ruby.compile = false
+
 [env]
 MISE_PIPX_UVX = "1"
 {{ end -}}
