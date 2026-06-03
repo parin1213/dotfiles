@@ -154,6 +154,16 @@ alias git-difft='git -c diff.external=difft diff'
 alias helpdora='FORCE_COLOR=1 helpdora'
 alias dora='FORCE_COLOR=1 helpdora'
 
+# WSL の op: native Linux op は Windows アプリ連携(PolKit/Linux アプリ前提)に繋がらず
+# "not signed in" になる。Windows の op.exe を WSL interop で呼べば Windows アプリ+Hello で
+# 認証でき `op signin` 不要。op.exe が PATH に居る時だけ alias する（winget で op 導入後
+# `wsl --shutdown` で Windows PATH を取り込むと op.exe が見える）。
+# 注: `op read`/`op item get` 等の値取得向け。`op run` でラップする子プロセスは Windows 側で
+# 動くため、WSL ネイティブな op run が要る用途では native op + `op signin` を使う。
+if grep -qi microsoft /proc/sys/kernel/osrelease 2>/dev/null && command -v op.exe >/dev/null 2>&1; then
+  alias op='op.exe'
+fi
+
 # ---------------------------------------------------------------------
 # 関数
 # ---------------------------------------------------------------------
