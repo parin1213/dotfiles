@@ -107,22 +107,31 @@ esac
 # 1.7 1Password デスクトップアプリ（GUI デスクトップのみ）
 # -----------------------------------------------------------------------------
 # native op を signin 無し(生体/system 認証=PolKit)で使うにはアプリ連携が要る。
-# GUI が無い機(WSL/raspi/headless サーバ)には入れない。判定方針:
-#   - WSL は osrelease=microsoft で明示除外（WSLg はあっても native アプリ連携は使わない）
-#   - それ以外は display-manager.service の有無で「本物のグラフィカルデスクトップ」を判定
-#     （gtk ライブラリ有無より確実。headless でも gtk は依存で入りうるため）
+# GUI が無い機(WSL/headless サーバ)や op 対象外の raspi(slim) には入れない。判定方針:
+#   - raspi(slim) は設計どおり対象外（hostname で明示）。※Raspberry Pi OS は headless 運用でも
+#     display-manager が入っており、DM 判定だけでは除外できないため hostname で弾く。
+#   - WSL は osrelease=microsoft で除外（native アプリ連携は使わず op.exe interop に委譲）。
+#   - 残りは display-manager.service の有無で「本物のグラフィカルデスクトップ」を判定
+#     （gtk ライブラリ有無より確実。headless でも gtk は依存で入りうるため）。
 # apt リポは 1.6 の op CLI 導入で既に追加済み。アプリ側の「システム認証で解錠」＋
 # 「CLIと連携」トグルはデスクトップ上でユーザーが行う（ここは導入まで）。
-if grep -qi microsoft /proc/sys/kernel/osrelease 2>/dev/null; then
-  echo "==> 1Password GUI: WSL は対象外（skip。WSL は Windows の op.exe を interop で使う）"
-elif [ ! -e /etc/systemd/system/display-manager.service ]; then
-  echo "==> 1Password GUI: グラフィカルデスクトップ未検出のため skip（headless 機）"
-elif dpkg -s 1password >/dev/null 2>&1; then
-  echo "==> 1Password GUI: 既にインストール済み"
-else
-  echo "==> 1Password デスクトップアプリを導入（apt）"
-  sudo apt install -y 1password
-fi
+case "$(hostname)" in
+  raspi*)
+    echo "==> 1Password GUI: raspi は対象外（skip）"
+    ;;
+  *)
+    if grep -qi microsoft /proc/sys/kernel/osrelease 2>/dev/null; then
+      echo "==> 1Password GUI: WSL は対象外（skip。Windows の op.exe を interop で使う）"
+    elif [ ! -e /etc/systemd/system/display-manager.service ]; then
+      echo "==> 1Password GUI: グラフィカルデスクトップ未検出のため skip（headless 機）"
+    elif dpkg -s 1password >/dev/null 2>&1; then
+      echo "==> 1Password GUI: 既にインストール済み"
+    else
+      echo "==> 1Password デスクトップアプリを導入（apt）"
+      sudo apt install -y 1password
+    fi
+    ;;
+esac
 
 # -----------------------------------------------------------------------------
 # 2. mise (公式インストーラ)
