@@ -57,6 +57,32 @@ repo = "mattpocock/skills"
 skill = "grill-with-docs"
 pin = "aaf2453f"
 
+# --- Obsidian 準公式スキル（kepano = Steph Ango / Obsidian CEO 作・Agent Skills 仕様準拠） ---
+# 検収済み: いずれも SKILL.md のみの純知識スキル（scripts / allowed-tools 無し）。
+# tag 無しリポのため検収した commit SHA で pin（上流の未検証変更を取り込まない）。
+# vault リテラシの中核 3 つを採用。obsidian-cli（Obsidian 本体起動前提）/ defuddle（要 defuddle CLI）は
+# 外部依存があるため当面見送り。要るようになったら同形式で追記する。
+[[skill]]
+name = "obsidian-markdown"
+type = "ghskill"
+repo = "kepano/obsidian-skills"
+skill = "obsidian-markdown"
+pin = "553ef99a"
+
+[[skill]]
+name = "obsidian-bases"
+type = "ghskill"
+repo = "kepano/obsidian-skills"
+skill = "obsidian-bases"
+pin = "553ef99a"
+
+[[skill]]
+name = "json-canvas"
+type = "ghskill"
+repo = "kepano/obsidian-skills"
+skill = "json-canvas"
+pin = "553ef99a"
+
 # --- 将来の追加テンプレ（コメントアウト） ---
 # [[skill]]                       # ③ gh skill 独立配布（信頼 org を pin）
 # name = "documentation-writer"
