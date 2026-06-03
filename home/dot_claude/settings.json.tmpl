@@ -1,0 +1,37 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(bin/rails --version)",
+      "Bash(bin/rails generate:*)",
+      "Bash(bin/rails db:create db:migrate)",
+      "Bash(bin/rails server:*)",
+      "Bash(bin/rails routes:*)"
+    ],
+    "defaultMode": "auto"
+  },
+  "statusLine": {
+    "type": "command",
+{{- if eq .chezmoi.os "windows" }}
+    "command": "powershell -NoProfile -ExecutionPolicy Bypass -File {{ .chezmoi.homeDir | replace "\\" "/" }}/.claude/statusline.ps1"
+{{- else }}
+    "command": "{{ .chezmoi.homeDir }}/.claude/statusline.sh"
+{{- end }}
+  },
+  "enabledPlugins": {
+    "codex@openai-codex": true,
+    "rust-analyzer-lsp@claude-plugins-official": true
+  },
+  "extraKnownMarketplaces": {
+    "openai-codex": {
+      "source": {
+        "source": "github",
+        "repo": "openai/codex-plugin-cc"
+      }
+    }
+  },
+  "effortLevel": "high",
+  "skipDangerousModePermissionPrompt": true,
+  "theme": "dark",
+  "agentPushNotifEnabled": false,
+  "skipAutoPermissionPrompt": true
+}
