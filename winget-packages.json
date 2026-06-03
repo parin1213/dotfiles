@@ -30,6 +30,12 @@
                                          },
                                          {
                                              "PackageIdentifier":  "Microsoft.WindowsTerminal"
+                                         },
+                                         {
+                                             "PackageIdentifier":  "Microsoft.PowerShell"
+                                         },
+                                         {
+                                             "PackageIdentifier":  "Obsidian.Obsidian"
                                          }
                                      ],
                         "SourceDetails":  {

@@ -332,7 +332,7 @@ default_mode "normal"
 // Default: $SHELL
 // 
 {{- if eq .chezmoi.os "windows" }}
-default_shell "powershell"
+default_shell "pwsh"
 {{- else }}
 // default_shell "fish"
 {{- end }}

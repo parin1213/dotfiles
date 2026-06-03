@@ -38,3 +38,6 @@ brew "zstd"                   # 圧縮 (env LIBRARY_PATH で参照)
 cask "ghostty"
 cask "font-hackgen"
 cask "font-hackgen-nerd"
+
+# --- Notes ---
+cask "obsidian"               # vault は別の private git repo を obsidian-git で同期
