@@ -55,6 +55,23 @@ fi
 # bootstrap 側では扱わない（OS 別 clone ハックを排除）。
 
 # -----------------------------------------------------------------------------
+# 1.5 Obsidian（GUI デスクトップのみ・snap 経由）
+# -----------------------------------------------------------------------------
+# snap がある機にだけ入れる（= surface 等の GUI デスクトップ。raspi/WSL は snap 無しで
+# 自動 skip するので headless 機に GUI アプリを入れない）。Obsidian は apt に無いため snap。
+# vault 本体は別の private リポを obsidian-git で同期する方針（このリポは管理しない）。
+if command -v snap >/dev/null 2>&1; then
+  if snap list obsidian >/dev/null 2>&1; then
+    echo "==> Obsidian: 既にインストール済み"
+  else
+    echo "==> sudo snap install obsidian --classic"
+    sudo snap install obsidian --classic
+  fi
+else
+  echo "==> snap 無し → Obsidian はスキップ（headless 機）"
+fi
+
+# -----------------------------------------------------------------------------
 # 2. mise (公式インストーラ)
 # -----------------------------------------------------------------------------
 if command -v mise >/dev/null 2>&1 || [ -x "$HOME/.local/bin/mise" ]; then
