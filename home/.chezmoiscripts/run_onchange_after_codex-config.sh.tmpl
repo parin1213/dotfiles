@@ -1,0 +1,40 @@
+{{- /*
+  Codex グローバル設定の標準化ブリッジ（Unix のみ。Windows は .ps1 版が担当）。
+  Codex は config.toml に runtime 状態([projects]/[notice]/[tui.model_availability_nux])を
+  自分で書き込むため丸ごと chezmoi 管理は drift する。ここでは tomlkit で「標準グローバルキー
+  だけ」を上書きし、runtime 状態は温存する（mise-install run_onchange と同じ思想）。
+  run_onchange はスクリプト内容が変わった時だけ再実行 → 標準値を変えた apply のときだけ走る。
+  codex 未導入(raspi slim 等)では何もしない。
+*/ -}}
+{{ if ne .chezmoi.os "windows" -}}
+#!/bin/sh
+# codex standard v1
+export PATH="$HOME/.local/share/mise/shims:$PATH"
+command -v codex >/dev/null 2>&1 || exit 0
+PYBIN="$(command -v python3 || command -v python || true)"
+[ -n "$PYBIN" ] || { echo "python 無し → codex 標準化 skip"; exit 0; }
+"$PYBIN" -m pip install --user --quiet tomlkit >/dev/null 2>&1 || true
+"$PYBIN" - <<'PYEOF'
+import tomlkit, pathlib
+p = pathlib.Path.home() / ".codex" / "config.toml"
+doc = tomlkit.parse(p.read_text(encoding="utf-8")) if p.exists() else tomlkit.document()
+doc["model"] = "gpt-5.5"
+doc["model_reasoning_effort"] = "high"
+doc["personality"] = "pragmatic"
+tui = doc.get("tui")
+if tui is None:
+    tui = tomlkit.table(); doc["tui"] = tui
+tui["status_line"] = ["model", "current-dir", "git-branch", "context-used", "five-hour-limit", "weekly-limit"]
+plugins = doc.get("plugins")
+if plugins is None:
+    plugins = tomlkit.table(); doc["plugins"] = plugins
+for name in ["github@openai-curated", "gmail@openai-curated", "google-calendar@openai-curated", "notion@openai-curated"]:
+    t = plugins.get(name)
+    if t is None:
+        t = tomlkit.table(); plugins[name] = t
+    t["enabled"] = True
+p.parent.mkdir(parents=True, exist_ok=True)
+p.write_text(tomlkit.dumps(doc), encoding="utf-8")
+print("codex: standard global settings merged (runtime state preserved)")
+PYEOF
+{{ end -}}

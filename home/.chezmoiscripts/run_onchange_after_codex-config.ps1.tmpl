@@ -1,0 +1,43 @@
+{{- /*
+  Codex グローバル設定の標準化ブリッジ（Windows のみ。Unix は .sh 版が担当）。
+  Codex は config.toml に runtime 状態を自分で書き込むため丸ごと管理は drift する。
+  tomlkit で「標準グローバルキーだけ」上書きし runtime 状態は温存（mise-install と同思想）。
+  run_onchange はスクリプト内容が変わった時だけ再実行 → 標準値を変えた apply のときだけ走る。
+  codex 未導入なら何もしない。Windows は [windows] sandbox=elevated も設定する。
+*/ -}}
+{{ if eq .chezmoi.os "windows" -}}
+# codex standard v1
+$env:Path = "$env:LOCALAPPDATA\mise\shims;$env:Path"
+if (-not (Get-Command codex -ErrorAction SilentlyContinue)) { exit 0 }
+$py = (Get-Command python -ErrorAction SilentlyContinue).Source
+if (-not $py) { Write-Host "python 無し → codex 標準化 skip"; exit 0 }
+& $py -m pip install --user --quiet tomlkit *> $null
+$code = @'
+import tomlkit, pathlib
+p = pathlib.Path.home() / ".codex" / "config.toml"
+doc = tomlkit.parse(p.read_text(encoding="utf-8")) if p.exists() else tomlkit.document()
+doc["model"] = "gpt-5.5"
+doc["model_reasoning_effort"] = "high"
+doc["personality"] = "pragmatic"
+tui = doc.get("tui")
+if tui is None:
+    tui = tomlkit.table(); doc["tui"] = tui
+tui["status_line"] = ["model", "current-dir", "git-branch", "context-used", "five-hour-limit", "weekly-limit"]
+plugins = doc.get("plugins")
+if plugins is None:
+    plugins = tomlkit.table(); doc["plugins"] = plugins
+for name in ["github@openai-curated", "gmail@openai-curated", "google-calendar@openai-curated", "notion@openai-curated"]:
+    t = plugins.get(name)
+    if t is None:
+        t = tomlkit.table(); plugins[name] = t
+    t["enabled"] = True
+win = doc.get("windows")
+if win is None:
+    win = tomlkit.table(); doc["windows"] = win
+win["sandbox"] = "elevated"
+p.parent.mkdir(parents=True, exist_ok=True)
+p.write_text(tomlkit.dumps(doc), encoding="utf-8")
+print("codex: standard global settings merged (runtime state preserved)")
+'@
+$code | & $py -
+{{ end -}}
