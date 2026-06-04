@@ -50,6 +50,10 @@ ast-grep = "latest"
 deno = "latest"
 python = "latest"
 node = "latest"
+# ruby は precompiled（jdx/ruby の tarball 展開）なので lite でも軽い。かつて full 限定
+# だったが「source compile で激重」の旧理由が precompiled 化で解消したため lite 以上に移動。
+# system ruby（apt）は使わず mise 一本化する方針。slim(raspi) は素のシェル用途で除外のまま。(2026-06-04)
+ruby = "latest"
 # pnpm は aqua 定義が古く、latest(v11.5.1 で .tar.gz 化)に対し資産名 pnpm-linux-x64 を探して
 # no asset found で落ちる。pnpm は本来 npm パッケージなので npm backend で導入（Windows と統一）。
 # aqua-registry の pnpm が .tar.gz 形式に追従したら pnpm = "latest" に戻してよい。(2026-06-02)
@@ -72,9 +76,9 @@ uv = "0.11.8"
 {{ end -}}
 {{ if eq $p.weight "full" -}}
 # --- full 機（WSL / mac / 通常 Linux）のみ: 重い/クラウド系 ---
-# lite（surface-go3 等の低スペック機）では除外。理由: ruby は source compile で激重、
-# dotnet/gcloud/aws-cli は大型 DL、terraform/gemini-cli はニッチ。必要なら個別に mise use。
-ruby = "latest"
+# lite（surface-go3 等の低スペック機）では除外。dotnet/gcloud/aws-cli は大型 DL、
+# terraform/gemini-cli はニッチ。必要なら個別に mise use。
+# （ruby は precompiled 化で軽くなったため lite 以上ブロックへ移動した。）
 terraform = "latest"
 aws-cli = { version = "latest", symlink_bins = "true" }
 gcloud = "latest"
