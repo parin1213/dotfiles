@@ -454,8 +454,11 @@ pane_frames false
 // Options:
 //   - true (default)
 //   - false
-// 
-// session_serialization false
+//
+// SSH で singleton "main" に attach する運用だと、直列化済みセッションの resurrection で
+// 各ペインに "Waiting to run <command>" 復元プロンプトが毎回出てうっとおしい（特にモバイル）。
+// シェル主体の使い方では再起動跨ぎの永続より「素のライブ再アタッチ」が望ましいので切る。
+session_serialization false
  
 // Whether pane viewports are serialized along with the session, default is false
 // Options:
