@@ -28,14 +28,21 @@ cd ~/src/dotfiles
 ### 2. provision（OS ネイティブ層を入れる）
 
 mise で入らないもの（mise 本体・ビルド土台・zsh・GUI/フォント）だけを OS のパッケージ管理で入れる。
+入口は **OS 共通で `bootstrap` 一語**（`code` のように、名前が OS ごとに正しい実体へ解決される）。
 
-| OS | コマンド | 入るもの |
+| OS | コマンド | 委譲先 / 入るもの |
 |---|---|---|
-| macOS | `./bootstrap-macos.sh` | Homebrew ＋ Brewfile（mise / ghostty / font / build 依存）＋ chezmoi |
-| WSL / Ubuntu / Debian / Raspberry Pi | `./bootstrap-linux.sh` | apt（zsh / fzf / build 等）＋ mise ＋ chsh ＋ chezmoi |
-| Windows (PowerShell) | `./bootstrap-windows.ps1` | winget import（git / mise / Terminal / GUI）＋ chezmoi |
+| macOS / Linux | `./bootstrap` | `uname` で `bootstrap-macos.sh` / `bootstrap-linux.sh` へ |
+| Windows (PowerShell) | `.\bootstrap.ps1` | `bootstrap-windows.ps1`（winget import ＋ chezmoi） |
 
-各 bootstrap が `~/.config/chezmoi/chezmoi.toml`（`sourceDir` = clone 先を自動導出）も生成する。
+- 初回は repo 直下で `./bootstrap`（Unix）/ `.\bootstrap.ps1`（Windows）。`chezmoi apply` 後は
+  `~/.local/bin` の shim 経由で**どこでも `bootstrap` 一語**で再実行できる（この dir は全 OS で PATH 上）。
+- Linux 系（WSL / Ubuntu / Debian / Raspberry Pi）で**何を入れるか**は環境ごとに違う。これは
+  `home/.chezmoidata.toml` の `envs.<env>` 能力フラグ（`op` / `op_interop` / `gui_apps` /
+  `tailscale` / `docker` / `sshd`）が**正本**で、`bootstrap-linux.sh` は `chezmoi execute-template`
+  でそれを読み込み（`DF_*`）分岐するだけ（環境判定の重複を排除）。
+- 各 bootstrap が `~/.config/chezmoi/chezmoi.toml`（`sourceDir` = clone 先を自動導出）も生成する。
+- 認証が要るもの（`tailscale up` / `op signin` / 1Password アプリ連携）はユーザー本人が行う。
 
 ### 3. restore（設定を復元する）
 
@@ -70,6 +77,9 @@ exec zsh -l       # 反映（Windows は新しい PowerShell を開く）
 - OS 分岐：`{{ .chezmoi.os }}`（`windows` / `darwin` / `linux`）。
 - WSL 判定：`.chezmoi.kernel.osrelease` に `microsoft` を含むか。
 - **Raspberry Pi 判定：hostname が `raspi*`**（OS は Debian でも Pi として扱う）。
+- これら判定は `home/.chezmoitemplates/profile`（中央リゾルバ）に集約。env→設定値・能力フラグは
+  `home/.chezmoidata.toml` の正本表に全列挙し、consumer（mise / starship / ghostty / **bootstrap**）は
+  読むだけ。bootstrap は `profile-env` partial を `chezmoi execute-template` で `DF_*` に落として読む。
 
 ---
 
@@ -81,16 +91,19 @@ exec zsh -l       # 反映（Windows は新しい PowerShell を開く）
 ```
 dotfiles/
 ├── Brewfile / Brewfile.optional # macOS の brew bundle
+├── bootstrap / bootstrap.ps1    # OS 共通入口（uname / pwsh で OS 別 provision へ委譲）
 ├── bootstrap-macos.sh           # macOS provision
-├── bootstrap-linux.sh           # WSL / Ubuntu / Debian / raspi provision
+├── bootstrap-linux.sh           # Linux 系 provision（.chezmoidata.toml の能力フラグで出し分け）
 ├── bootstrap-windows.ps1        # Windows provision
 ├── winget-packages.json         # Windows GUI/システムアプリ（CLI は mise）
 ├── skills/                      # エージェントスキル管理（manifest.toml + setup.sh/.ps1 + 自作/採用 skill）
 └── home/                        # chezmoi ソース（dot_ 命名 / .chezmoiroot）
+    ├── .chezmoidata.toml        # 環境ごとの正本表（weight / 能力フラグ op・docker… を全 env 列挙）
     ├── .chezmoiignore           # OS ごとに適用対象を出し分け（テンプレ）
     ├── .chezmoiexternal.toml    # 外部 git（fzf-tab を ~/.local/share に clone）
     ├── Pictures/                # 背景画像 sakura.jpg / ajisai.jpg（linux は除外）
-    ├── .chezmoitemplates/       # 共有テンプレ partial（agents-common / agents-env）
+    ├── .chezmoitemplates/       # 共有テンプレ partial（profile / profile-env / agents-common / agents-env）
+    ├── dot_local/bin/           # ~/.local/bin（bootstrap 名前解決 shim 等）
     ├── dot_agents/ dot_claude/ dot_codex/ dot_gemini/   # エージェント指示（.tmpl）
     ├── dot_zshrc / dot_zshenv / dot_zprofile / dot_tmux.conf
     ├── dot_config/

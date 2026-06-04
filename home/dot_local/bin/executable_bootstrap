@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# ~/.local/bin/bootstrap — 名前解決 shim（Unix）。chezmoi 管理。
+# どの環境でも `bootstrap` 一語で provision を走らせるための薄い委譲。実体は repo 直下の
+# dispatcher（chezmoi 管理外）。clone 先は全 OS 共通で ~/src/dotfiles（local-pc は
+# ~/src → C:\dev\src の junction）。別パスへ clone した場合のみ $DOTFILES で上書きする。
+exec "${DOTFILES:-$HOME/src/dotfiles}/bootstrap" "$@"

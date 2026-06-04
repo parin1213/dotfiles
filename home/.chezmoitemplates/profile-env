@@ -1,0 +1,17 @@
+{{- /*
+  profile を「シェルが source できる KEY=VALUE」に変換する partial。
+  bootstrap が `eval "$(chezmoi execute-template --source <repo> '{{`{{ includeTemplate "profile-env" . }}`}}')"`
+  で読み込み、各 provision 節は DF_* フラグを参照するだけにする（判定ロジックを表へ一元化）。
+  bool は 1/0 に正規化。値は単純トークンなのでクォート不要。
+*/ -}}
+{{- $p := includeTemplate "profile" . | fromJson -}}
+DF_ENV={{ $p.env }}
+DF_MACHINE={{ $p.machine }}
+DF_WEIGHT={{ $p.weight }}
+DF_IS_WSL={{ if $p.isWSL }}1{{ else }}0{{ end }}
+DF_OP={{ if $p.op }}1{{ else }}0{{ end }}
+DF_OP_INTEROP={{ if $p.op_interop }}1{{ else }}0{{ end }}
+DF_GUI_APPS={{ if $p.gui_apps }}1{{ else }}0{{ end }}
+DF_TAILSCALE={{ if $p.tailscale }}1{{ else }}0{{ end }}
+DF_DOCKER={{ if $p.docker }}1{{ else }}0{{ end }}
+DF_SSHD={{ if $p.sshd }}1{{ else }}0{{ end }}

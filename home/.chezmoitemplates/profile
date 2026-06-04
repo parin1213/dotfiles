@@ -13,6 +13,8 @@
     machine           : 物理マシンの正規ラベル（hostname のばらつき吸収。SSH 自己参照等の分岐キー）
     env               : win/wsl/surface/raspi/mac/linux（設定表 envs のキー）
     weight / ghostty_font_size / starship_label / starship_color : envs.<env> の行から
+    op / op_interop / gui_apps / tailscale / docker / sshd : provision 能力フラグ（bool）
+                        envs.<env> の行から素通し。bootstrap / common.sh が読む。
 
   新マシン追加: 設定値は .chezmoidata.toml の [envs.<name>] に書く。
   hostname→machine→env の判定ルールだけは下の if に足す。
@@ -49,4 +51,10 @@
       "starship_icon" (index $row "starship_icon")
       "starship_label" (index $row "starship_label")
       "starship_color" (index $row "starship_color")
+      "op" (index $row "op")
+      "op_interop" (index $row "op_interop")
+      "gui_apps" (index $row "gui_apps")
+      "tailscale" (index $row "tailscale")
+      "docker" (index $row "docker")
+      "sshd" (index $row "sshd")
    | toJson -}}

@@ -1,6 +1,6 @@
 # 環境ごとの設定の正本表（chezmoi data）。**全 env を明示列挙**する。
 # home/.chezmoitemplates/profile が os/kernel/hostname から env を判定し、この表の行を読む。
-# consumer（mise / ghostty / starship / agents-env）はその profile を読むだけ。
+# consumer（mise / ghostty / starship / agents-env / bootstrap）はその profile を読むだけ。
 # 設定変更・env 追加はこのファイルで完結（profile 側は「判定ロジック」のみ持つ）。
 #
 # フィールド:
@@ -10,45 +10,93 @@
 #   starship_label    : 続けて出す固有名詞（""=アイコンのみ）
 #   starship_color    : アイコン＋ラベルの **fg（フォント色）**。tokyo-night のベタ塗り背景を避け
 #                       fg で出し分ける（背景ブロックは廃止）。
+#
+#   --- provision 能力フラグ（bootstrap が読む正本。bootstrap-linux が主 consumer） ---
+#   これまで bootstrap 各節に散らばっていた「誰に何を入れるか」（WSL 判定×5 / raspi 判定×4 /
+#   GUI 検出）を env ごとの1行に集約する。各 bootstrap 節はこのフラグを読むだけにする。
+#   op            : 1Password CLI を native 導入（apt）するか
+#   op_interop    : op を Windows op.exe interop に寄せるか（WSL のみ true。common.sh も同じ列を読む）
+#   gui_apps      : GUI デスクトップアプリ（1Password app / Obsidian）を入れるか
+#   tailscale     : Tailscale を入れるか
+#   docker        : Docker(rootless) を入れるか
+#   sshd          : openssh-server を入れるか
+#   ※ win/mac は winget-packages.json / Brewfile が導入の正本なので、これらフラグは全 false
+#     （linux 系＝WSL/surface/raspi/汎用 Linux の出し分け専用）。
 
 [envs.win]                      # Windows ネイティブ（machine=local-pc）
 weight = "full"
 ghostty_font_size = 24          # ※Windows は ghostty を .chezmoiignore で除外（値は参考）
-starship_icon = ""        # nf windows
+starship_icon = ""        # nf windows
 starship_label = ""             # Windows ロゴだけで一意 → アイコンのみ
 starship_color = "#a3aed2"
+op = false                      # win/mac は winget/Brewfile が正本（フラグは linux 系専用）
+op_interop = false
+gui_apps = false
+tailscale = false
+docker = false
+sshd = false
 
 [envs.wsl]                      # local-pc 上の WSL（machine=local-pc・kernel で判定）
 weight = "full"
 ghostty_font_size = 24
-starship_icon = ""  # nf windows + tux = WSL らしさ（Ubuntu ロゴを避ける）
+starship_icon = ""  # nf windows + tux = WSL らしさ（Ubuntu ロゴを避ける）
 starship_label = "wsl"
 starship_color = "#00b8d4"
+op = false                      # native op は Windows アプリ連携に繋がらない → interop に寄せる
+op_interop = true               # op→op.exe（common.sh が alias、bootstrap は native 導入 skip）
+gui_apps = false                # GUI は Windows 側を使う
+tailscale = false               # Windows の Tailscale を interop で使う
+docker = false                  # Windows の Docker Desktop を interop で使う
+sshd = false                    # Windows 側 sshd / 既存経路を使う
 
-[envs.surface]                  # Surface Go 3（machine=surface-go3）
+[envs.surface]                  # Surface Go 3（machine=surface-go3・GUI デスクトップ）
 weight = "lite"
 ghostty_font_size = 16          # 220PPI/10.5"・150% → 24pt は大きすぎる
-starship_icon = ""        # nf ubuntu
+starship_icon = ""        # nf ubuntu
 starship_label = "surface"
 starship_color = "#e95420"
+op = true
+op_interop = false
+gui_apps = true                 # 本物のグラフィカルデスクトップ
+tailscale = true
+docker = true
+sshd = true
 
-[envs.raspi]                    # Raspberry Pi（machine=raspi4）
+[envs.raspi]                    # Raspberry Pi（machine=raspi4・slim・headless）
 weight = "slim"
 ghostty_font_size = 24
-starship_icon = ""        # nf raspberry pi
+starship_icon = ""        # nf raspberry pi
 starship_label = "raspi"
 starship_color = "#c51a4a"
+op = false                      # slim＝素のシェル用途。秘密バックエンドは対象外
+op_interop = false
+gui_apps = false                # headless
+tailscale = true                # headless ほどリモート到達の価値が高い
+docker = false                  # slim＝コンテナ基盤は載せない
+sshd = true                     # ssh 受け側として必要
 
 [envs.mac]                      # macOS（仕事用・現在未接続）
 weight = "full"
 ghostty_font_size = 24
-starship_icon = ""        # nf apple
+starship_icon = ""        # nf apple
 starship_label = ""             # Apple ロゴだけで一意 → アイコンのみ
 starship_color = "#888888"
+op = false                      # mac は Brewfile が正本（フラグは linux 系専用）
+op_interop = false
+gui_apps = false
+tailscale = false
+docker = false
+sshd = false
 
-[envs.linux]                    # 未分類の汎用 Linux（fallback）
+[envs.linux]                    # 未分類の汎用 Linux（fallback・headless サーバ想定）
 weight = "full"
 ghostty_font_size = 24
-starship_icon = ""        # nf tux
+starship_icon = ""        # nf tux
 starship_label = ""
 starship_color = "#a3aed2"
+op = true
+op_interop = false
+gui_apps = false                # 汎用は headless 既定（GUI 機なら個別に true へ）
+tailscale = true
+docker = true
+sshd = true
