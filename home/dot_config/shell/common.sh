@@ -196,6 +196,16 @@ case "$(uname -s)" in
       alias iterm-new='osascript ~/scripts/launch_iterm2_new_window.scpt'
     fi
     ;;
+  Linux)
+    # rootless Docker: user daemon の socket に向ける（rootful の /var/run とは別系統）。
+    # WSL は Docker Desktop interop を使うので触らない。socket 実在時だけ設定して
+    # rootless 未構成の機で docker が壊れないようにする（bootstrap が rootless 化する）。
+    if ! grep -qi microsoft /proc/sys/kernel/osrelease 2>/dev/null; then
+      _docker_rootless_sock="/run/user/$(id -u)/docker.sock"
+      [ -S "$_docker_rootless_sock" ] && export DOCKER_HOST="unix://$_docker_rootless_sock"
+      unset _docker_rootless_sock
+    fi
+    ;;
 esac
 
 unset __SHELL

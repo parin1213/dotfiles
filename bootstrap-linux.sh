@@ -151,6 +151,88 @@ else
 fi
 
 # -----------------------------------------------------------------------------
+# 1.9 Docker Engine（公式 apt リポ・rootless 対応）
+# -----------------------------------------------------------------------------
+# コンテナ実行基盤。distro 同梱の docker.io でなく本家 docker-ce を公式チャネルから
+# （更新・署名を本家に委譲＝サプライチェーン整合。1Password/Tailscale と同方針）。
+# WSL は除外（Windows の Docker Desktop を interop で使う。WSL 内 dockerd は
+# systemd / cgroup 周りが面倒）。rootless 実行に要る uidmap / rootless-extras も併せて
+# 入れる（rootless 化＝dockerd-rootless-setuptool.sh と daemon 起動はユーザーが行う。
+# ここは導入まで）。
+if grep -qi microsoft /proc/sys/kernel/osrelease 2>/dev/null; then
+  echo "==> Docker: WSL は対象外（skip。Windows の Docker Desktop を interop で使う）"
+elif command -v docker >/dev/null 2>&1 && dpkg -s docker-ce >/dev/null 2>&1; then
+  echo "==> Docker: 既にインストール済み"
+else
+  echo "==> Docker Engine を公式 apt リポから導入"
+  # 公式リポのパスは ID で分岐（ubuntu / debian / raspbian）。/etc/os-release から導出。
+  . /etc/os-release
+  ARCH="$(dpkg --print-architecture)"
+  sudo install -m 0755 -d /etc/apt/keyrings
+  curl -fsSL "https://download.docker.com/linux/${ID}/gpg" \
+    | sudo gpg --dearmor --yes --output /etc/apt/keyrings/docker.gpg
+  sudo chmod a+r /etc/apt/keyrings/docker.gpg
+  echo "deb [arch=${ARCH} signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/${ID} ${VERSION_CODENAME:-} stable" \
+    | sudo tee /etc/apt/sources.list.d/docker.list >/dev/null
+  sudo apt update
+  sudo apt install -y \
+    docker-ce docker-ce-cli containerd.io \
+    docker-buildx-plugin docker-compose-plugin \
+    docker-ce-rootless-extras uidmap
+fi
+
+# -----------------------------------------------------------------------------
+# 1.9b Docker rootless 化（daemon も非 root で動かす＝このリポの標準構成）
+# -----------------------------------------------------------------------------
+# install だけでは rootful（root daemon）。rootless は per-user セットアップが要る:
+#   linger 有効化 → rootful daemon 停止 → dockerd-rootless-setuptool.sh install。
+# 非対話 provision でも進むよう XDG_RUNTIME_DIR を明示し、失敗しても bootstrap は
+# 止めない（best-effort。完了しない時は最後の案内に従って手動実施）。冪等性は
+# ~/.config/systemd/user/docker.service（setuptool が作る）の有無で判定。
+# DOCKER_HOST=unix:///run/user/<uid>/docker.sock は dotfiles 側(common.sh)で設定。
+if grep -qi microsoft /proc/sys/kernel/osrelease 2>/dev/null; then
+  : # WSL は Docker 導入自体を上で skip 済み
+elif ! command -v dockerd-rootless-setuptool.sh >/dev/null 2>&1; then
+  echo "==> Docker rootless: docker 未導入のため skip"
+elif [ -f "$HOME/.config/systemd/user/docker.service" ]; then
+  echo "==> Docker rootless: 既に構成済み（~/.config/systemd/user/docker.service）"
+else
+  echo "==> Docker rootless をセットアップ"
+  # ログアウト後も user daemon を維持（headless/ssh で必須）。/run/user/<uid> も用意される。
+  sudo loginctl enable-linger "$USER" || true
+  # rootful の system daemon は止める（rootless と二重持ちしない＝標準を rootless に寄せる）。
+  sudo systemctl disable --now docker.service docker.socket 2>/dev/null || true
+  # 非対話シェルでも user systemd に届くよう runtime dir を明示。
+  export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+  if dockerd-rootless-setuptool.sh install --force; then
+    systemctl --user enable --now docker 2>/dev/null || true
+    echo "==> Docker rootless: 構成完了（反映に再ログインが要る場合あり）"
+  else
+    cat <<'EOM'
+==> Docker rootless: 自動セットアップに失敗（systemd user session 未確立の可能性）。
+    一度ログインし直してから手動で:
+      sudo loginctl enable-linger "$USER"
+      dockerd-rootless-setuptool.sh install --force
+      systemctl --user enable --now docker
+EOM
+  fi
+fi
+
+# -----------------------------------------------------------------------------
+# 1.10 OpenSSH server（このマシンへ ssh で入る受け側）
+# -----------------------------------------------------------------------------
+# リモートから入る実機（surface / raspi 等）でだけ要る。WSL は除外（Windows 側の
+# sshd / 既存経路を使う。WSL 内 sshd は systemd 前提で扱いが面倒）。
+if grep -qi microsoft /proc/sys/kernel/osrelease 2>/dev/null; then
+  echo "==> openssh-server: WSL は対象外（skip）"
+elif dpkg -s openssh-server >/dev/null 2>&1; then
+  echo "==> openssh-server: 既にインストール済み"
+else
+  echo "==> openssh-server を導入（apt）"
+  sudo apt install -y openssh-server
+fi
+
+# -----------------------------------------------------------------------------
 # 2. mise (公式インストーラ)
 # -----------------------------------------------------------------------------
 if command -v mise >/dev/null 2>&1 || [ -x "$HOME/.local/bin/mise" ]; then
