@@ -10,7 +10,8 @@ $isInteractiveSsh = $env:SSH_CONNECTION -and
                     -not [Console]::IsInputRedirected -and
                     -not [Console]::IsOutputRedirected
 if ($isInteractiveSsh -and (Get-Command zellij -ErrorAction SilentlyContinue)) {
-    zellij attach -c main
+    # -f(--force-run-commands): resurrect 時の "Press ENTER to run" 待ちをスキップし即復元。
+    zellij attach -c -f main
     [Environment]::Exit($LASTEXITCODE)
 }
 

@@ -6,9 +6,11 @@
 # - exec で置換: zellij を抜けると ssh も閉じる（余計なシェルを残さない）。
 # - 非対話 `ssh host <cmd>` は interactive 判定で素通り（provision を壊さない）。
 # - zellij が開く新ペイン内は $ZELLIJ がセット済みなので再入しない。
+# - -f(--force-run-commands): 直列化セッションを resurrect する際の "Press ENTER to run"
+#   待ちをスキップして即復元する（永続は残しつつシェル自動復元をデフォルトに）。
 # .zprofile(login) が mise activate 済みなので、この時点で zellij(shim) は PATH 上。
 if [[ -o interactive && -n "$SSH_CONNECTION" && -z "$ZELLIJ" ]] && command -v zellij >/dev/null 2>&1; then
-  exec zellij attach -c main
+  exec zellij attach -c -f main
 fi
 
 # =========================================

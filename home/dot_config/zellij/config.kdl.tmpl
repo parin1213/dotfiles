@@ -455,10 +455,10 @@ pane_frames false
 //   - true (default)
 //   - false
 //
-// SSH で singleton "main" に attach する運用だと、直列化済みセッションの resurrection で
-// 各ペインに "Waiting to run <command>" 復元プロンプトが毎回出てうっとおしい（特にモバイル）。
-// シェル主体の使い方では再起動跨ぎの永続より「素のライブ再アタッチ」が望ましいので切る。
-session_serialization false
+// 永続化は欲しい（端末/デーモン再起動を跨いでレイアウト・tab・cwd を復元したい）ので有効のまま。
+// resurrect 時の "Press ENTER to run" 待ちは attach 側の `-f`(--force-run-commands) で即実行に
+// する（SSH 自動アタッチを `zellij attach -c -f main` にしてある）。よって serialization は切らない。
+session_serialization true
  
 // Whether pane viewports are serialized along with the session, default is false
 // Options:
