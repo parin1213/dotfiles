@@ -156,11 +156,14 @@ fi
 # コンテナ実行基盤。distro 同梱の docker.io でなく本家 docker-ce を公式チャネルから
 # （更新・署名を本家に委譲＝サプライチェーン整合。1Password/Tailscale と同方針）。
 # WSL は除外（Windows の Docker Desktop を interop で使う。WSL 内 dockerd は
-# systemd / cgroup 周りが面倒）。rootless 実行に要る uidmap / rootless-extras も併せて
+# systemd / cgroup 周りが面倒）。raspi も除外（slim 機＝素のシェル用途。op/1Password と
+# 同方針で hostname で弾く）。rootless 実行に要る uidmap / rootless-extras も併せて
 # 入れる（rootless 化＝dockerd-rootless-setuptool.sh と daemon 起動はユーザーが行う。
 # ここは導入まで）。
 if grep -qi microsoft /proc/sys/kernel/osrelease 2>/dev/null; then
   echo "==> Docker: WSL は対象外（skip。Windows の Docker Desktop を interop で使う）"
+elif [[ "$(hostname)" == raspi* ]]; then
+  echo "==> Docker: raspi は対象外（slim・skip。op/1Password と同方針）"
 elif command -v docker >/dev/null 2>&1 && dpkg -s docker-ce >/dev/null 2>&1; then
   echo "==> Docker: 既にインストール済み"
 else
@@ -192,6 +195,8 @@ fi
 # DOCKER_HOST=unix:///run/user/<uid>/docker.sock は dotfiles 側(common.sh)で設定。
 if grep -qi microsoft /proc/sys/kernel/osrelease 2>/dev/null; then
   : # WSL は Docker 導入自体を上で skip 済み
+elif [[ "$(hostname)" == raspi* ]]; then
+  : # raspi も Docker 導入自体を上で skip 済み
 elif ! command -v dockerd-rootless-setuptool.sh >/dev/null 2>&1; then
   echo "==> Docker rootless: docker 未導入のため skip"
 elif [ -f "$HOME/.config/systemd/user/docker.service" ]; then
