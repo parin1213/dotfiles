@@ -134,6 +134,23 @@ case "$(hostname)" in
 esac
 
 # -----------------------------------------------------------------------------
+# 1.8 Tailscale（メッシュ VPN）— 公式インストーラ
+# -----------------------------------------------------------------------------
+# 各ノードを Tailnet に載せて相互到達させる。WSL は除外（Windows 側の Tailscale を
+# 使い WSL からは interop で届く。WSL 内 tailscaled は systemd / TUN 周りが面倒）。
+# raspi/surface 等の実機 Linux は対象（headless 機ほどリモート到達の価値が高い）。
+# 公式スクリプトが distro/arch を自動判定して apt リポを設定する（＝公式チャネル）。
+# `tailscale up`（認証・ログイン）はユーザー本人が行う（ここは daemon 導入まで）。
+if grep -qi microsoft /proc/sys/kernel/osrelease 2>/dev/null; then
+  echo "==> Tailscale: WSL は対象外（skip。Windows の Tailscale を interop で使う）"
+elif command -v tailscale >/dev/null 2>&1; then
+  echo "==> Tailscale: 既にインストール済み"
+else
+  echo "==> Tailscale を公式インストーラで導入（curl https://tailscale.com/install.sh | sh）"
+  curl -fsSL https://tailscale.com/install.sh | sh
+fi
+
+# -----------------------------------------------------------------------------
 # 2. mise (公式インストーラ)
 # -----------------------------------------------------------------------------
 if command -v mise >/dev/null 2>&1 || [ -x "$HOME/.local/bin/mise" ]; then
