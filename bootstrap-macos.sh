@@ -64,20 +64,17 @@ fi
 # -----------------------------------------------------------------------------
 echo
 echo "==> macOS ブートストラップ完了。"
-_need=0
-# chezmoi を解決（mise 経由）。解決できなければ確認不能なので apply を出す（安全側）。
-# applylog は run_after で毎回 status に出る純粋なログなので除外する（残りが空＝適用済み）。
+# 以降は本当に必要なステップだけ出す（無ければ完了表示のみ）。
+# chezmoi を解決（mise 経由）。解決不能 or 未適用差分あり（applylog の run_after ログは除外）
+# なら apply を促す。
 CHEZMOI_BIN="$(command -v chezmoi || mise which chezmoi 2>/dev/null || true)"
 if [ -z "$CHEZMOI_BIN" ] || [ -n "$("$CHEZMOI_BIN" status --source "$REPO_ROOT" 2>/dev/null | grep -v 'applylog')" ]; then
   echo "  chezmoi diff && chezmoi apply   # dotfiles 配置 + mise install + fzf-tab を自動実行"
-  _need=1
 fi
 # シェル: 現在の対話シェルが zsh でなければ切替を促す（macOS は既定 zsh なので通常出ない）。
 _cur="$(ps -o comm= -p "$PPID" 2>/dev/null | sed 's/^-//')" || true
 case "$_cur" in
   *zsh*) ;;
-  *) echo "  exec zsh -l                     # zsh へ切替（現セッションは ${_cur:-非zsh}・mise activate も効く）"; _need=1 ;;
+  *) echo "  exec zsh -l                     # zsh へ切替（現セッションは ${_cur:-非zsh}・mise activate も効く）" ;;
 esac
-[ "$_need" = 0 ] && echo "  → 追加の手順は不要。すぐ使えます。"
-echo
-unset _need _cur CHEZMOI_BIN
+unset _cur CHEZMOI_BIN
