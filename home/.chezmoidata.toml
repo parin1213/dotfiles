@@ -26,7 +26,7 @@
 [envs.win]                      # Windows ネイティブ（machine=local-pc）
 weight = "full"
 ghostty_font_size = 24          # ※Windows は ghostty を .chezmoiignore で除外（値は参考）
-starship_icon = ""        # nf windows
+starship_icon = ""        # nf windows
 starship_label = ""             # Windows ロゴだけで一意 → アイコンのみ
 starship_color = "#a3aed2"
 op = false                      # win/mac は winget/Brewfile が正本（フラグは linux 系専用）
@@ -39,7 +39,7 @@ sshd = false
 [envs.wsl]                      # local-pc 上の WSL（machine=local-pc・kernel で判定）
 weight = "full"
 ghostty_font_size = 24
-starship_icon = ""  # nf windows + tux = WSL らしさ（Ubuntu ロゴを避ける）
+starship_icon = ""  # nf windows + tux = WSL らしさ（Ubuntu ロゴを避ける）
 starship_label = "wsl"
 starship_color = "#00b8d4"
 op = false                      # native op は Windows アプリ連携に繋がらない → interop に寄せる
@@ -52,7 +52,7 @@ sshd = false                    # Windows 側 sshd / 既存経路を使う
 [envs.surface]                  # Surface Go 3（machine=surface-go3・GUI デスクトップ）
 weight = "lite"
 ghostty_font_size = 16          # 220PPI/10.5"・150% → 24pt は大きすぎる
-starship_icon = ""        # nf ubuntu
+starship_icon = ""        # nf ubuntu
 starship_label = "surface"
 starship_color = "#e95420"
 op = true
@@ -65,7 +65,7 @@ sshd = true
 [envs.raspi]                    # Raspberry Pi（machine=raspi4・slim・headless）
 weight = "slim"
 ghostty_font_size = 24
-starship_icon = ""        # nf raspberry pi
+starship_icon = ""        # nf raspberry pi
 starship_label = "raspi"
 starship_color = "#c51a4a"
 op = false                      # slim＝素のシェル用途。秘密バックエンドは対象外
@@ -78,7 +78,7 @@ sshd = true                     # ssh 受け側として必要
 [envs.mac]                      # macOS（仕事用・現在未接続）
 weight = "full"
 ghostty_font_size = 24
-starship_icon = ""        # nf apple
+starship_icon = ""        # nf apple
 starship_label = ""             # Apple ロゴだけで一意 → アイコンのみ
 starship_color = "#888888"
 op = false                      # mac は Brewfile が正本（フラグは linux 系専用）
@@ -91,7 +91,7 @@ sshd = false
 [envs.linux]                    # 未分類の汎用 Linux（fallback・headless サーバ想定）
 weight = "full"
 ghostty_font_size = 24
-starship_icon = ""        # nf tux
+starship_icon = ""        # nf tux
 starship_label = ""
 starship_color = "#a3aed2"
 op = true
