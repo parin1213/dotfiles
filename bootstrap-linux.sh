@@ -256,8 +256,7 @@ cat <<'EOM'
 
 ==> Linux ブートストラップ完了。次の手順:
 
-  chezmoi diff && chezmoi apply   # dotfiles 展開（旧 install.sh は chezmoi に移行済み）
-  exec zsh -l                     # 新シェル起動 (mise activate がここで効く)
-  mise install                    # mise/config.toml の tool を一括インストール
+  chezmoi diff && chezmoi apply   # dotfiles 配置 + mise install(run_onchange) + fzf-tab(external) を自動実行
+  exec zsh -l                     # 反映（mise activate がここで効く）
 
 EOM

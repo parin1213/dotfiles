@@ -8,7 +8,11 @@
 {{ if ne .chezmoi.os "windows" -}}
 #!/bin/sh
 # mise config hash: {{ include "dot_config/mise/config.toml.tmpl" | sha256sum }}
-if command -v mise >/dev/null 2>&1; then
-  mise install || true
-fi
+# apply 時に mise install を自動実行する（＝bootstrap 後の手動 `mise install` は不要）。
+# 初回 apply が mise をまだ PATH に乗せていないシェルから走っても拾えるよう、mise.run の
+# 既定インストール先 ~/.local/bin も fallback で探す（外すと初回 skip → 以後ハッシュ不変で
+# 二度と走らず tool 未導入のまま、になり得る）。
+MISE="$(command -v mise 2>/dev/null || true)"
+[ -z "$MISE" ] && [ -x "$HOME/.local/bin/mise" ] && MISE="$HOME/.local/bin/mise"
+[ -n "$MISE" ] && "$MISE" install || true
 {{ end -}}
