@@ -250,13 +250,23 @@ else
 fi
 
 # -----------------------------------------------------------------------------
-# 7. 案内
+# 7. 案内（本当に必要なステップだけ出す: 差分があれば apply、非 zsh なら exec zsh）
 # -----------------------------------------------------------------------------
-cat <<'EOM'
-
-==> Linux ブートストラップ完了。次の手順:
-
-  chezmoi diff && chezmoi apply   # dotfiles 配置 + mise install(run_onchange) + fzf-tab(external) を自動実行
-  exec zsh -l                     # 反映（mise activate がここで効く）
-
-EOM
+echo
+echo "==> Linux ブートストラップ完了。"
+_need=0
+# chezmoi: 未適用の差分があるときだけ apply を促す（status が空＝適用済みで apply 不要）。
+# applylog は run_after で毎回 status に出る純粋なログなので除外する（残りが空＝適用済み）。
+if [ -n "$("$CHEZMOI_BIN" status --source "$REPO_ROOT" 2>/dev/null | grep -v 'applylog')" ]; then
+  echo "  chezmoi diff && chezmoi apply   # 未適用の差分あり（dotfiles 配置 + mise install + fzf-tab を自動実行）"
+  _need=1
+fi
+# シェル: 現在の対話シェルが zsh でなければ切替を促す（ログインシェルは chsh 済み）。
+_cur="$(ps -o comm= -p "$PPID" 2>/dev/null | sed 's/^-//')" || true
+case "$_cur" in
+  *zsh*) ;;  # 既に zsh → exec 不要
+  *) echo "  exec zsh -l                     # zsh へ切替（現セッションは ${_cur:-非zsh}・mise activate も効く）"; _need=1 ;;
+esac
+[ "$_need" = 0 ] && echo "  → 追加の手順は不要。すぐ使えます。"
+echo
+unset _need _cur

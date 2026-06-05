@@ -60,13 +60,24 @@ else
 fi
 
 # -----------------------------------------------------------------------------
-# 5. 案内
+# 5. 案内（本当に必要なステップだけ出す: 差分があれば apply、非 zsh なら exec zsh）
 # -----------------------------------------------------------------------------
-cat <<'EOM'
-
-==> macOS ブートストラップ完了。次の手順:
-
-  chezmoi diff && chezmoi apply   # dotfiles 配置 + mise install(run_onchange) + fzf-tab(external)
-  exec zsh -l                     # 反映（mise activate がここで効く）
-
-EOM
+echo
+echo "==> macOS ブートストラップ完了。"
+_need=0
+# chezmoi を解決（mise 経由）。解決できなければ確認不能なので apply を出す（安全側）。
+# applylog は run_after で毎回 status に出る純粋なログなので除外する（残りが空＝適用済み）。
+CHEZMOI_BIN="$(command -v chezmoi || mise which chezmoi 2>/dev/null || true)"
+if [ -z "$CHEZMOI_BIN" ] || [ -n "$("$CHEZMOI_BIN" status --source "$REPO_ROOT" 2>/dev/null | grep -v 'applylog')" ]; then
+  echo "  chezmoi diff && chezmoi apply   # dotfiles 配置 + mise install + fzf-tab を自動実行"
+  _need=1
+fi
+# シェル: 現在の対話シェルが zsh でなければ切替を促す（macOS は既定 zsh なので通常出ない）。
+_cur="$(ps -o comm= -p "$PPID" 2>/dev/null | sed 's/^-//')" || true
+case "$_cur" in
+  *zsh*) ;;
+  *) echo "  exec zsh -l                     # zsh へ切替（現セッションは ${_cur:-非zsh}・mise activate も効く）"; _need=1 ;;
+esac
+[ "$_need" = 0 ] && echo "  → 追加の手順は不要。すぐ使えます。"
+echo
+unset _need _cur CHEZMOI_BIN

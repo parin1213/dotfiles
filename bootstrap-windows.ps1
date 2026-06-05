@@ -54,12 +54,23 @@ if (Test-Path $cfg) {
 }
 
 # -----------------------------------------------------------------------------
-# 4. 案内
+# 4. 案内（本当に必要なステップだけ出す: PATH 未反映なら新シェル、差分があれば apply）
 # -----------------------------------------------------------------------------
-Write-Host @'
-
-==> Windows ブートストラップ完了。次の手順（新しいシェルで）:
-
-  chezmoi diff; chezmoi apply   # dotfiles 配置 + mise install(run_onchange) + fzf-tab(external)
-
-'@
+Write-Host "`n==> Windows ブートストラップ完了。"
+$need = 0
+$chezmoi = Get-Command chezmoi -ErrorAction SilentlyContinue
+if (-not $chezmoi) {
+    # winget 導入分が現セッションの PATH に未反映 → 新シェルが要る（mise / chezmoi 解決）。
+    Write-Host "  新しい PowerShell を開く        # winget 導入分を PATH に反映"
+    Write-Host "  chezmoi diff; chezmoi apply     # dotfiles 配置 + mise install + fzf-tab を自動実行"
+    $need = 1
+} else {
+    # chezmoi 解決可。未適用の差分があるときだけ apply を促す（status が空＝適用済み）。
+    # applylog は run_after で毎回 status に出る純粋なログなので除外する。
+    $st = & $chezmoi.Source status --source $RepoRoot 2>$null | Where-Object { $_ -notmatch 'applylog' }
+    if ($st) {
+        Write-Host "  chezmoi diff; chezmoi apply     # 未適用の差分あり（mise install + fzf-tab も自動）"
+        $need = 1
+    }
+}
+if ($need -eq 0) { Write-Host "  -> 追加の手順は不要。すぐ使えます。" }
