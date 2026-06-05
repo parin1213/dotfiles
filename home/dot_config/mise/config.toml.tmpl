@@ -26,6 +26,14 @@ fd = "latest"
 jq = "latest"
 yq = "latest"
 gitleaks = "latest"
+
+[settings]
+# Windows の shim は hardlink モードにする。既定の "exe" は mise-shim.exe を mise.exe の隣か
+# PATH に要求するが、winget 配布の mise には mise-shim.exe が同梱されず、毎回 file-shim に
+# フォールバックして警告が大量に出る（file=.cmd は spawn 互換問題もある）。hardlink は各 shim を
+# mise.exe への hardlink にし argv0 で tool を判定する（admin 不要・全 shim が同一 inode 共有で
+# 実ディスク増なし・検証済み）。mise 更新後は reshim で貼り直す（mise install が実施）。
+windows_shim_mode = "hardlink"
 {{ else -}}
 [tools]
 # --- 全 Unix 共通: precompiled・軽量。slim 機でもこれだけは入れる ---
