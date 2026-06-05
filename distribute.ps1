@@ -14,6 +14,10 @@ hub は local-pc（ssh で surface/raspi に届き、wsl は interop、自分は
 設計メモ:
   - 環境定義は $envs に全 env 明示（local/ssh/wsl）。追加はここに1行。
   - applylog は run_after で毎回 chezmoi status に出る純ログなので残差判定から除外。
+  - apply は --force。zellij 等がデプロイ済み config を自動再生成すると chezmoi が
+    「外部変更あり、上書きする?」を対話確認しようとし、非対話 ssh では TTY 無しで失敗するため。
+    デプロイ済みは source から再生成可能（source が正本）の方針に沿う。保持したいランタイム値は
+    source 側に入れる（例: settings.json）。確認だけしたいときは -DryRun。
   - 1 環境が落ちても他は続行（最後に失敗環境を要約）。
 #>
 [CmdletBinding()]
@@ -35,7 +39,7 @@ if ($Only) { $envs = $envs | Where-Object { $Only -contains $_.Name } }
 
 # Linux（ssh/wsl）で走らせるスニペット。mise shim を PATH 前置し chezmoi/mise を解決。
 $pfx = 'export PATH="$HOME/.local/share/mise/shims:$PATH"; cd ~/src/dotfiles && '
-$snApply = $pfx + 'git pull --ff-only && chezmoi apply --source ~/src/dotfiles && { printf "[applied] residual: "; chezmoi status --source ~/src/dotfiles 2>/dev/null | grep -v applylog | tr "\n" " "; echo "(clean if empty)"; }'
+$snApply = $pfx + 'git pull --ff-only && chezmoi apply --force --source ~/src/dotfiles && { printf "[applied] residual: "; chezmoi status --source ~/src/dotfiles 2>/dev/null | grep -v applylog | tr "\n" " "; echo "(clean if empty)"; }'
 $snDry   = $pfx + 'git fetch -q origin master; echo "[incoming]"; git --no-pager log --oneline HEAD..origin/master; echo "[drift]"; chezmoi status --source ~/src/dotfiles 2>/dev/null | grep -v applylog || true'
 
 $failed = @()
@@ -68,7 +72,7 @@ foreach ($e in $envs) {
           Write-Host '[drift]';    & $cm status --source $RepoRoot 2>$null | Where-Object { $_ -notmatch 'applylog' }
         } else {
           # local-pc は commit 元なので pull しない（push 済み前提）。apply のみ。
-          & $cm apply --source $RepoRoot
+          & $cm apply --force --source $RepoRoot
           if ($LASTEXITCODE -ne 0) { throw "chezmoi apply 失敗 (exit $LASTEXITCODE)" }
           $res = & $cm status --source $RepoRoot 2>$null | Where-Object { $_ -notmatch 'applylog' }
           if ($res) { Write-Host ("[applied] residual: " + ($res -join ' ')) } else { Write-Host '[applied] clean' }
