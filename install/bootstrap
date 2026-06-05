@@ -4,12 +4,12 @@
 # 狙い: `code` のように「一つの名前 bootstrap」をどの環境でも叩けるようにする。
 #   - Unix では拡張子なしの本ファイルが解決される（uname で macOS / Linux を振り分け）。
 #   - Windows では pwsh / PATHEXT が同名の bootstrap.ps1 を解決する（別ファイル）。
-# 初回は repo 直下で `./bootstrap`。chezmoi apply 後は ~/.local/bin の shim 経由で
+# 初回は repo から `./install/bootstrap`。chezmoi apply 後は ~/.local/bin の shim 経由で
 # どこでも `bootstrap` 一語（~/.local/bin は全 OS で PATH 上）。
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd -P)"
 case "$(uname -s)" in
-  Darwin) exec "$HERE/bootstrap-macos.sh" "$@" ;;
-  Linux)  exec "$HERE/bootstrap-linux.sh" "$@" ;;
+  Darwin) exec "$HERE/macos.sh" "$@" ;;
+  Linux)  exec "$HERE/linux.sh" "$@" ;;
   *) echo "bootstrap: 未対応の OS: $(uname -s)（macOS / Linux を想定）" >&2; exit 1 ;;
 esac

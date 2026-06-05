@@ -1,10 +1,10 @@
 {{- /*
   ~/.local/bin/bootstrap.ps1 — 名前解決 shim（Windows）。chezmoi 管理。
   pwsh は PATH 上の `bootstrap` を bootstrap.ps1 として解決して実行する（検証済み）。
-  実体は repo 直下の dispatcher（chezmoi 管理外）。clone 先は既定 ~/src/dotfiles、
+  実体は repo の install/bootstrap.ps1 dispatcher（chezmoi 管理外）。clone 先は既定 ~/src/dotfiles、
   別パスへ clone した場合のみ $env:DOTFILES で上書きする。
   本文は ASCII のみに保つ（PowerShell 5.1 が BOM 無し UTF-8 を誤読するため。日本語は
   この chezmoi テンプレコメント内に留める＝render 後の .ps1 は ASCII）。
 */ -}}
 $dot = if ($env:DOTFILES) { $env:DOTFILES } else { Join-Path $env:USERPROFILE "src\dotfiles" }
-& (Join-Path $dot "bootstrap.ps1") @args
+& (Join-Path $dot "install\bootstrap.ps1") @args

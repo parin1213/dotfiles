@@ -32,14 +32,14 @@ mise で入らないもの（mise 本体・ビルド土台・zsh・GUI/フォン
 
 | OS | コマンド | 委譲先 / 入るもの |
 |---|---|---|
-| macOS / Linux | `./bootstrap` | `uname` で `bootstrap-macos.sh` / `bootstrap-linux.sh` へ |
-| Windows (PowerShell) | `.\bootstrap.ps1` | `bootstrap-windows.ps1`（winget import ＋ chezmoi） |
+| macOS / Linux | `./install/bootstrap` | `uname` で `install/macos.sh` / `install/linux.sh` へ |
+| Windows (PowerShell) | `.\install\bootstrap.ps1` | `install/windows.ps1`（winget import ＋ chezmoi） |
 
-- 初回は repo 直下で `./bootstrap`（Unix）/ `.\bootstrap.ps1`（Windows）。`chezmoi apply` 後は
+- 初回は repo から `./install/bootstrap`（Unix）/ `.\install\bootstrap.ps1`（Windows）。`chezmoi apply` 後は
   `~/.local/bin` の shim 経由で**どこでも `bootstrap` 一語**で再実行できる（この dir は全 OS で PATH 上）。
 - Linux 系（WSL / Ubuntu / Debian / Raspberry Pi）で**何を入れるか**は環境ごとに違う。これは
   `home/.chezmoidata.toml` の `envs.<env>` 能力フラグ（`op` / `op_interop` / `gui_apps` /
-  `tailscale` / `docker` / `sshd`）が**正本**で、`bootstrap-linux.sh` は `chezmoi execute-template`
+  `tailscale` / `docker` / `sshd`）が**正本**で、`install/linux.sh` は `chezmoi execute-template`
   でそれを読み込み（`DF_*`）分岐するだけ（環境判定の重複を排除）。
 - 各 bootstrap が `~/.config/chezmoi/chezmoi.toml`（`sourceDir` = clone 先を自動導出）も生成する。
 - 認証が要るもの（`tailscale up` / `op signin` / 1Password アプリ連携）はユーザー本人が行う。
@@ -60,7 +60,7 @@ exec zsh -l       # 反映（Windows は新しい PowerShell を開く）
 
 ### 2 フェーズ（provision / restore）
 
-- **provision** = `bootstrap-{os}`：mise で入らない **OS ネイティブ層**だけを入れる。
+- **provision** = `install/`（`bootstrap` dispatcher ＋ OS 別スクリプト）：mise で入らない **OS ネイティブ層**だけを入れる。
 - **restore** = `chezmoi apply`：設定ファイルを配置し、CLI/ランタイムの `mise install`（`run_onchange`）と
   fzf-tab の clone（`.chezmoiexternal.toml`）を **apply 中に自動実行**。
 
@@ -68,7 +68,7 @@ exec zsh -l       # 反映（Windows は新しい PowerShell を開く）
 
 | 層 | 担当 | 例 |
 |---|---|---|
-| OS ネイティブ | `bootstrap-{os}` | mise 本体・git・ビルド土台・zsh・ghostty / Terminal・フォント |
+| OS ネイティブ | `install/{linux,macos,windows}` | mise 本体・git・ビルド土台・zsh・ghostty / Terminal・フォント |
 | CLI / ランタイム | **mise** | node / python / ruby / deno / rust / gh / rg / fd / eza / zoxide / starship … |
 | 設定・プラグイン・画像 | **chezmoi** | dotfiles・fzf-tab・背景画像 |
 
@@ -86,17 +86,15 @@ exec zsh -l       # 反映（Windows は新しい PowerShell を開く）
 ## リポジトリ構成
 
 `.chezmoiroot` で chezmoi のソースルートを `home/` に向けている。直下の補助物
-（`README.md` / `Brewfile` / `bootstrap-*.{sh,ps1}` / `winget-packages.json` / `skills/`）は chezmoi 管理外。
+（`README.md` / `install/`（bootstrap・OS スクリプト・packages）/ `distribute.ps1` / `skills/`）は chezmoi 管理外。
 
 ```
 dotfiles/
-├── Brewfile / Brewfile.optional # macOS の brew bundle
-├── bootstrap / bootstrap.ps1    # OS 共通入口（uname / pwsh で OS 別 provision へ委譲）
-├── bootstrap-macos.sh           # macOS provision
-├── bootstrap-linux.sh           # Linux 系 provision（.chezmoidata.toml の能力フラグで出し分け）
-├── bootstrap-windows.ps1        # Windows provision
+├── install/                     # provision（OS ネイティブ層を入れる）
+│   ├── bootstrap / bootstrap.ps1     # OS 共通入口（uname / pwsh で OS 別へ委譲）
+│   ├── linux.sh / macos.sh / windows.ps1  # OS 別 provision（linux は能力フラグで出し分け）
+│   └── packages/                # apt.txt / Brewfile / Brewfile.optional / winget-packages.json
 ├── distribute.ps1               # 全環境へ配る hub（local-pc から push→各機 pull+apply。-DryRun 可）
-├── winget-packages.json         # Windows GUI/システムアプリ（CLI は mise）
 ├── skills/                      # エージェントスキル管理（manifest.toml + setup.sh/.ps1 + 自作/採用 skill）
 └── home/                        # chezmoi ソース（dot_ 命名 / .chezmoiroot）
     ├── .chezmoidata.toml        # 環境ごとの正本表（weight / 能力フラグ op・docker… を全 env 列挙）

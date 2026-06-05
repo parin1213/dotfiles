@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# bootstrap-linux.sh — Linux 系（WSL / Ubuntu / Debian / Raspberry Pi）provision
+# install/linux.sh — Linux 系（WSL / Ubuntu / Debian / Raspberry Pi）provision
 #
 # 「誰に何を入れるか」は .chezmoidata.toml の envs.<env> 能力フラグ（op / op_interop /
 # gui_apps / tailscale / docker / sshd）が正本。本スクリプトは chezmoi data からそのフラグを
@@ -7,11 +7,11 @@
 # 表へ一元化した（以前は各節に grep microsoft / case raspi* / display-manager 検出が散在）。
 # OS ネイティブ層のみ扱い、CLI/ランタイムは mise、設定は chezmoi apply が担当（3 層モデル）。
 #
-# 入口は OS 共通で `bootstrap`（repo 直下 dispatcher / ~/.local/bin shim が OS で名前解決）。
-# 直接叩く場合は ./bootstrap-linux.sh でも可。
+# 入口は OS 共通で `bootstrap`（install/bootstrap dispatcher / ~/.local/bin shim が OS で名前解決）。
+# 直接叩く場合は ./install/linux.sh でも可。apt 一覧は install/packages/apt.txt（外出し）。
 #
 # 使い方:
-#   cd ~/src/dotfiles && bootstrap     # = ./bootstrap-linux.sh
+#   cd ~/src/dotfiles && bootstrap     # = ./install/linux.sh
 #   chezmoi diff && chezmoi apply      # dotfiles 配置（旧 install.sh は chezmoi に移行済み）
 #   exec zsh -l                        # 反映
 
@@ -23,29 +23,21 @@ if ! command -v apt >/dev/null 2>&1; then
   exit 1
 fi
 
-# このスクリプト（= リポジトリルート）の物理パス。chezmoi --source と sourceDir 導出に使う。
-REPO_ROOT="$(cd "$(dirname "$0")" && pwd -P)"
+# このスクリプトの位置（install/）と リポジトリルート（その親）。
+# chezmoi --source / sourceDir 生成 / パッケージ一覧(packages/)の解決に使う。
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd -P)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd -P)"
 
 # -----------------------------------------------------------------------------
 # 1. apt ベースパッケージ（全 Linux 共通＝env 非依存。差分は §4 の能力フラグで出し分け）
 # -----------------------------------------------------------------------------
-PACKAGES=(
-  zsh                       # ログインシェル
-  git
-  curl
-  ca-certificates
-  gnupg                     # 1Password / Docker apt リポの GPG 鍵 dearmor に必要
-  build-essential           # mise が ruby/python ビルドする際に必要
-  pkg-config                # 同上
-  fzf
-  zsh-autosuggestions
-  zsh-syntax-highlighting   # おまけ (任意)
-  direnv
-  ripgrep
-  fd-find                   # Ubuntu では実体名 fdfind
-  jq
-  bubblewrap                # codex の read-only sandbox に必須（無いと codex exec -s read-only が panic）
-)
+# パッケージ一覧は install/packages/apt.txt に外出し（macOS=Brewfile / Windows=winget と対称）。
+# 1行1パッケージ・'#' 以降コメント。先頭トークンだけ取り出して配列化する。
+mapfile -t PACKAGES < <(awk '{sub(/#.*/,""); if ($1!="") print $1}' "$SCRIPT_DIR/packages/apt.txt")
+if [ "${#PACKAGES[@]}" -eq 0 ]; then
+  echo "ERROR: install/packages/apt.txt からパッケージを読めなかった" >&2
+  exit 1
+fi
 
 echo "==> apt update"
 sudo apt update

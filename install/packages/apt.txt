@@ -1,0 +1,19 @@
+# install/linux.sh が読む apt ベースパッケージ（全 Linux 共通＝WSL / Ubuntu / Debian / raspi）。
+# macOS=Brewfile / Windows=winget-packages.json と同じく外出しした一覧。
+# 1行1パッケージ・'#' 以降はコメント・空行可。linux.sh が先頭トークンだけ抽出して apt install する。
+# 環境別の差分（op/docker/tailscale 等）はここでなく .chezmoidata.toml の能力フラグ側で出し分ける。
+zsh                       # ログインシェル
+git
+curl
+ca-certificates
+gnupg                     # 1Password / Docker apt リポの GPG 鍵 dearmor に必要
+build-essential           # mise が ruby/python をビルドする際に必要
+pkg-config                # 同上
+fzf
+zsh-autosuggestions
+zsh-syntax-highlighting    # おまけ (任意)
+direnv
+ripgrep
+fd-find                   # Ubuntu では実体名 fdfind（linux.sh が fd symlink を張る）
+jq
+bubblewrap                # codex の read-only sandbox に必須（無いと codex exec -s read-only が panic）

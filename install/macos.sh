@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# bootstrap-macos.sh — macOS 向け初期セットアップ（provision フェーズ）
+# install/macos.sh — macOS 向け初期セットアップ（provision フェーズ）
 #
 # 役割: mise で入らない OS ネイティブ層だけを入れる。
 #   - Homebrew（無ければ公式インストーラ）
@@ -10,14 +10,14 @@
 # `mise install`（run_onchange）でまとめて入る。ここでは扱わない。
 #
 # 使い方:
-#   cd ~/src/dotfiles
-#   ./bootstrap-macos.sh
+#   cd ~/src/dotfiles && ./install/macos.sh   # または bootstrap（dispatcher 経由）
 #   chezmoi diff && chezmoi apply
 
 set -euo pipefail
 
-# このスクリプト（=リポジトリルート）の物理パス。sourceDir 導出に使う。
-REPO_ROOT="$(cd "$(dirname "$0")" && pwd -P)"
+# このスクリプトの位置（install/）と リポジトリルート（その親）。sourceDir / Brewfile 解決に使う。
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd -P)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd -P)"
 
 # -----------------------------------------------------------------------------
 # 1. Homebrew（無ければ入れる）
@@ -34,8 +34,8 @@ fi
 # -----------------------------------------------------------------------------
 # 2. Brewfile（OS ネイティブ層: mise/starship/ghostty/font/ビルド依存）
 # -----------------------------------------------------------------------------
-echo "==> brew bundle (Brewfile)"
-brew bundle --file="$REPO_ROOT/Brewfile"
+echo "==> brew bundle (install/packages/Brewfile)"
+brew bundle --file="$SCRIPT_DIR/packages/Brewfile"
 
 # -----------------------------------------------------------------------------
 # 3. mise / chezmoi（鶏卵回避: mise を確実にしてから chezmoi を載せる）

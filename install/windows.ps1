@@ -1,4 +1,4 @@
-﻿# bootstrap-windows.ps1 — Windows 向け初期セットアップ（provision フェーズ）
+﻿# install/windows.ps1 — Windows 向け初期セットアップ（provision フェーズ）
 #
 # 役割: mise で入らない OS ネイティブ層だけを入れる。
 #   - winget import（GUI/システムアプリ + git + mise + Windows Terminal）
@@ -9,13 +9,13 @@
 #
 # 使い方（PowerShell 5.1）:
 #   cd ~/src/dotfiles            # = $env:USERPROFILE\src\dotfiles
-#   ./bootstrap-windows.ps1
+#   .\install\windows.ps1        # または bootstrap（dispatcher 経由）
 #   chezmoi diff; chezmoi apply
 
 $ErrorActionPreference = 'Stop'
 
-# このスクリプト（=リポジトリルート）の物理パス。sourceDir 導出に使う。
-$RepoRoot = $PSScriptRoot
+# install/ の親がリポジトリルート。sourceDir 生成と chezmoi --source に使う。
+$RepoRoot = Split-Path $PSScriptRoot -Parent
 
 # -----------------------------------------------------------------------------
 # 1. winget import（OS ネイティブ層: GUI/システム + git + mise + Terminal）
@@ -23,8 +23,8 @@ $RepoRoot = $PSScriptRoot
 if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
     Write-Error "winget が見つからない。App Installer（Microsoft Store）を入れてから再実行する。"
 }
-Write-Host "==> winget import winget-packages.json"
-winget import (Join-Path $RepoRoot "winget-packages.json") --accept-source-agreements --accept-package-agreements --ignore-unavailable
+Write-Host "==> winget import install/packages/winget-packages.json"
+winget import (Join-Path $PSScriptRoot "packages\winget-packages.json") --accept-source-agreements --accept-package-agreements --ignore-unavailable
 
 # -----------------------------------------------------------------------------
 # 2. mise / chezmoi（鶏卵回避: mise を確実にしてから chezmoi を載せる）

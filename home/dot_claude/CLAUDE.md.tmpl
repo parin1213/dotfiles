@@ -45,7 +45,7 @@ Claude Code には **5 時間窓** と **7 日窓** の rate limit がある。
 
 ## Codex レビューの呼び方（動く手順）
 
-**WSL で実行する**（Windows ネイティブは codex の sandbox が動かない）。bubblewrap が必須で **`bootstrap-linux.sh` が apt で導入**する（未導入だと read-only sandbox が panic）。以降これでレビューできる:
+**WSL で実行する**（Windows ネイティブは codex の sandbox が動かない）。bubblewrap が必須で **`install/linux.sh` が apt で導入**する（未導入だと read-only sandbox が panic）。以降これでレビューできる:
 
 ```sh
 wsl -e bash -c 'export PATH="$HOME/.local/share/mise/shims:$PATH"; codex exec -s read-only --skip-git-repo-check -C ~/src/dotfiles "$(cat ~/.prompt)" < /dev/null'

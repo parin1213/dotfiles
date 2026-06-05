@@ -6,7 +6,7 @@
 #   - Claude : ~/.claude/skills        （gh skill の --agent claude-code）
 #   - 共有   : ~/.agents/skills          （--dir 指定。Codex / Cursor / Gemini CLI 等が読む標準 dir）
 #
-# 前提（restore 順: bootstrap-windows.ps1 → chezmoi apply(mise install) → これ）:
+# 前提（restore 順: install\bootstrap.ps1（windows provision）→ chezmoi apply(mise install) → これ）:
 #   gh(>=2.90), yq(mise) が PATH 上。type=tool は対応ツールが mise 導入済みのこと。
 # 使い方: powershell -ExecutionPolicy Bypass -File .\skills\setup.ps1
 
