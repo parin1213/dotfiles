@@ -1,0 +1,9 @@
+{{- /*
+  ~/.local/bin/distribute.ps1 — distribute hub の名前解決 shim（Windows・local-pc 専用）。
+  どこからでも `distribute` 一語で全環境配布を呼べるようにする。実体は repo 直下の
+  distribute.ps1（chezmoi 管理外）。distribute は local-pc から ssh/wsl で各機へ配る hub
+  なので Windows のみ配置する（非 Windows は .chezmoiignore で除外）。
+  本文は ASCII のみに保つ（PowerShell 5.1 の BOM 問題回避。日本語はこの chezmoi コメントに）。
+*/ -}}
+$dot = if ($env:DOTFILES) { $env:DOTFILES } else { Join-Path $env:USERPROFILE "src\dotfiles" }
+& (Join-Path $dot "distribute.ps1") @args

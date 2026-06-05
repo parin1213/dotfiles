@@ -4,6 +4,7 @@ Documents
 AppData
 .claude/statusline.ps1
 .local/bin/bootstrap.ps1
+.local/bin/distribute.ps1
 {{ end -}}
 {{ if eq .chezmoi.os "windows" -}}
 .zshrc

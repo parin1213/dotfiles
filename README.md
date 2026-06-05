@@ -95,6 +95,7 @@ dotfiles/
 ├── bootstrap-macos.sh           # macOS provision
 ├── bootstrap-linux.sh           # Linux 系 provision（.chezmoidata.toml の能力フラグで出し分け）
 ├── bootstrap-windows.ps1        # Windows provision
+├── distribute.ps1               # 全環境へ配る hub（local-pc から push→各機 pull+apply。-DryRun 可）
 ├── winget-packages.json         # Windows GUI/システムアプリ（CLI は mise）
 ├── skills/                      # エージェントスキル管理（manifest.toml + setup.sh/.ps1 + 自作/採用 skill）
 └── home/                        # chezmoi ソース（dot_ 命名 / .chezmoiroot）
@@ -127,6 +128,21 @@ chezmoi edit ~/.zshrc                  # ソースを編集（apply まで一括
 vim ~/.zshrc && chezmoi add ~/.zshrc   # 直接編集した実ファイルをソースへ取り込む
 chezmoi diff && chezmoi apply          # 差分確認 → 反映
 ```
+
+### 全環境へ配る（local-pc から）
+
+1 台で直したら、`distribute`（= repo 直下 `distribute.ps1`／`~/.local/bin` shim 経由でどこでも）で
+push → 各環境 pull + `chezmoi apply` を一括実行する。`-DryRun` で「何が来て何が変わるか」だけ確認できる。
+
+```powershell
+distribute -DryRun                 # 確認のみ（incoming commit と chezmoi 差分。変更しない）
+distribute                         # push → 全環境 pull + apply
+distribute -Only surface-go3,wsl   # 対象環境を限定
+distribute -NoPush                 # push 済みのとき（pull + apply だけ）
+```
+
+対象は local-pc / surface-go3 / raspi4 / wsl（`distribute.ps1` の `$envs` に明示）。1 環境が落ちても
+他は続行し、最後に失敗環境を要約する。`applylog`（run_after の純ログ）は差分判定から除外。
 
 ---
 
