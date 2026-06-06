@@ -1,0 +1,17 @@
+# 既定: テキストは常に LF に正規化する。
+# なぜ: このリポジトリは WSL / raspi4 / surface-go3 など POSIX 環境にも配られる。
+# Windows の core.autocrlf=true が checkout 時に CRLF を注入すると、chezmoi が
+# その CRLF を Linux 側へ配置し、common.sh 等の POSIX シェルが parse error で死ぬ。
+# eol=lf は autocrlf より優先されるため、全 OS の working tree が LF で揃う。
+* text=auto eol=lf
+
+# バイナリは改行変換から除外（破損防止）
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.ico  binary
+*.webp binary
+*.pdf  binary
+*.zip  binary
+*.gz   binary
