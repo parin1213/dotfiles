@@ -48,16 +48,32 @@ echo "==> mise use -g chezmoi"
 mise use -g chezmoi
 
 # -----------------------------------------------------------------------------
-# 4. chezmoi sourceDir（このスクリプトの実体位置から導出）
+# 4. chezmoi sourceDir（このリポジトリの実体位置に自動追従）
 # -----------------------------------------------------------------------------
+# chezmoi.toml の sourceDir を REPO_ROOT に常に合わせる:
+#   一致 → 何も出さない / ズレ・未設定 → sourceDir 行だけ自動書換（他設定は保持）/ 無 → 生成
 mkdir -p ~/.config/chezmoi
-if [ -f ~/.config/chezmoi/chezmoi.toml ]; then
-  echo "==> ~/.config/chezmoi/chezmoi.toml は既存のため生成をスキップ。"
-  echo "    sourceDir 想定値: $REPO_ROOT （ズレていれば手で合わせる）"
-else
-  printf 'sourceDir = "%s"\n' "$REPO_ROOT" > ~/.config/chezmoi/chezmoi.toml
+_toml="$HOME/.config/chezmoi/chezmoi.toml"
+_norm() { if [ -d "$1" ]; then (cd "$1" && pwd -P); else printf '%s' "$1"; fi; }
+if [ ! -f "$_toml" ]; then
+  printf 'sourceDir = "%s"\n' "$REPO_ROOT" > "$_toml"
   echo "==> ~/.config/chezmoi/chezmoi.toml を生成: sourceDir = $REPO_ROOT"
+else
+  _cur="$(sed -n 's/^[[:space:]]*sourceDir[[:space:]]*=[[:space:]]*"\(.*\)".*/\1/p' "$_toml" | head -n1)"
+  if [ "$(_norm "$_cur")" = "$(_norm "$REPO_ROOT")" ]; then
+    :  # 既に一致 → 黙る
+  elif grep -q '^[[:space:]]*sourceDir[[:space:]]*=' "$_toml"; then
+    _tmp="$(mktemp "${TMPDIR:-/tmp}/chezmoitoml.XXXXXX")"
+    sed "s|^[[:space:]]*sourceDir[[:space:]]*=.*|sourceDir = \"$REPO_ROOT\"|" "$_toml" > "$_tmp" && mv "$_tmp" "$_toml"
+    echo "==> chezmoi.toml の sourceDir を追従: ${_cur:-未設定} -> $REPO_ROOT"
+  else
+    printf 'sourceDir = "%s"\n%s' "$REPO_ROOT" "$(cat "$_toml")" > "$_toml"
+    echo "==> chezmoi.toml に sourceDir を追記: $REPO_ROOT"
+  fi
+  unset _cur
 fi
+unset _toml
+unset -f _norm
 
 # -----------------------------------------------------------------------------
 # 5. 案内（本当に必要なステップだけ出す: 差分があれば apply、非 zsh なら exec zsh）

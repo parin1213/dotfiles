@@ -39,18 +39,30 @@ Write-Host "==> mise use -g chezmoi"
 mise use -g chezmoi
 
 # -----------------------------------------------------------------------------
-# 3. chezmoi sourceDir（このスクリプトの実体位置から導出）
+# 3. chezmoi sourceDir（このリポジトリの実体位置に自動追従）
 # -----------------------------------------------------------------------------
+# chezmoi.toml の sourceDir を REPO_ROOT に常に合わせる:
+#   一致 → 何も出さない / ズレ・未設定 → sourceDir 行だけ自動書換（他設定は保持）/ 無 → 生成
 $cfgDir = Join-Path $env:USERPROFILE ".config\chezmoi"
 New-Item -ItemType Directory -Force $cfgDir | Out-Null
 $cfg = Join-Path $cfgDir "chezmoi.toml"
 # chezmoi.toml は forward slash 推奨（TOML 文字列で backslash escape を避ける）。
 $srcDir = $RepoRoot -replace '\\', '/'
-if (Test-Path $cfg) {
-    Write-Host "==> $cfg は既存のため生成をスキップ。sourceDir 想定値: $srcDir"
-} else {
+if (-not (Test-Path $cfg)) {
     "sourceDir = `"$srcDir`"" | Out-File -Encoding utf8 $cfg
     Write-Host "==> $cfg を生成: sourceDir = $srcDir"
+} else {
+    $m = Select-String -Path $cfg -Pattern '^\s*sourceDir\s*=\s*"(.*)"' | Select-Object -First 1
+    $cur = if ($m) { $m.Matches.Groups[1].Value } else { $null }
+    if ($cur -eq $srcDir) {
+        # 既に一致 → 何も出さない
+    } elseif (Select-String -Path $cfg -Pattern '^\s*sourceDir\s*=' -Quiet) {
+        (Get-Content $cfg) -replace '^\s*sourceDir\s*=.*', "sourceDir = `"$srcDir`"" | Set-Content -Encoding utf8 $cfg
+        Write-Host "==> chezmoi.toml の sourceDir を追従: $(if ($cur) { $cur } else { '未設定' }) -> $srcDir"
+    } else {
+        @("sourceDir = `"$srcDir`"") + (Get-Content $cfg) | Set-Content -Encoding utf8 $cfg
+        Write-Host "==> chezmoi.toml に sourceDir を追記: $srcDir"
+    }
 }
 
 # -----------------------------------------------------------------------------
