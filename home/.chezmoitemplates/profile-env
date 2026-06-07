@@ -15,3 +15,4 @@ DF_GUI_APPS={{ if $p.gui_apps }}1{{ else }}0{{ end }}
 DF_TAILSCALE={{ if $p.tailscale }}1{{ else }}0{{ end }}
 DF_DOCKER={{ if $p.docker }}1{{ else }}0{{ end }}
 DF_SSHD={{ if $p.sshd }}1{{ else }}0{{ end }}
+DF_APPS="{{ range $i, $a := $p.apps }}{{ if $i }} {{ end }}{{ $a }}{{ end }}"

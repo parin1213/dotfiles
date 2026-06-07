@@ -230,7 +230,31 @@ else
 fi
 
 # -----------------------------------------------------------------------------
-# 6. chezmoi sourceDir（このリポジトリの実体位置に自動追従）
+# 6. アプリ層（app 軸: DF_APPS のリストを install/apps/<name>.sh で展開）
+# -----------------------------------------------------------------------------
+# infra(§4) の「上」に乗る機能単位。どの env に何を入れるかは .chezmoidata.toml の
+# envs.<env>.apps が正本（§3 で DF_APPS に落ちている）。ここは「リストを回すだけ」。
+# アプリ追加 = install/apps/<name>.sh を置き、対象 env の apps に "<name>" を足すだけ。
+# 1 アプリが落ちても他は続行（infra と違いアプリは任意性が高い）。最後に失敗を要約。
+_app_failed=""
+for _app in ${DF_APPS:-}; do
+  _app_sh="$SCRIPT_DIR/apps/${_app}.sh"
+  if [ ! -f "$_app_sh" ]; then
+    echo "WARNING: アプリ '$_app' のスクリプトが無い: $_app_sh" >&2
+    _app_failed="$_app_failed $_app"
+    continue
+  fi
+  echo "==> アプリ層: $_app ($_app_sh)"
+  if ! bash "$_app_sh"; then
+    echo "WARNING: アプリ '$_app' の導入に失敗（続行）" >&2
+    _app_failed="$_app_failed $_app"
+  fi
+done
+[ -n "$_app_failed" ] && echo "WARNING: 失敗したアプリ:$_app_failed" >&2
+unset _app _app_sh _app_failed
+
+# -----------------------------------------------------------------------------
+# 7. chezmoi sourceDir（このリポジトリの実体位置に自動追従）
 # -----------------------------------------------------------------------------
 # chezmoi.toml の sourceDir を REPO_ROOT に常に合わせる:
 #   一致 → 何も出さない / ズレ・未設定 → sourceDir 行だけ自動書換（他設定は保持）/ 無 → 生成
@@ -258,7 +282,7 @@ unset _toml
 unset -f _norm
 
 # -----------------------------------------------------------------------------
-# 7. 案内（本当に必要なステップだけ出す: 差分があれば apply、非 zsh なら exec zsh）
+# 8. 案内（本当に必要なステップだけ出す: 差分があれば apply、非 zsh なら exec zsh）
 # -----------------------------------------------------------------------------
 echo
 echo "==> Linux ブートストラップ完了。"
