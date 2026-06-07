@@ -7,9 +7,16 @@ hub は local-pc（ssh で surface/raspi に届き、wsl は interop、自分は
 
 使い方:
   .\distribute.ps1                         push → 全環境 pull + chezmoi apply
+  .\distribute.ps1 -Full                   フル更新（pull + apt upgrade + mise up + bootstrap + apply）
   .\distribute.ps1 -DryRun                 変更せず確認だけ（incoming commit と chezmoi 差分）
   .\distribute.ps1 -Only surface-go3,wsl   対象環境を限定
   .\distribute.ps1 -NoPush                 push を省略（既に push 済みのとき）
+
+-Full の中身:
+  - Linux(ssh/wsl): git pull → sudo apt update && apt upgrade -y → mise up → bootstrap(provision) → chezmoi apply
+  - local-pc(Windows): apt が無いので mise up → bootstrap(winget import) → chezmoi apply（winget upgrade --all はしない）
+  - sudo を使うため ssh は -t で TTY を割り当てる。パスワードが要る機ではプロンプトが出る。時間もかかる。
+  - 通常運用は素の apply（軽量）。-Full は OS パッケージまで上げたい時だけ。-DryRun と併用時は -DryRun 優先（無変更）。
 
 設計メモ:
   - 環境定義は $envs に全 env 明示（local/ssh/wsl）。追加はここに1行。
@@ -23,6 +30,7 @@ hub は local-pc（ssh で surface/raspi に届き、wsl は interop、自分は
 [CmdletBinding()]
 param(
   [switch]$DryRun,
+  [switch]$Full,
   [string[]]$Only,
   [switch]$NoPush
 )
@@ -37,12 +45,20 @@ $envs = @(
 )
 if ($Only) { $envs = $envs | Where-Object { $Only -contains $_.Name } }
 
-# Linux（ssh/wsl）で走らせるスニペット。mise shim を PATH 前置し chezmoi/mise を解決。
-$pfx = 'export PATH="$HOME/.local/share/mise/shims:$PATH"; cd ~/src/dotfiles && '
+# Linux（ssh/wsl）で走らせるスニペット。~/.local/bin（mise 本体・bootstrap shim）と
+# mise shim を PATH 前置し mise/chezmoi/bootstrap を非対話でも解決。
+$pfx = 'export PATH="$HOME/.local/bin:$HOME/.local/share/mise/shims:$PATH"; cd ~/src/dotfiles && '
 $snApply = $pfx + 'git pull --ff-only && chezmoi apply --force --source ~/src/dotfiles && { printf "[applied] residual: "; chezmoi status --source ~/src/dotfiles 2>/dev/null | grep -v applylog | tr "\n" " "; echo "(clean if empty)"; }'
 $snDry   = $pfx + 'git fetch -q origin master; echo "[incoming]"; git --no-pager log --oneline HEAD..origin/master; echo "[drift]"; chezmoi status --source ~/src/dotfiles 2>/dev/null | grep -v applylog || true'
+# -Full: OS パッケージ(apt upgrade) + mise up + bootstrap(provision) まで含む重い更新。
+# DEBIAN_FRONTEND=noninteractive で debconf プロンプトを抑止（sudo 自体のパスワードは別途 -t で対話）。
+$snFull  = $pfx + 'git pull --ff-only && echo "[apt] update && upgrade" && sudo apt-get update && sudo DEBIAN_FRONTEND=noninteractive apt-get upgrade -y && echo "[mise] up" && mise up && echo "[bootstrap]" && ./install/bootstrap && chezmoi apply --force --source ~/src/dotfiles && { printf "[full applied] residual: "; chezmoi status --source ~/src/dotfiles 2>/dev/null | grep -v applylog | tr "\n" " "; echo "(clean if empty)"; }'
 
 $failed = @()
+
+if ($Full -and -not $DryRun) {
+  Write-Host "==> -Full: 各環境で apt upgrade / mise up / bootstrap も実行します（sudo パスワードを要求される場合あり・時間がかかります）" -ForegroundColor Yellow
+}
 
 # 未コミット警告（remote には push されないため）。
 $dirty = git -C $RepoRoot status --porcelain
@@ -59,7 +75,7 @@ if (-not $DryRun -and -not $NoPush) {
 }
 
 foreach ($e in $envs) {
-  $tag = "$($e.Name) ($($e.Kind))" + $(if ($DryRun) { ' [dry-run]' } else { '' })
+  $tag = "$($e.Name) ($($e.Kind))" + $(if ($DryRun) { ' [dry-run]' } elseif ($Full) { ' [full]' } else { '' })
   Write-Host "`n========== $tag =========="
   try {
     switch ($e.Kind) {
@@ -71,6 +87,14 @@ foreach ($e in $envs) {
           Write-Host '[unpushed]'; git -C $RepoRoot --no-pager log --oneline origin/master..HEAD
           Write-Host '[drift]';    & $cm status --source $RepoRoot 2>$null | Where-Object { $_ -notmatch 'applylog' }
         } else {
+          if ($Full) {
+            # local-pc(Windows): apt は無い。mise up → bootstrap(winget import) まで上げる。
+            Write-Host '[mise] up'
+            & mise up
+            if ($LASTEXITCODE -ne 0) { throw "mise up 失敗 (exit $LASTEXITCODE)" }
+            Write-Host '[bootstrap]'
+            & (Join-Path $RepoRoot 'install\bootstrap.ps1')   # 失敗時は内部 Stop で throw → catch
+          }
           # local-pc は commit 元なので pull しない（push 済み前提）。apply のみ。
           & $cm apply --force --source $RepoRoot
           if ($LASTEXITCODE -ne 0) { throw "chezmoi apply 失敗 (exit $LASTEXITCODE)" }
@@ -79,11 +103,17 @@ foreach ($e in $envs) {
         }
       }
       'ssh' {
-        ssh -o ConnectTimeout=10 $e.Name $(if ($DryRun) { $snDry } else { $snApply })
+        $sn = if ($DryRun) { $snDry } elseif ($Full) { $snFull } else { $snApply }
+        if ($Full -and -not $DryRun) {
+          ssh -t -o ConnectTimeout=10 $e.Name $sn       # sudo(apt) のため TTY 割当
+        } else {
+          ssh -o ConnectTimeout=10 $e.Name $sn
+        }
         if ($LASTEXITCODE -ne 0) { throw "ssh 失敗 (exit $LASTEXITCODE)" }
       }
       'wsl' {
-        wsl -e bash -lc $(if ($DryRun) { $snDry } else { $snApply })
+        $sn = if ($DryRun) { $snDry } elseif ($Full) { $snFull } else { $snApply }
+        wsl -e bash -lc $sn
         if ($LASTEXITCODE -ne 0) { throw "wsl 失敗 (exit $LASTEXITCODE)" }
       }
     }
