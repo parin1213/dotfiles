@@ -46,7 +46,7 @@
         "list": 
         [
             {
-                "backgroundImage": "{{ .chezmoi.homeDir | replace "\\" "/" }}/Pictures/sakura.jpg",
+                "backgroundImage": "{{ .chezmoi.homeDir | replace "\\" "/" | replace "/" "\\\\" }}\\Pictures\\sakura.jpg",
                 "backgroundImageOpacity": 0.1,
                 "backgroundImageStretchMode": "uniformToFill",
                 "colorScheme": "Tokyo Night",
@@ -57,13 +57,39 @@
                 "source": "Windows.Terminal.PowershellCore"
             },
             {
-                "backgroundImage": "{{ .chezmoi.homeDir | replace "\\" "/" }}/Pictures/ajisai.jpg",
+                "backgroundImage": "{{ .chezmoi.homeDir | replace "\\" "/" | replace "/" "\\\\" }}\\Pictures\\ajisai.jpg",
                 "backgroundImageOpacity": 0.1,
                 "colorScheme": "Tokyo Night Storm",
                 "guid": "{9c6ecf77-e3a5-507b-bbb3-504e38fa1be8}",
                 "hidden": false,
                 "name": "Ubuntu",
                 "source": "Microsoft.WSL"
+            },
+            {
+                "backgroundImage": "{{ .chezmoi.homeDir | replace "\\" "/" | replace "/" "\\\\" }}\\Pictures\\ajisai.jpg",
+                "backgroundImageOpacity": 0.1,
+                "backgroundImageStretchMode": "uniformToFill",
+                "colorScheme": "Tokyo Night Storm",
+                "commandline": "ssh surface-go3",
+                "guid": "{89b1469a-50ba-47f7-a54b-9709cdf7ea52}",
+                "hidden": false,
+                "icon": "{{ .chezmoi.homeDir | replace "\\" "/" | replace "/" "\\\\" }}\\Pictures\\windows.png",
+                "name": "surface-go3 (SSH)",
+                "suppressApplicationTitle": true,
+                "tabTitle": "surface-go3"
+            },
+            {
+                "backgroundImage": "{{ .chezmoi.homeDir | replace "\\" "/" | replace "/" "\\\\" }}\\Pictures\\sakura.jpg",
+                "backgroundImageOpacity": 0.1,
+                "backgroundImageStretchMode": "uniformToFill",
+                "colorScheme": "Tokyo Night Storm",
+                "commandline": "ssh raspi4",
+                "guid": "{7f497874-fee8-46c2-84db-f65f8ad26d2f}",
+                "hidden": false,
+                "icon": "{{ .chezmoi.homeDir | replace "\\" "/" | replace "/" "\\\\" }}\\Pictures\\raspberrypi.png",
+                "name": "raspi4 (SSH)",
+                "suppressApplicationTitle": true,
+                "tabTitle": "raspi4"
             },
             {
                 "commandline": "%SystemRoot%\\System32\\cmd.exe",
@@ -78,7 +104,7 @@
                 "source": "Git"
             },
             {
-                "backgroundImage": "{{ .chezmoi.homeDir | replace "\\" "/" }}/Pictures/sakura.jpg",
+                "backgroundImage": "{{ .chezmoi.homeDir | replace "\\" "/" | replace "/" "\\\\" }}\\Pictures\\sakura.jpg",
                 "backgroundImageOpacity": 0.1,
                 "backgroundImageStretchMode": "uniformToFill",
                 "colorScheme": "Tokyo Night",
