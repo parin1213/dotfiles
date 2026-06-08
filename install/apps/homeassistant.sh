@@ -118,6 +118,12 @@ services:
     restart: unless-stopped
     environment:
       - TZ=${HA_TZ}
+    # DNS を公開リゾルバに固定する。ホストの resolv.conf が Tailscale 単独(100.100.100.100)だと
+    # その解決が一瞬詰まるだけでフォールバックが無く、コンテナが名前解決不能になる
+    # (HACS の api.github.com timeout 等)。Tailscale 非依存の公開 DNS を明示して回避。
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
     volumes:
       - ./config:/config
     ports:
