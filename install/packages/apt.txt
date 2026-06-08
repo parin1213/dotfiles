@@ -16,4 +16,5 @@ direnv
 ripgrep
 fd-find                   # Ubuntu では実体名 fdfind（linux.sh が fd symlink を張る）
 jq
+unzip                     # apps/homeassistant.sh が HACS の release zip を展開するのに使う
 bubblewrap                # codex の read-only sandbox に必須（無いと codex exec -s read-only が panic）

@@ -109,7 +109,7 @@ if [ -f "$_compose" ]; then
 else
   echo "==> compose を生成: $_compose"
   cat > "$_compose" <<EOF
-# Home Assistant (Container) — install/raspi.sh が初回生成。以降の手編集は保持される。
+# Home Assistant (Container) — install/apps/homeassistant.sh が初回生成。以降の手編集は保持される。
 # rootless Docker 前提のため bridge + ポート公開。host network は使わない（上の注記参照）。
 services:
   homeassistant:
@@ -134,7 +134,36 @@ echo "==> docker compose up -d"
 docker compose -f "$_compose" up -d
 
 # -----------------------------------------------------------------------------
-# 4. 案内（接続先 URL と運用コマンド）
+# 4. HACS（コミュニティ統合ストア）を導入（既定 ON・冪等。HA_HACS=0 で skip）
+# -----------------------------------------------------------------------------
+# Nature Remo 等のコミュニティ統合は HACS 経由で入れる。HACS は config の custom_components に
+# 置くだけのアドオンなので、bind-mount 済みの config をホストから直接展開すればよい（docker exec 不要）。
+# 公式 release zip を取得して展開（curl|bash は使わず、本家 GitHub の成果物を取る＝供給網整合）。
+# 取得後は HA 再起動で読み込み。GitHub デバイス認証と統合のダウンロードは UI 作業（末尾に案内）。
+if [ "${HA_HACS:-1}" = 1 ]; then
+  _hacs="$HA_DIR/config/custom_components/hacs"
+  if [ -f "$_hacs/manifest.json" ]; then
+    echo "==> HACS: 既に導入済み（skip）: $_hacs"
+  elif ! command -v unzip >/dev/null 2>&1; then
+    echo "WARNING: HACS 導入に unzip が無い。bootstrap(install/linux.sh §1)で入る。" >&2
+    echo "         単体実行なら先に: sudo apt-get install -y unzip → 再実行" >&2
+  else
+    echo "==> HACS を導入（公式 release zip を custom_components へ展開）"
+    mkdir -p "$_hacs"
+    _tmp="$(mktemp -d)"
+    if curl -fsSL -o "$_tmp/hacs.zip" https://github.com/hacs/integration/releases/latest/download/hacs.zip \
+       && unzip -q -o "$_tmp/hacs.zip" -d "$_hacs"; then
+      echo "==> HACS 展開完了 → HA を再起動して反映"
+      docker compose -f "$_compose" restart
+    else
+      echo "WARNING: HACS の取得/展開に失敗（手動は https://hacs.xyz の Container 手順）" >&2
+    fi
+    rm -rf "$_tmp"
+  fi
+fi
+
+# -----------------------------------------------------------------------------
+# 5. 案内（接続先 URL と運用コマンド）
 # -----------------------------------------------------------------------------
 # LAN 上の IP を最良努力で1つ拾う（取れなければ hostname 表示にフォールバック）。
 _ip="$(hostname -I 2>/dev/null | awk '{print $1}')"
@@ -144,3 +173,9 @@ echo "==> Home Assistant 起動完了。"
 echo "    URL : http://${_ip}:8123   # ブラウザで開いて初期セットアップ（起動直後は数十秒待つ）"
 echo "    更新: cd $HA_DIR && docker compose pull && docker compose up -d"
 echo "    ログ: docker compose -f $_compose logs -f"
+if [ "${HA_HACS:-1}" = 1 ]; then
+  echo "    HACS 後続（UI 作業）:"
+  echo "      1) 設定→デバイスとサービス→統合を追加→HACS→GitHub デバイス認証"
+  echo "      2) HACS で \"Nature Remo\" を検索→ダウンロード→HA 再起動"
+  echo "      3) home.nature.global でトークン発行→統合 \"Nature Remo\" を追加→token 入力"
+fi
