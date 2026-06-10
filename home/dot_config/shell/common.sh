@@ -172,6 +172,35 @@ fi
 figrm() { docker compose run --rm app "$@"; }
 figbe() { figrm bundle exec "$@"; }
 
+# macOS の `open` 相当（Linux/WSL 用）。ファイル/ディレクトリ/URL を既定アプリで開く。
+# 引数なしはカレントディレクトリ。macOS はネイティブの /usr/bin/open があるので定義しない
+# （関数で shadow すると -a 等のオプションが死ぬ）。
+if [ "$(uname -s)" = "Linux" ]; then
+  open() {
+    [ $# -eq 0 ] && set -- .
+    if grep -qi microsoft /proc/sys/kernel/osrelease 2>/dev/null; then
+      # WSL: Windows 側の既定アプリで開く。explorer.exe はファイル/ディレクトリ/URL
+      # いずれも扱えて追加依存なし（wslview 不要）。パスのみ wslpath -w で Windows 形式に
+      # 変換（ext4 上は \\wsl.localhost\... の UNC になる）。URL はそのまま渡す。
+      # explorer.exe は成功しても exit 1 を返す仕様なので失敗扱いにしない。
+      for _target in "$@"; do
+        case "$_target" in
+          *://*) explorer.exe "$_target" || true ;;
+          *)     explorer.exe "$(wslpath -w "$_target")" || true ;;
+        esac
+      done
+      unset _target
+    elif command -v xdg-open >/dev/null 2>&1; then
+      # デスクトップ Linux: xdg-open は 1 引数のみ受けるためループで回す
+      for _target in "$@"; do xdg-open "$_target"; done
+      unset _target
+    else
+      echo "open: xdg-open が見つかりません（sudo apt install xdg-utils で導入）" >&2
+      return 127
+    fi
+  }
+fi
+
 # yazi: 公式推奨 y 関数。終了時 cwd をシェルに引き継ぐ。
 # https://yazi-rs.github.io/docs/quick-start
 # (`local` は POSIX 規格外だが zsh / bash / dash いずれも実装あり)

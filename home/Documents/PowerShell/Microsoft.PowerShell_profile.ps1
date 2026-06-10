@@ -55,6 +55,13 @@ if (Get-Command zoxide -ErrorAction SilentlyContinue) {
     Invoke-Expression (& { (zoxide init powershell | Out-String) })
 }
 
+# macOS の `open` 相当: ファイル/ディレクトリ/URL を既定アプリで開く。引数なしはカレント。
+# Start-Process が拡張子関連付け / URL ハンドラを全部解決してくれるので委譲するだけ。
+function open {
+    $targets = if ($args.Count) { $args } else { @('.') }
+    foreach ($t in $targets) { Start-Process $t }
+}
+
 # eza
 if (Get-Command eza -ErrorAction SilentlyContinue) {
     Set-Alias -Name ls -Value eza -Option AllScope
