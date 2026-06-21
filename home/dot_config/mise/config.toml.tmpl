@@ -26,6 +26,11 @@ fd = "latest"
 jq = "latest"
 yq = "latest"
 gitleaks = "latest"
+# zstd: 大型ローカルアーカイブ (D:\dev\aws\s3 の backup.tar.zst 等) の解凍/作成に使う。
+# mise core / aqua-registry に無い (aqua:facebook/zstd は未登録) ため ubi backend で
+# GitHub リリースの win64 zip を直接取得する。Unix 側は zstd の release が linux バイナリを
+# 同梱しないため ubi では入らず、各 distro の system パッケージ (apt 等) に委ねる。
+"ubi:facebook/zstd" = "latest"
 
 [settings]
 # Windows の shim は hardlink モードにする。既定の "exe" は mise-shim.exe を mise.exe の隣か
