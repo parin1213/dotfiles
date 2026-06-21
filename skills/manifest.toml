@@ -83,6 +83,101 @@ repo = "kepano/obsidian-skills"
 skill = "json-canvas"
 pin = "553ef99a"
 
+# --- Anthropic 公式スキル（anthropics/skills・信頼 org の最上位） ---
+# 検収: 公式 Anthropic repo（=最上位の信頼）。tag 無しのため検収した commit SHA で pin。
+# Office ファイル系（docx/pdf/pptx/xlsx）と claude-api は別経路/重依存のため当面見送り。
+# scripts 同梱スキルは Python 依存を持つものがある（webapp-testing=playwright, slack-gif-creator=Pillow 等）。
+# 依存が無くても SKILL.md の知識は効くため基本は requires を付けず、実体バイナリで判定できる物だけ付ける。
+
+# 開発ツール
+[[skill]]
+name = "mcp-builder"
+type = "ghskill"
+repo = "anthropics/skills"
+skill = "mcp-builder"
+pin = "57546260"
+
+[[skill]]
+name = "skill-creator"
+type = "ghskill"
+repo = "anthropics/skills"
+skill = "skill-creator"
+pin = "57546260"
+
+[[skill]]
+name = "webapp-testing"
+type = "ghskill"
+repo = "anthropics/skills"
+skill = "webapp-testing"
+pin = "57546260"
+requires = "playwright"   # Python playwright(console-script) が無い環境では skip（ブラウザ自動操作スキルなので入れても無意味）
+
+# ドキュメント / 社内コミュ
+[[skill]]
+name = "doc-coauthoring"
+type = "ghskill"
+repo = "anthropics/skills"
+skill = "doc-coauthoring"
+pin = "57546260"
+
+[[skill]]
+name = "internal-comms"
+type = "ghskill"
+repo = "anthropics/skills"
+skill = "internal-comms"
+pin = "57546260"
+
+# デザイン / アーティファクト（純プロンプト中心・低リスク）
+[[skill]]
+name = "canvas-design"
+type = "ghskill"
+repo = "anthropics/skills"
+skill = "canvas-design"
+pin = "57546260"
+
+[[skill]]
+name = "algorithmic-art"
+type = "ghskill"
+repo = "anthropics/skills"
+skill = "algorithmic-art"
+pin = "57546260"
+
+[[skill]]
+name = "frontend-design"
+type = "ghskill"
+repo = "anthropics/skills"
+skill = "frontend-design"
+pin = "57546260"
+
+[[skill]]
+name = "theme-factory"
+type = "ghskill"
+repo = "anthropics/skills"
+skill = "theme-factory"
+pin = "57546260"
+
+[[skill]]
+name = "brand-guidelines"
+type = "ghskill"
+repo = "anthropics/skills"
+skill = "brand-guidelines"
+pin = "57546260"
+
+[[skill]]
+name = "web-artifacts-builder"
+type = "ghskill"
+repo = "anthropics/skills"
+skill = "web-artifacts-builder"
+pin = "57546260"
+
+[[skill]]
+name = "slack-gif-creator"
+type = "ghskill"
+repo = "anthropics/skills"
+skill = "slack-gif-creator"
+pin = "57546260"
+# 注: core/ + requirements.txt（Pillow 等）同梱。GIF 生成には Python 依存が要る（知識・検証ツールは依存無しでも効く）。
+
 # --- 将来の追加テンプレ（コメントアウト） ---
 # [[skill]]                       # ③ gh skill 独立配布（信頼 org を pin）
 # name = "documentation-writer"
