@@ -3,6 +3,11 @@
 # pwsh は winget(Microsoft.PowerShell) で導入。既定シェル化は Windows Terminal の
 # 既定プロファイルを PowerShell 7 にして行う。
 
+# --- zellij の config は chezmoi 管理の ~/.config/zellij に集約 ---
+# 公式 zellij(0.44+) は Windows では既定で %APPDATA%\Zellij\config を見るため、
+# ZELLIJ_CONFIG_DIR で唯一の source（~/.config/zellij/config.kdl）へ明示的に向ける。
+$env:ZELLIJ_CONFIG_DIR = Join-Path $HOME '.config\zellij'
+
 # --- SSH 対話ログインは zellij へ（単一 "main"・モバイル回線断に強い）---
 # zellij のペインは zellij config の default_shell="pwsh" でこの 7 を使う。
 $isInteractiveSsh = $env:SSH_CONNECTION -and
