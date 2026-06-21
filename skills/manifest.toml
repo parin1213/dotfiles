@@ -178,6 +178,15 @@ skill = "slack-gif-creator"
 pin = "57546260"
 # 注: core/ + requirements.txt（Pillow 等）同梱。GIF 生成には Python 依存が要る（知識・検証ツールは依存無しでも効く）。
 
+# --- 野良採用（検収フロー通過済み・このリポに vendor して固める） ---
+[[skill]]
+name = "japanese-tech-writing"
+type = "own"
+# 出所: gist k16shikano/fd287c3133457c4fd8f5601d34aa817d（rev 5ed08e44, 検収 2026-06-18）。
+# 純知識スキル（SKILL.md のみ・scripts/allowed-tools 無し・外部取得や隠し指示なし）を確認済み。
+# gist は gh skill が repo として解決できない（ghskill 不可）ため、唯一の手段として vendor=own を採る。
+# 更新時は gist 最新 rev を再検収 → skills/japanese-tech-writing/SKILL.md を差し替え → このコメントの rev/日付を更新。
+
 # --- 将来の追加テンプレ（コメントアウト） ---
 # [[skill]]                       # ③ gh skill 独立配布（信頼 org を pin）
 # name = "documentation-writer"
