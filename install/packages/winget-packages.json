@@ -39,6 +39,9 @@
                                          },
                                          {
                                              "PackageIdentifier":  "AgileBits.1Password.CLI"
+                                         },
+                                         {
+                                             "PackageIdentifier":  "Gyan.FFmpeg"
                                          }
                                      ],
                         "SourceDetails":  {
@@ -46,6 +49,19 @@
                                               "Identifier":  "Microsoft.Winget.Source_8wekyb3d8bbwe",
                                               "Name":  "winget",
                                               "Type":  "Microsoft.PreIndexed.Package"
+                                          }
+                    },
+                    {
+                        "Packages":  [
+                                         {
+                                             "PackageIdentifier":  "9WZDNCRDK3WP"
+                                         }
+                                     ],
+                        "SourceDetails":  {
+                                              "Argument":  "https://storeedgefd.dsx.mp.microsoft.com/v9.0",
+                                              "Identifier":  "StoreEdgeFD",
+                                              "Name":  "msstore",
+                                              "Type":  "Microsoft.Rest"
                                           }
                     }
                 ],
