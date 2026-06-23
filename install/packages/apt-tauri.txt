@@ -10,3 +10,4 @@ libayatana-appindicator3-dev   # トレイアイコン
 librsvg2-dev                   # SVG レンダリング (アイコン)
 libxdo-dev                     # X11 自動操作 (tauri-plugin-shell 等の依存)
 libpipewire-0.3-dev            # xcap(スクショ)が Linux で libspa-sys 経由で要求
+libclang-dev                   # libspa-sys(xcap/pipewire) の bindgen が libclang.so を要求
