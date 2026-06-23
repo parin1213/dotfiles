@@ -209,6 +209,21 @@ else
   echo "==> openssh-server: 対象外（DF_SSHD=0）"
 fi
 
+# 4.6 Tauri 2 ビルド依存（score-checker desktop を WSL/Linux で cargo check/clippy するため）
+# GTK/webkit の dev ライブラリ群は重く headless 機には不要なので、tauri_build=true（=WSL のみ）で gate。
+# 一覧は install/packages/apt-tauri.txt に外出し（base apt.txt と同じ読み方）。apt install は冪等。
+if [ "${DF_TAURI_BUILD:-0}" = 1 ]; then
+  mapfile -t TAURI_PKGS < <(awk '{sub(/#.*/,""); if ($1!="") print $1}' "$SCRIPT_DIR/packages/apt-tauri.txt")
+  if [ "${#TAURI_PKGS[@]}" -eq 0 ]; then
+    echo "WARNING: install/packages/apt-tauri.txt を読めなかった（Tauri 依存 skip）" >&2
+  else
+    echo "==> Tauri ビルド依存を導入（apt）: ${TAURI_PKGS[*]}"
+    sudo apt install -y "${TAURI_PKGS[@]}"
+  fi
+else
+  echo "==> Tauri ビルド依存: 対象外（DF_TAURI_BUILD=0）"
+fi
+
 # -----------------------------------------------------------------------------
 # 5. ログインシェルを zsh に
 # -----------------------------------------------------------------------------

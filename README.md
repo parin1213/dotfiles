@@ -39,7 +39,7 @@ mise で入らないもの（mise 本体・ビルド土台・zsh・GUI/フォン
   `~/.local/bin` の shim 経由で**どこでも `bootstrap` 一語**で再実行できる（この dir は全 OS で PATH 上）。
 - Linux 系（WSL / Ubuntu / Debian / Raspberry Pi）で**何を入れるか**は環境ごとに違う。これは
   `home/.chezmoidata.toml` の `envs.<env>` 能力フラグ（`op` / `op_interop` / `gui_apps` /
-  `tailscale` / `docker` / `sshd`）が**正本**で、`install/linux.sh` は `chezmoi execute-template`
+  `tailscale` / `docker` / `sshd` / `tauri_build`）が**正本**で、`install/linux.sh` は `chezmoi execute-template`
   でそれを読み込み（`DF_*`）分岐するだけ（環境判定の重複を排除）。
 - 各 bootstrap が `~/.config/chezmoi/chezmoi.toml`（`sourceDir` = clone 先を自動導出）も生成する。
 - 認証が要るもの（`tailscale up` / `op signin` / 1Password アプリ連携）はユーザー本人が行う。
@@ -93,7 +93,7 @@ dotfiles/
 ├── install/                     # provision（OS ネイティブ層を入れる）
 │   ├── bootstrap / bootstrap.ps1     # OS 共通入口（uname / pwsh で OS 別へ委譲）
 │   ├── linux.sh / macos.sh / windows.ps1  # OS 別 provision（linux は能力フラグで出し分け）
-│   └── packages/                # apt.txt / Brewfile / Brewfile.optional / winget-packages.json
+│   └── packages/                # apt.txt / apt-tauri.txt(Tauri 依存) / Brewfile / Brewfile.optional / winget-packages.json
 ├── distribute.ps1               # 全環境へ配る hub（local-pc から push→各機 pull+apply。-DryRun 可）
 ├── skills/                      # エージェントスキル管理（manifest.toml + setup.sh/.ps1 + 自作/採用 skill）
 └── home/                        # chezmoi ソース（dot_ 命名 / .chezmoiroot）

@@ -1,0 +1,12 @@
+# Tauri 2 デスクトップ(score-checker apps/desktop)を WSL/Linux でビルドするための apt dev ライブラリ。
+# base の apt.txt と分けてあるのは「重い GTK/webkit dev 群を必要な機（WSL のみ）だけに入れる」ため。
+# 入れる条件は .chezmoidata.toml の envs.<env>.tauri_build（true は wsl のみ）→ DF_TAURI_BUILD で gate。
+# 一覧は score-checker の .github/workflows/ci.yml が ubuntu-runner で入れているものと一致させる。
+# 1行1パッケージ・'#' 以降コメント・空行可（linux.sh が先頭トークンだけ抽出して apt install）。
+libwebkit2gtk-4.1-dev          # WebView (Tauri 2 の描画コア)
+libssl-dev                     # TLS。Rust 依存のビルドに必要
+libgtk-3-dev                   # GTK3 (ウィンドウ/ウィジェット)
+libayatana-appindicator3-dev   # トレイアイコン
+librsvg2-dev                   # SVG レンダリング (アイコン)
+libxdo-dev                     # X11 自動操作 (tauri-plugin-shell 等の依存)
+libpipewire-0.3-dev            # xcap(スクショ)が Linux で libspa-sys 経由で要求

@@ -58,5 +58,6 @@
       "tailscale" (index $row "tailscale")
       "docker" (index $row "docker")
       "sshd" (index $row "sshd")
+      "tauri_build" (index $row "tauri_build")
       "apps" (index $row "apps")
    | toJson -}}
