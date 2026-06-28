@@ -134,8 +134,15 @@ fi
 # -----------------------------------------------------------------------------
 # 3. イメージ取得 → 起動（冪等: 変化が無ければ up -d は no-op）
 # -----------------------------------------------------------------------------
-echo "==> docker compose pull（${HA_IMAGE}）"
-docker compose -f "$_compose" pull
+# bootstrap は「環境を整える」役。:stable は浮動タグで HA はほぼ毎リリース全層が変わるため、
+# 毎 bootstrap で pull すると raspi で巨大な再 DL が走る。そこで初回（image 不在時）だけ pull し、
+# 更新は明示操作に委ねて provision と update を分離する（HA_PULL=1 で強制 pull・下の運用コマンドも可）。
+if [ "${HA_PULL:-0}" = 1 ] || ! docker image inspect "$HA_IMAGE" >/dev/null 2>&1; then
+  echo "==> docker compose pull（${HA_IMAGE}）"
+  docker compose -f "$_compose" pull
+else
+  echo "==> image 取得済みのため pull skip（更新する時は HA_PULL=1 で再実行 か docker compose pull）"
+fi
 echo "==> docker compose up -d"
 docker compose -f "$_compose" up -d
 
