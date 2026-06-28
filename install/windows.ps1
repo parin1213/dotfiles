@@ -32,11 +32,24 @@ winget import (Join-Path $PSScriptRoot "packages\winget-packages.json") --accept
 # winget import 直後は PATH が現セッションに未反映なことがあるため明示的に通す。
 $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" +
             [System.Environment]::GetEnvironmentVariable("Path", "User")
-if (-not (Get-Command mise -ErrorAction SilentlyContinue)) {
+# mise の実体を解決する。winget portable は WinGet\Links の symlink 作成に Developer Mode/admin が
+# 要り、未作成だと mise が PATH に出ず Get-Command が空 or 壊れた Links を掴んで実行に失敗する。
+# よって Get-Command -> WinGet Packages 実体 の順で実行可能な絶対パスを探し、Links shim に依存しない。
+$miseBin = (Get-Command mise -ErrorAction SilentlyContinue | Select-Object -First 1).Source
+if (-not $miseBin -or -not (Test-Path $miseBin)) {
+    $miseBin = Get-ChildItem (Join-Path $env:LOCALAPPDATA "Microsoft\WinGet\Packages") `
+        -Recurse -Filter "mise.exe" -ErrorAction SilentlyContinue |
+        Select-Object -First 1 -ExpandProperty FullName
+}
+if (-not $miseBin -or -not (Test-Path $miseBin)) {
     Write-Error "mise が見つからない（winget の jdx.mise が失敗した?）。新しいシェルで再実行する。"
 }
+# 掴んだ mise の bin を現セッション PATH 先頭へ（以降の解決を安定させる）。
+$env:Path = (Split-Path $miseBin -Parent) + ";" + $env:Path
 Write-Host "==> mise use -g chezmoi"
-mise use -g chezmoi
+& $miseBin use -g chezmoi
+# chezmoi は mise 経由で実体解決する（shim dir が現セッション PATH 未反映でも確実に呼べる）。section 4 で使う。
+$chezmoiBin = (& $miseBin which chezmoi 2>$null)
 
 # -----------------------------------------------------------------------------
 # 3. chezmoi sourceDir（このリポジトリの実体位置に自動追従）
@@ -70,15 +83,14 @@ if (-not (Test-Path $cfg)) {
 # -----------------------------------------------------------------------------
 Write-Host "`n==> Windows ブートストラップ完了。"
 # 以降は本当に必要なステップだけ出す（無ければ完了表示のみ）。
-$chezmoi = Get-Command chezmoi -ErrorAction SilentlyContinue
-if (-not $chezmoi) {
-    # winget 導入分が現セッションの PATH に未反映 → 新シェルが要る（mise / chezmoi 解決）。
+if (-not $chezmoiBin -or -not (Test-Path $chezmoiBin)) {
+    # mise 経由でも chezmoi を解決できない → 新シェルで PATH 反映してから。
     Write-Host "  新しい PowerShell を開く        # winget 導入分を PATH に反映"
     Write-Host "  chezmoi diff; chezmoi apply     # dotfiles 配置 + mise install + fzf-tab を自動実行"
 } else {
     # chezmoi 解決可。未適用の差分があるときだけ apply を促す（status が空＝適用済み）。
     # applylog は run_after で毎回 status に出る純粋なログなので除外する。
-    $st = & $chezmoi.Source status --source $RepoRoot 2>$null | Where-Object { $_ -notmatch 'applylog' }
+    $st = & $chezmoiBin status --source $RepoRoot 2>$null | Where-Object { $_ -notmatch 'applylog' }
     if ($st) {
         Write-Host "  chezmoi diff; chezmoi apply     # 未適用の差分あり（mise install + fzf-tab も自動）"
     }
