@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+# サプライチェーン汚染スキャン（read-only）。指定ディレクトリ（既定: カレント）配下を:
+#   1) Shai-Hulud 系 IOC ファイル/文字列の grep
+#   2) lockfile を osv-scanner で OSV/GHSA と突合（マルウェア MAL- / 既知脆弱性）
+#   3) gitleaks で秘密漏洩（--redact で値は伏せる）
+# 詳細方針: ~/.claude/CLAUDE.md「サプライチェーンセキュリティ」。
+# 使い方: supply-chain-audit [DIR]
+set -u
+
+TARGET="${1:-.}"
+red=0
+
+osv() {
+  if command -v osv-scanner >/dev/null 2>&1; then osv-scanner "$@"
+  else mise x aqua:google/osv-scanner@latest -- osv-scanner "$@"; fi
+}
+
+echo "== supply-chain-audit: $TARGET =="
+
+echo "-- [1] IOC ファイル --"
+ioc_files=$(find "$TARGET" -type f \( -name setup_bun.js -o -name bun_environment.js -o -name 'shai-hulud*' \) 2>/dev/null)
+if [ -n "$ioc_files" ]; then echo "⚠️ 検出:"; echo "$ioc_files"; red=1; else echo "なし"; fi
+
+echo "-- [1] IOC 文字列 --"
+ioc_str=$(grep -rIl --exclude-dir=node_modules -iE 'SHA1HULUD|shai-hulud|webhook\.site|trufflehog' "$TARGET" 2>/dev/null)
+if [ -n "$ioc_str" ]; then echo "⚠️ 検出:"; echo "$ioc_str"; red=1; else echo "なし"; fi
+
+echo "-- [2] lockfile osv-scan --"
+find "$TARGET" -type f \
+  \( -name pnpm-lock.yaml -o -name package-lock.json -o -name yarn.lock \
+     -o -name Cargo.lock -o -name Gemfile.lock -o -name uv.lock \
+     -o -name poetry.lock -o -name go.sum \) \
+  ! -path '*/node_modules/*' 2>/dev/null | while IFS= read -r lf; do
+  echo "  [$lf]"
+  out=$(osv scan --lockfile "$lf" 2>&1)
+  echo "$out" | grep -iE 'MAL-|malicious' >/dev/null 2>&1 && echo "  ⚠️ マルウェア検出（要精査）"
+  echo "$out" | grep -iE 'No issues|MAL-|malicious|vulnerabilit' | head -3
+done
+
+echo "-- [3] gitleaks（秘密漏洩・値は redact） --"
+if command -v gitleaks >/dev/null 2>&1; then
+  gitleaks dir --no-banner --redact "$TARGET" 2>&1 | tail -4
+else
+  echo "gitleaks なし（mise で導入: mise use -g gitleaks）"
+fi
+
+echo "== 完了 =="
+[ "$red" -eq 0 ] && echo "IOC: クリーン" || echo "⚠️ IOC 検出あり: 上記を精査し封じ込め（token失効→PAT/SSH→クラウド資格情報→悪性版 yank）"

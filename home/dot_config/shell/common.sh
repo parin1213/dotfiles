@@ -117,6 +117,14 @@ export LESS='-R'
 # Homebrew の自動アップデートを 24h に 1 回に
 export HOMEBREW_AUTO_UPDATE_SECS=86400
 
+# サプライチェーン L1: Takumi Guard(GMO Flatt) を各レジストリに挟み、既知の悪性パッケージを
+# DL 時にブロックする（匿名=トークン不要）。詳細方針は ~/.claude/CLAUDE.md「サプライチェーンセキュリティ」。
+# pnpm は ~/.config/pnpm/config.yaml、gem は ~/.bundle/config で別途設定済み。ここは npm/npx と Python。
+# 注: publish は CI が registry を明示するため非影響。ローカル publish 時のみ registry override が要る。
+export NPM_CONFIG_REGISTRY="https://npm.flatt.tech/"
+export UV_DEFAULT_INDEX="https://pypi.flatt.tech/simple/"
+export PIP_INDEX_URL="https://pypi.flatt.tech/simple/"
+
 # ---------------------------------------------------------------------
 # ツール init (シェル別に出力切り替え)
 # ---------------------------------------------------------------------

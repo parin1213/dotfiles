@@ -26,6 +26,9 @@ fd = "latest"
 jq = "latest"
 yq = "latest"
 gitleaks = "latest"
+# サプライチェーン L3: 全言語の lockfile(npm/PyPI/cargo/gem/nuget/go) を OSV/GHSA と突合。
+# 詳細方針は ~/.claude/CLAUDE.md「サプライチェーンセキュリティ」。
+osv-scanner = "latest"
 # zstd: 大型ローカルアーカイブ (D:\dev\aws\s3 の backup.tar.zst 等) の解凍/作成に使う。
 # mise core / aqua-registry に無い (aqua:facebook/zstd は未登録) ため github backend で
 # GitHub リリースの win64 zip を直接取得する。Unix 側は zstd の release が linux バイナリを
@@ -49,6 +52,8 @@ chezmoi = "latest"
 zoxide = "latest"
 starship = "latest"
 gitleaks = "latest"
+# サプライチェーン L3: 全言語の lockfile を OSV/GHSA と突合（詳細は CLAUDE.md「サプライチェーンセキュリティ」）。
+osv-scanner = "latest"
 ripgrep = "latest"
 fd = "latest"
 eza = "latest"

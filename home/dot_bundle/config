@@ -1,0 +1,5 @@
+---
+# RubyGems サプライチェーン L1: Takumi Guard(GMO Flatt) を mirror に挟み既知の悪性 gem を DL 時ブロック。
+# 匿名（トークン不要）でブロック有効。詳細方針は ~/.claude/CLAUDE.md「サプライチェーンセキュリティ」。
+# 生成相当: bundle config set --global mirror.https://rubygems.org https://rubygems.flatt.tech/
+BUNDLE_MIRROR__HTTPS://RUBYGEMS__ORG: "https://rubygems.flatt.tech/"

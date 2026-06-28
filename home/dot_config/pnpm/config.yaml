@@ -1,0 +1,10 @@
+# pnpm global config。サプライチェーン対策の本体は ~/.claude/CLAUDE.md「サプライチェーンセキュリティ」。
+# L1 ブロック: Takumi Guard(GMO Flatt) を registry に挟み、既知の悪性パッケージを DL 時に 403 で弾く。
+# 匿名利用（トークン不要）でブロック機能が有効。追跡/感染通知が要るなら tg_anon_ トークンを別途 secret 化。
+registry: https://npm.flatt.tech/
+# L2 cooldown: 公開直後の悪性版を掴まないため 3 日(4320分)寝かせる。
+minimumReleaseAge: 4320
+# 自作 package は自分の release を即使えるよう cooldown 除外。
+minimumReleaseAgeExclude:
+  - zundone-cli
+  - helpdora
