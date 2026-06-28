@@ -50,6 +50,22 @@
 - pin する時は config.toml に「戻す条件」と日付をコメントで残す
 - 切り分けだけなら `MISE_AQUA_GITHUB_ATTESTATIONS=false mise up <tool>` で一発確認（恒久措置にしない）
 
+### サプライチェーンセキュリティ（全言語・全エコシステム共通）
+
+新しい言語/パッケージマネージャを導入したら、**npm を特別扱いせず同じ 3 層 + 地金**を必ず揃える。
+
+- **L1 ブロック（registry proxy）**: 対応エコシステムは **Takumi Guard（GMO Flatt Security, `*.flatt.tech`）** を registry/index に差し替え、既知の悪性を DL 時にブロックする。GA は npm/pnpm・PyPI(pip/uv/poetry)・RubyGems(bundler)・Go modules・Packagist（**crates.io(Rust) は対象外**）。まず匿名(ブロックのみ)で入れ、追跡/感染通知が要れば `tg_anon_` トークンを **chezmoi secret 化**（平文コミット禁止）。private/社内レジストリのある repo は per-project で除外する。
+- **L2 cooldown（時間軸）**: 公開直後の悪性版を掴まない。native 対応があれば設定する — pnpm `minimumReleaseAge`（基準 4320=3日 / 自作 package は exclude）、uv `exclude-newer = "7 days"`。native が無い言語(Rust/Ruby 等)は L1/L3 で補う。
+- **L3 scanner（既知脆弱性・悪性）**: **`osv-scanner` を全言語共通の必須スキャナ**にする（npm/PyPI/cargo/gem/nuget/go/maven/composer の lockfile を一括）。L1/L2 が薄い言語は per-ecosystem audit を足す（`cargo-audit` / `pip-audit` / `bundler-audit` 等）。secret 漏洩は `gitleaks`。
+- **地金（全言語）**: lockfile を必ずコミットして固定 / postinstall・build script は既定で無効、必要分だけ allowlist（pnpm `onlyBuiltDependencies` 等）/ engines・packageManager をピン / **自分が publish する物**は OIDC(Trusted Publishing)・provenance/attestation 必須・2FA は FIDO（踏むだけでなく「踏み台にされて配布元になる」前提で守る）。
+
+**新エコシステム導入チェックリスト**（言語を足したら必ず通す）:
+1. Takumi Guard 対応か → 対応なら registry/index を差替（非対応なら L2/L3 を厚く）
+2. native cooldown があるか → あれば設定（無ければ理由を一行残す）
+3. `osv-scanner` がその lockfile を読めるか → 読めない形式なら per-ecosystem audit を追加
+4. lockfile 固定 / build script allowlist / provenance を上記に合わせる
+5. mise（ツール）と chezmoi source（各 config）と `supply-chain-audit` に組み込み、全マシンへ配る
+
 ## マシン追加時の判断軸（chezmoi / profile）
 
 新マシンは `home/.chezmoitemplates/profile` で 2 つ決める:
