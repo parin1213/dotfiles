@@ -5,6 +5,9 @@
 keybinds clear-defaults=true {
     locked {
         bind "Ctrl g" { SwitchToMode "normal"; }
+        // 端末の「新タブ」キー（ghostty=cmd+t / Windows Terminal=ctrl+shift+t）が送る Alt+t を
+        // locked のまま zellij の新タブにマップ。端末タブと zellij タブを二重持ちせず一本化する。
+        bind "Alt t" { NewTab; }
     }
     pane {
         bind "left" { MoveFocus "left"; }
@@ -170,6 +173,7 @@ keybinds clear-defaults=true {
         bind "Ctrl g" { SwitchToMode "locked"; }
         bind "Alt i" { MoveTab "left"; }
         bind "Alt n" { NewPane; }
+        bind "Alt t" { NewTab; }
         bind "Alt o" { MoveTab "right"; }
         bind "Alt p" { TogglePaneInGroup; }
         bind "Alt Shift p" { ToggleGroupMarking; }
@@ -325,8 +329,10 @@ web_client {
  
 // Choose the base input mode of zellij.
 // Default: normal
-// 
-default_mode "normal"
+//
+// ロック基調で起動する（端末の生キー入力をそのままアプリへ通し、誤爆を防ぐ）。
+// zellij 操作に入るときだけ Ctrl+g で normal へ。新タブだけは locked のまま Alt+t で生やせる。
+default_mode "locked"
  
 // Choose the path to the default shell that zellij will use for opening new panes
 // Default: $SHELL

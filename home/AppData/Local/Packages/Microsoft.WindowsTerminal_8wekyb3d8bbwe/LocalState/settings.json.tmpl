@@ -22,6 +22,10 @@
         {
             "id": "Terminal.DuplicatePaneAuto",
             "keys": "alt+shift+d"
+        },
+        {
+            "command": { "action": "sendInput", "input": "\u001bt" },
+            "keys": "ctrl+shift+t"
         }
     ],
     "newTabMenu": 
@@ -60,6 +64,7 @@
                 "backgroundImage": "{{ .chezmoi.homeDir | replace "\\" "/" | replace "/" "\\\\" }}\\Pictures\\ajisai.jpg",
                 "backgroundImageOpacity": 0.1,
                 "colorScheme": "Tokyo Night Storm",
+                "commandline": "wsl.exe -d Ubuntu --cd ~ -e zsh -l -c \"zellij attach -c -f main\"",
                 "guid": "{9c6ecf77-e3a5-507b-bbb3-504e38fa1be8}",
                 "hidden": false,
                 "name": "Ubuntu",

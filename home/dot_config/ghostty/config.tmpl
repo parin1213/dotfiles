@@ -44,3 +44,17 @@ window-save-state = always
 # コマンド出力のスクロール・ジャンプ等が快適になる
 shell-integration = zsh
 shell-integration-features = cursor,sudo,title
+
+# --- zellij 自動起動 & タブ統合 ---
+# ① ローカル端末起動時に単一 "main" セッションへ自動アタッチ（無ければ作成）。
+#    login shell 経由で起動し mise(shim) を PATH に乗せる（直接 exec だと mise activate 前で
+#    zellij が PATH に無い）。-f は resurrect 時の "Press ENTER to run" 待ちをスキップ。
+#    SSH 先は接続先 .zshrc 側で自動アタッチ済みなので、これはローカル GUI 端末専用。
+command = zsh -l -c "zellij attach -c -f main"
+# ② 端末の「新タブ」を OS タブではなく zellij の新タブにする。新タブキーに Alt+t(ESC t) を
+#    送出し、zellij 側の `bind "Alt t" { NewTab }` を叩く。1ウィンドウ=1クライアントを保つ。
+{{- if eq $p.os "darwin" }}
+keybind = cmd+t=text:\x1bt
+{{- else }}
+keybind = ctrl+shift+t=text:\x1bt
+{{- end }}
