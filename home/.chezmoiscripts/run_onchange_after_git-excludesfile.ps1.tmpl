@@ -1,0 +1,17 @@
+{{- /*
+  global gitignore (~/.gitignore_global) を git に認識させる（Windows。非 Windows は空レンダ→skip）。
+  中身は Unix 版 .sh と同じ思想: core.excludesfile キーだけを冪等に設定し identity は触らない。
+  本文は ASCII のみ（PowerShell 5.1 が BOM 無しで読めるよう。日本語はこの chezmoi コメント内に留める）。
+*/ -}}
+{{ if eq .chezmoi.os "windows" -}}
+$git = Get-Command git -ErrorAction SilentlyContinue
+if (-not $git) { return }
+$want = Join-Path $env:USERPROFILE ".gitignore_global"
+$cur = (git config --global --get core.excludesfile) 2>$null
+if ($cur -eq $want) {
+    Write-Host "==> git core.excludesfile already set: $want"
+} else {
+    git config --global core.excludesfile "$want"
+    Write-Host "==> git core.excludesfile set: $want"
+}
+{{ end -}}

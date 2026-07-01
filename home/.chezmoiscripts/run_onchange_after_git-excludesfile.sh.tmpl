@@ -1,0 +1,21 @@
+{{- /*
+  global gitignore (~/.gitignore_global) を git に認識させる（Unix。Windows は .ps1 版）。
+  chezmoi は dot_gitignore_global を配備するだけで、git 側が core.excludesfile で
+  そのパスを指していないと一切読まれない（ファイルを置くだけでは効かない）。
+  ~/.gitconfig は parin/dotfiles でも dotfiles-work でも管理しない素の実体なので、
+  identity 等には触れず core.excludesfile キーだけを冪等に設定する。
+  run_onchange = スクリプト内容が変わった時 + 新マシン初回のみ実行。
+*/ -}}
+{{ if ne .chezmoi.os "windows" -}}
+#!/bin/sh
+# git excludesfile v1
+command -v git >/dev/null 2>&1 || exit 0
+want="$HOME/.gitignore_global"
+cur="$(git config --global --get core.excludesfile 2>/dev/null || true)"
+if [ "$cur" = "$want" ]; then
+    echo "==> git core.excludesfile already set: $want"
+else
+    git config --global core.excludesfile "$want"
+    echo "==> git core.excludesfile set: $want"
+fi
+{{ end -}}
