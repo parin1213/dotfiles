@@ -3,6 +3,7 @@
   共通/環境固有は ~/.agents/AGENTS.md と同一（共有 partial 由来）。
   共通指示の編集は source の .chezmoitemplates/agents-common.md / agents-env.md で。
 */ -}}
+{{- $p := includeTemplate "profile" . | fromJson -}}
 # Global instructions (Claude Code)
 
 {{ includeTemplate "agents-common.md" . }}
@@ -58,3 +59,12 @@ wsl -e bash -c 'export PATH="$HOME/.local/share/mise/shims:$PATH"; codex exec -s
 - bwrap を入れられない時だけ bypass（`--dangerously-bypass-approvals-and-sandbox`）。Claude Code 分類器が自動拒否するので **ユーザーに実行/許可してもらう**。
 
 > ハマり履歴（端的）: companion / `codex:rescue` は Windows sandbox で全滅 / read-only は bwrap 必須（bootstrap で導入）/ 非対話 WSL は shim が PATH 外（要前置）/ stdin 開けっ放しで 0 CPU ハング。**新知見が出たらこの節を更新**。
+{{- if eq $p.env "mac" }}
+
+---
+
+{{/* 仕事 Mac (env=mac) 固有の指示。実体は dotfiles-work 管理（business identity / 業務環境 /
+     Mac 固有資産 / zd-notify などを含み public な parin には置けないため）。
+     ~/.claude/CLAUDE.work.md は dotfiles-work/install.sh が symlink する。 */}}
+@~/.claude/CLAUDE.work.md
+{{- end }}

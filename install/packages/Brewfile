@@ -43,4 +43,4 @@ cask "font-hackgen-nerd"
 cask "obsidian"               # vault は別の private git repo を obsidian-git で同期
 
 # --- Secrets ---
-brew "1password-cli"          # op。vault 操作・op:// 参照のランタイム注入に使用（公式 formula）
+# 1password-cli は仕事 Mac (envs.mac) では Keychain 運用のため入れない。必要時のみ `brew install 1password-cli`。
