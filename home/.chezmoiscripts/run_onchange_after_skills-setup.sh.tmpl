@@ -1,0 +1,19 @@
+{{- /*
+  エージェントスキル同期ブリッジ（Unix のみ。Windows は .ps1 版が担当）。
+  正本は skills/manifest.toml、導入器は skills/setup.sh。下に両ファイルのハッシュを
+  埋めてあるので、manifest か setup ロジックを変えた apply のときだけ再実行される
+  （mise-install run_onchange と同じ思想）。これで「手動実行した時点で環境ごとに凍結」
+  せず、distribute の通常運用（pull + apply）で全環境に配布される。
+  gh/yq 不在・gh 未認証は skip でなく fail させる: 黙って skip するとハッシュ不変で
+  二度と走らない。fail なら script state が記録されず次の apply で自動リトライされる。
+  実行順は target 名の辞書順で mise-install → skills-setup（同一 apply 内で gh/yq 導入後に走る）。
+*/ -}}
+{{ if ne .chezmoi.os "windows" -}}
+#!/bin/sh
+# manifest hash: {{ include (joinPath .chezmoi.workingTree "skills/manifest.toml") | sha256sum }}
+# setup.sh hash: {{ include (joinPath .chezmoi.workingTree "skills/setup.sh") | sha256sum }}
+set -eu
+# 非対話シェルでは mise shim が PATH 外のことがある（gh/yq は mise 導入）
+export PATH="$HOME/.local/share/mise/shims:$PATH"
+exec "{{ .chezmoi.workingTree }}/skills/setup.sh"
+{{ end -}}

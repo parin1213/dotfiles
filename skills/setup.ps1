@@ -1,14 +1,16 @@
 ﻿#Requires -Version 5.1
-# skills/setup.ps1 — manifest.toml を読んでエージェントスキルを導入（Windows / restore フェーズ）。
+# skills/setup.ps1 — manifest.toml を読んでエージェントスキルを導入（Windows）。
 # setup.sh（bash; WSL/raspi/mac 用）の Windows 版。挙動は同じ。
+# 通常は chezmoi apply の run_onchange_after_skills-setup（manifest/本ファイルのハッシュ変化時のみ）
+# が呼ぶため手動実行は不要。単発で回したいときだけ直接叩く。
 #
 # 配置先（Agent Skills 仕様準拠の 2 ターゲット）:
 #   - Claude : ~/.claude/skills        （gh skill の --agent claude-code）
 #   - 共有   : ~/.agents/skills          （--dir 指定。Codex / Cursor / Gemini CLI 等が読む標準 dir）
 #
-# 前提（restore 順: install\bootstrap.ps1（windows provision）→ chezmoi apply(mise install) → これ）:
-#   gh(>=2.90), yq(mise) が PATH 上。type=tool は対応ツールが mise 導入済みのこと。
-# 使い方: powershell -ExecutionPolicy Bypass -File .\skills\setup.ps1
+# 前提: gh(winget: GitHub.cli・要認証), yq(mise) が PATH 上。
+#   type=tool は対応ツールが mise 導入済みのこと。不在なら fail（次の apply が自動リトライ）。
+# 手動実行: powershell -ExecutionPolicy Bypass -File .\skills\setup.ps1
 
 $Here      = $PSScriptRoot
 $RepoRoot  = Split-Path -Parent $Here

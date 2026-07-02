@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-# skills/setup.sh — manifest.toml を読んでエージェントスキルを導入（restore フェーズ）。
+# skills/setup.sh — manifest.toml を読んでエージェントスキルを導入。
+# 通常は chezmoi apply の run_onchange_after_skills-setup（manifest/本ファイルのハッシュ変化時のみ）
+# が呼ぶため手動実行は不要。単発で回したいときだけ直接叩く。
 #
 # 配置先（Agent Skills 仕様準拠の 2 ターゲット）:
 #   - Claude   : ~/.claude/skills      （gh skill の --agent claude-code）
@@ -7,9 +9,9 @@
 #   ※ gh skill の --agent codex は ~/.codex/skills へ入れるが、Codex の標準読み取りは
 #     ~/.agents/skills なので、Codex 向けは --dir で .agents/skills に固定する。
 #
-# 前提（restore 順: bootstrap → chezmoi apply(mise install) → これ）:
-#   gh(>=2.90), yq(mise) が PATH 上。type=tool は対応ツールが mise 導入済みのこと。
-# 使い方: ./skills/setup.sh
+# 前提: gh(>=2.90・要認証), yq(mise) が PATH 上（同一 apply 内で mise-install が先行する）。
+#   type=tool は対応ツールが mise 導入済みのこと。不在なら fail（次の apply が自動リトライ）。
+# 手動実行: ./skills/setup.sh
 #
 # 注: bash 用（WSL / raspi / mac）。Windows ネイティブは PowerShell から同等処理を行う。
 

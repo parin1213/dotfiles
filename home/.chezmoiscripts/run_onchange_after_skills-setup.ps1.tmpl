@@ -1,0 +1,16 @@
+{{- /*
+  エージェントスキル同期ブリッジ（Windows のみ。Unix は .sh 版が担当）。
+  正本は skills/manifest.toml、導入器は skills/setup.ps1。下に両ファイルのハッシュを
+  埋めてあるので、manifest か setup ロジックを変えた apply のときだけ再実行される。
+  gh(winget: GitHub.cli)/yq(mise) 不在は setup.ps1 が exit 1 で fail する: 黙って skip
+  するとハッシュ不変で二度と走らない。fail なら次の apply で自動リトライされる。
+*/ -}}
+{{ if eq .chezmoi.os "windows" -}}
+# manifest hash: {{ include (joinPath .chezmoi.workingTree "skills/manifest.toml") | sha256sum }}
+# setup.ps1 hash: {{ include (joinPath .chezmoi.workingTree "skills/setup.ps1") | sha256sum }}
+# yq は mise 導入のため shim を PATH に前置（非対話では PATH 外のことがある）
+$env:Path = "$env:LOCALAPPDATA\mise\shims;$env:Path"
+$setup = Join-Path "{{ .chezmoi.workingTree }}" 'skills\setup.ps1'
+& $setup
+exit $LASTEXITCODE
+{{ end -}}
