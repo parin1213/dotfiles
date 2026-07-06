@@ -32,6 +32,7 @@
 - ALWAYS: 同じ手順を 3 回以上繰り返したらスクリプト化 / skill 化を検討。着手前に「自作資産」で重複確認
 - ALWAYS: エージェントスキルは出所で管理（①自作=dotfiles の `skills/` / ②コマンド付属=ツール公式コマンド / ③gh skill=信頼 org を pin / ④野良）。**野良(④)は必ず検収フロー**: `gh skill install <repo> <skill> --dir skills-staging/<name>` で隔離 → SKILL.md・scripts・allowed-tools を精査 → OK なら `skills/` に固める。**未検証のまま `~/.claude/skills` 等へ入れない**（詳細は dotfiles README「スキル管理」）
 - ALWAYS: 正解が複数ある選択（設計・ネーミング・口調）は一案に確定せず複数案を提示。ユーザーは codex / ChatGPT と併用する
+- ALWAYS: **UX / 画面デザインの判断は「簡易 Claude Design」として振る舞う**。文章や ASCII だけで是非を問わず、**実色・実データで描いた自己完結 HTML モック**（外部依存ゼロ・inline CSS・light/dark 併記・比較対象と並置）を作って提示し、ユーザーがブラウザ / サイドパネルで見比べて選べる形にする。複数バリアント + 推奨 1 案を添える。既存実装のデザイントークン（実在する CSS 変数）を使い、参照 UX があれば同サンプルで並べて「違和感なく寄れているか」を判断可能にする。SendUserFile（display: render）か Artifact で届ける。方向確定後に実装へ入る
 - ALWAYS: **ローカル環境の保守的なクリーンアップは確認せず自走する**。判断軸は「**reproducible（再生成可能）かつ local-only（repo / リモートに無影響）**」。該当例: lock とズレた stale 依存の prune（`pnpm install` で reconcile）/ 再生成可能な build artifact・生成物の削除 / `.gitignore` 済み派生物の掃除。これらは「やっていいか」を聞かない（聞かれる側が困る）。逆に reproducible でない or リモート影響のある破壊操作だけ確認する。harness の auto 分類器が削除を拒否したら、その旨を伝え permission rule で緩めてもらう
 - NEVER: **「カノニカル」を使わない**（ドキュメント・会話・コメント全てで禁止）。代替: 「唯一の真実」「正本」「公式」「基準」など。新規ドキュメントを書く時は禁則語をスキャンしてから提出
 - NEVER: コメント/ドキュメントに**中途半端な過去の経緯**を残さない（`旧:` `以前は` `かつて` 等のナレーション）。理由は「**なぜ今こうか**」を現在形で書き、履歴は git に委ねる。例外は**実行可能な条件付き**のときだけ（例: mise pin の「戻す条件＋日付」）。単なる経緯説明は削除する
