@@ -4,9 +4,10 @@
 # 既定プロファイルを PowerShell 7 にして行う。
 
 # --- zellij の config は chezmoi 管理の ~/.config/zellij に集約 ---
-# 公式 zellij(0.44+) は Windows では既定で %APPDATA%\Zellij\config を見るため、
-# ZELLIJ_CONFIG_DIR で唯一の source（~/.config/zellij/config.kdl）へ明示的に向ける。
-$env:ZELLIJ_CONFIG_DIR = Join-Path $HOME '.config\zellij'
+# ZELLIJ_CONFIG_DIR は User 環境変数として永続化する（run_onchange_after_zellij-config-dir.ps1）。
+# zellij.exe は Windows Terminal から profile を介さず直接起動されるため、
+# プロセス scope の $env: では config 選択に間に合わない（永続変数なら起動時点で見える）。
+# pwsh はその永続変数を継承するので、ここでの再設定は不要。
 
 # --- SSH 対話ログインは zellij へ（単一 "main"・モバイル回線断に強い）---
 # zellij のペインは zellij config の default_shell="pwsh" でこの 7 を使う。

@@ -1,0 +1,19 @@
+{{- /*
+  ZELLIJ_CONFIG_DIR を User 環境変数に永続化（Windows）。非 Windows では空レンダ→chezmoi がスキップ。
+  Windows Terminal は `zellij.exe attach` を pwsh profile を介さず直接起動するため、
+  profile 内の $env:（プロセス scope）では zellij 本体の config 選択に間に合わない。
+  永続 User 変数にして WT 起動時点で環境に存在させ、唯一の source
+  (~/.config/zellij/config.kdl, default_shell="pwsh") を読ませる。これが無いと
+  zellij は既定の %APPDATA%\Zellij\config を読み、default_shell 未設定→cmd.exe に落ちる。
+  本文は ASCII のみ（render した .ps1 を PowerShell 5.1 が BOM 無しで正しく読めるように）。
+*/ -}}
+{{ if eq .chezmoi.os "windows" -}}
+$dir = Join-Path $env:USERPROFILE ".config\zellij"
+$cur = [Environment]::GetEnvironmentVariable("ZELLIJ_CONFIG_DIR", "User")
+if ($cur -ne $dir) {
+    [Environment]::SetEnvironmentVariable("ZELLIJ_CONFIG_DIR", $dir, "User")
+    Write-Host "==> Set User ZELLIJ_CONFIG_DIR=$dir (restart Windows Terminal to apply)"
+} else {
+    Write-Host "==> ZELLIJ_CONFIG_DIR already set: $dir"
+}
+{{ end -}}
