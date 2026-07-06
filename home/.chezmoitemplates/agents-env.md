@@ -10,6 +10,11 @@
 - bash 前提のツール（git-sweep 等）は WSL 内で実行する。
 - PowerShell 5.1 は BOM なし UTF-8 を ANSI と誤認する。日本語を含む `.ps1` を編集したら UTF-8 BOM 付きで保存し直す。
 - dotfiles は `~/src/dotfiles`（= `C:\Users\<user>\src\dotfiles`, chezmoi source）。`chezmoi apply` で配置。
+- **WSL 非対話実行（`wsl -e bash -c`）の作法**（Codex に限らず WSL コマンド全般）:
+  - コマンド文字列は**シングルクォート**（ダブルクォートだと `$HOME` 等が Windows 側で展開される事故が実際に起きた）
+  - mise 管理ツールは `export PATH="$HOME/.local/share/mise/shims:$PATH"` を前置（非対話は shim が PATH 外）
+  - foreground で回す（WSL の background は distro アイドル終了で死ぬ）。一時ファイルは HOME(ext4)
+- 昇格（UAC / gsudo）が要る操作は実行前に「UAC が出ます」と予告してから実行する（不在時に出すとキャンセルされる）。ユーザー不在なら保留。
 {{- else if $p.isWSL }}
 - **このマシン = `local-pc` の WSL（Ubuntu・full）**。ログインシェルは zsh。
 - dotfiles は `~/src/dotfiles`（git で同期）。`chezmoi apply` で配置。

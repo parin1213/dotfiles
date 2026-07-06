@@ -195,6 +195,39 @@ type = "own"
 # 文体・節構成の好みを抽出した PR 特化スキル。japanese-tech-writing の上書き層として併用する。
 # 好みが変わったら SKILL.md の規範と例を直接更新する。
 
+# --- 自作: 会話履歴監査（2026-07-07、全 47 セッション分析）から抽出した運用スキル群 ---
+# 根拠と発動条件は各 SKILL.md の description に記載。運用で新知見が出たら SKILL.md を直接更新する。
+
+[[skill]]
+name = "overnight-autonomy"
+type = "own"
+# 夜間・長時間自走の運用規範（完遂・rate limit 監視・STATE.md・再開フォールバック・朝の引き継ぎ様式）。
+# /loop の勝手終了×4 と limit 死→手動「つづけて」×10 が最大級の摩擦だったことへの対策。
+
+[[skill]]
+name = "subagent-review"
+type = "own"
+# サブエージェント委譲時の必須要素と成果物検収チェックリスト。
+# 空洞テスト・架空 fixture・誤った否定結論の鵜呑みが本番到達の手戻りを起こしたことへの対策。
+
+[[skill]]
+name = "dependabot-sweep"
+type = "own"
+requires = "gh"
+# bot PR（Dependabot/Renovate）一括処理の定型手順。repo 規約確認・逐次マージ・major 失敗は最新 LTS 引き上げ。
+
+[[skill]]
+name = "release-handoff"
+type = "own"
+# 実機検収ハンドオフの様式（依頼前の自己検証・前提条件・番号付き「操作→期待結果」・スマホ検収前提）。
+
+[[skill]]
+name = "chezmoi-change"
+type = "own"
+requires = "chezmoi"
+# 環境変更の定型フロー（chezmoi managed ゲート・グリフ/BOM の罠・--force 判断・distribute まで）。
+# 「実体を直接編集しない」ルールが即修正の局面で破られ続けたことへの手順的対策。
+
 # --- 将来の追加テンプレ（コメントアウト） ---
 # [[skill]]                       # ③ gh skill 独立配布（信頼 org を pin）
 # name = "documentation-writer"
