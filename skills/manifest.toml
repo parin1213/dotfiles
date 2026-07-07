@@ -228,6 +228,14 @@ requires = "chezmoi"
 # 環境変更の定型フロー（chezmoi managed ゲート・グリフ/BOM の罠・--force 判断・distribute まで）。
 # 「実体を直接編集しない」ルールが即修正の局面で破られ続けたことへの手順的対策。
 
+[[skill]]
+name = "doc-writing"
+type = "own"
+# 自作（2026-07-07）。voice-trace（同日作の文体トレーススキル）を、本人実文書コーパス 44 件の
+# 深読み分析で「一般原則＋ジャンル別の型＋本人の声」の3層に再設計したもの。
+# SKILL.md=原則とワークフロー / references/genres.md=ジャンル別の型 / voice.md=語彙・記法・反面リスト /
+# corpus.md=一次資料の所在。すべて観測値なので、本人の新しい手書き文書と答え合わせして更新する。
+
 # --- 将来の追加テンプレ（コメントアウト） ---
 # [[skill]]                       # ③ gh skill 独立配布（信頼 org を pin）
 # name = "documentation-writer"
