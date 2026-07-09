@@ -1,0 +1,88 @@
+#!/bin/sh
+# Obsidian vault (~/obsidian-vault) の git 自動同期。Obsidian アプリを起動していなくても
+# OS スケジューラ（launchd on mac / Scheduled Task on windows）から定期実行される前提。
+# obsidian-git プラグインの「stage-all → commit → pull → push」運用に commit message
+# フォーマットを揃える（同一メッセージ形式で人間がどちらの経路のコミットか区別できる）。
+# conflict は自動解決しない: merge を abort してログに残し、人間の判断に委ねる。
+# Windows 版は home/dot_local/bin/obsidian-vault-sync.ps1（ロジックは同一）。
+
+VAULT="$HOME/obsidian-vault"
+LOG="$HOME/.local/state/obsidian-vault-sync.log"
+
+# vault 未セットアップ（新マシンでまだ clone していない等）なら何もしない
+[ -d "$VAULT/.git" ] || exit 0
+
+mkdir -p "$(dirname "$LOG")" 2>/dev/null
+
+log() {
+    printf '%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$1" >>"$LOG"
+}
+
+rotate_log() {
+    [ -f "$LOG" ] || return 0
+    lines=$(wc -l <"$LOG" 2>/dev/null | tr -d ' ')
+    case "$lines" in
+        '' | *[!0-9]*) return 0 ;;
+    esac
+    if [ "$lines" -gt 1000 ]; then
+        tail -n 500 "$LOG" >"$LOG.rot" 2>/dev/null && mv "$LOG.rot" "$LOG"
+    fi
+}
+rotate_log
+
+command -v git >/dev/null 2>&1 || { log "ERROR: git not found"; exit 1; }
+
+# 多重起動ガード（mkdir はアトミック）。.git/ 配下なので git add -A に拾われない。
+# stale（30分超）は前回実行がクラッシュした残骸とみなして奪う。
+LOCK="$VAULT/.git/obsidian-vault-sync.lock"
+now=$(date +%s)
+if [ -d "$LOCK" ]; then
+    lock_mtime=$(stat -f %m "$LOCK" 2>/dev/null || stat -c %Y "$LOCK" 2>/dev/null || echo 0)
+    age=$((now - lock_mtime))
+    if [ "$age" -gt 1800 ]; then
+        rm -rf "$LOCK" 2>/dev/null
+    else
+        exit 0
+    fi
+fi
+mkdir "$LOCK" 2>/dev/null || exit 0
+trap 'rmdir "$LOCK" 2>/dev/null' EXIT
+
+cd "$VAULT" || { log "ERROR: cd to vault failed"; exit 1; }
+
+if [ -n "$(git status --porcelain 2>/dev/null)" ]; then
+    git add -A
+    now_iso=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+    if ! git commit -m "vault backup (auto-sync): $now_iso" >/dev/null 2>&1; then
+        log "ERROR: git commit failed"
+        exit 1
+    fi
+fi
+
+pull_out=$(git pull --no-rebase origin main 2>&1)
+pull_status=$?
+if [ "$pull_status" -ne 0 ]; then
+    if [ -f "$VAULT/.git/MERGE_HEAD" ]; then
+        git merge --abort 2>/dev/null
+        log "CONFLICT: merge aborted, manual resolution needed"
+    else
+        short=$(printf '%s' "$pull_out" | tr '\n' ' ' | cut -c1-200)
+        log "ERROR: git pull failed: $short"
+    fi
+    exit 1
+fi
+
+ahead=$(git rev-list --count origin/main..HEAD 2>/dev/null)
+case "$ahead" in
+    '' | *[!0-9]*) ahead=0 ;;
+esac
+if [ "$ahead" -gt 0 ]; then
+    if git push origin main >/dev/null 2>&1; then
+        log "OK: synced ($ahead commit(s) pushed)"
+    else
+        log "ERROR: git push failed"
+        exit 1
+    fi
+else
+    log "OK: no changes to push"
+fi

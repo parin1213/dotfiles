@@ -1,0 +1,18 @@
+{{- /*
+  Obsidian vault 自動同期の launchd 登録ブリッジ（mac かつ vault_sync のときのみ。他は空レンダ→skip）。
+  正本は Library/LaunchAgents/com.parin1213.obsidian-vault-sync.plist.tmpl。下にそのハッシュを
+  埋めてあるので、plist の内容を変えた apply のときだけ再実行される（mise-install run_onchange と
+  同じ思想）。bootout は初回登録時に何も無くて失敗するのが正常なので許容する（冪等登録）。
+*/ -}}
+{{- $p := includeTemplate "profile" . | fromJson -}}
+{{- if and (eq .chezmoi.os "darwin") $p.vault_sync -}}
+#!/bin/sh
+# plist hash: {{ include "Library/LaunchAgents/com.parin1213.obsidian-vault-sync.plist.tmpl" | sha256sum }}
+set -eu
+LABEL="com.parin1213.obsidian-vault-sync"
+PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
+UID_NUM=$(id -u)
+launchctl bootout "gui/$UID_NUM/$LABEL" >/dev/null 2>&1 || true
+launchctl bootstrap "gui/$UID_NUM" "$PLIST"
+echo "==> launchd registered: $LABEL"
+{{- end }}

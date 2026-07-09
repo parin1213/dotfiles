@@ -5,6 +5,7 @@ AppData
 .claude/statusline.ps1
 .local/bin/bootstrap.ps1
 .local/bin/distribute.ps1
+.local/bin/obsidian-vault-sync.ps1
 {{ end -}}
 {{ if eq .chezmoi.os "windows" -}}
 .zshrc
@@ -16,6 +17,7 @@ AppData
 .config/gh
 .claude/statusline.sh
 .local/bin/bootstrap
+.local/bin/obsidian-vault-sync
 {{ end -}}
 {{ if eq .chezmoi.os "linux" -}}
 Pictures

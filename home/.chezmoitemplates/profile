@@ -15,6 +15,7 @@
     weight / ghostty_font_size / starship_label / starship_color : envs.<env> の行から
     op / op_interop / gui_apps / tailscale / docker / sshd : provision 能力フラグ（bool）
                         envs.<env> の行から素通し。bootstrap / common.sh が読む。
+    vault_sync        : Obsidian vault 自動同期を launchd/Scheduled Task に登録するか（bool）
     apps              : 導入アプリ名のリスト（app 軸）。linux.sh の apps runner が読む。
 
   新マシン追加: 設定値は .chezmoidata.toml の [envs.<name>] に書く。
@@ -59,5 +60,6 @@
       "docker" (index $row "docker")
       "sshd" (index $row "sshd")
       "tauri_build" (index $row "tauri_build")
+      "vault_sync" (index $row "vault_sync")
       "apps" (index $row "apps")
    | toJson -}}

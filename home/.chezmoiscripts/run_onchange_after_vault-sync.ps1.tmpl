@@ -1,0 +1,28 @@
+{{- /*
+  Obsidian vault 自動同期の Scheduled Task 登録ブリッジ（win かつ vault_sync のときのみ。
+  他は空レンダ→skip）。正本は dot_local/bin/obsidian-vault-sync.ps1。下にそのハッシュを
+  埋めてあるので、スクリプトを変えた apply のときだけ再実行される（mise-install run_onchange
+  と同じ思想）。-RunLevel Limited + LogonType Interactive でユーザーコンテキスト実行にし、
+  管理者権限なしで登録できる構成にする（"ログオン中のみ" を admin 昇格なしで実現）。
+  本文は ASCII のみ（render した .ps1 を PowerShell 5.1 が BOM 無しで正しく読めるように。
+  日本語はこの chezmoi コメント内に留める）。
+*/ -}}
+{{- $p := includeTemplate "profile" . | fromJson -}}
+{{ if and (eq .chezmoi.os "windows") $p.vault_sync -}}
+# script hash: {{ include "dot_local/bin/obsidian-vault-sync.ps1" | sha256sum }}
+$TaskName = "obsidian-vault-sync"
+$ScriptPath = Join-Path $HOME ".local\bin\obsidian-vault-sync.ps1"
+
+$Existing = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
+if ($Existing) {
+    Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false
+}
+
+$Action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$ScriptPath`""
+$Trigger = New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Minutes 15) -RepetitionDuration ([TimeSpan]::MaxValue)
+$Principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType Interactive -RunLevel Limited
+$Settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -DontStopIfGoingOnBatteries -AllowStartIfOnBatteries -MultipleInstances IgnoreNew
+
+Register-ScheduledTask -TaskName $TaskName -Action $Action -Trigger $Trigger -Principal $Principal -Settings $Settings | Out-Null
+Write-Host "==> Scheduled Task registered: $TaskName"
+{{ end -}}

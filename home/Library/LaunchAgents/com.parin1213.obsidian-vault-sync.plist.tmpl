@@ -1,0 +1,32 @@
+{{- /*
+  Obsidian vault (~/obsidian-vault) の git 自動同期を launchd に登録する plist（mac のみ）。
+  env が mac かつ vault_sync のときだけ中身を出力する。それ以外は空レンダリング → chezmoi は
+  ターゲットを作成しない（empty レンダリング時に何もしない挙動は
+  home/.chezmoiscripts/run_onchange_after_vault-sync.sh.tmpl と対で確認済み）。
+  15分間隔 (StartInterval) + ログイン時 (RunAtLoad) 起動。Obsidian アプリの起動有無に依存しない。
+  実行ファイルは home/dot_local/bin/executable_obsidian-vault-sync（ロジックの正本）。
+  plist の ProgramArguments は launchd が環境変数展開しないため .chezmoi.homeDir で絶対パス化する。
+*/ -}}
+{{- $p := includeTemplate "profile" . | fromJson -}}
+{{- if and (eq $p.env "mac") $p.vault_sync }}
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.parin1213.obsidian-vault-sync</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>{{ .chezmoi.homeDir }}/.local/bin/obsidian-vault-sync</string>
+    </array>
+    <key>StartInterval</key>
+    <integer>900</integer>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>{{ .chezmoi.homeDir }}/.local/state/obsidian-vault-sync.launchd.log</string>
+    <key>StandardErrorPath</key>
+    <string>{{ .chezmoi.homeDir }}/.local/state/obsidian-vault-sync.launchd.log</string>
+</dict>
+</plist>
+{{- end -}}
