@@ -34,7 +34,7 @@ ls ~/obsidian-vault/AGENTS.md
 
 - 既存ノートに同テーマがないか先に確認する（`grep -ril <キーワード> ~/obsidian-vault --include='*.md'`）。
   あれば追記、なければ新規
-- 新規はルート直下（フォルダで分類しない）。frontmatter は style-guide 準拠:
+- 新規は `Notes/` に置く（フォルダで分類せず properties で整理。ルート直下は入口ファイルのみ）。frontmatter は style-guide 準拠:
   - 技術知見・ハマりどころ → `type: note` + `topic: [engineering]`、tags に `gotcha` / `til` 等
   - エッセイ / Blog 素材 → `type: essay`、公開前提の下書きは tags に `blog-draft`
 - 関連ノートへ内部リンク（`[[...]]`）を張る。未解決リンクも可
