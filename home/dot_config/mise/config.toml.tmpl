@@ -7,7 +7,8 @@
 {{- if eq .chezmoi.os "windows" -}}
 [tools]
 {{ `claude-code = { version = "latest", bin = "claude", platforms = { windows-x64 = { bin = "claude.exe", url = "https://storage.googleapis.com/claude-code-dist-86c565f3-f756-42ad-8dfa-d59b1c096819/claude-code-releases/{{ version }}/win32-x64/claude.exe" } }, url = 'https://storage.googleapis.com/claude-code-dist-86c565f3-f756-42ad-8dfa-d59b1c096819/claude-code-releases/{{ version }}/{{ os(macos="darwin") }}-{{ arch() }}/claude', version_list_url = "https://storage.googleapis.com/claude-code-dist-86c565f3-f756-42ad-8dfa-d59b1c096819/claude-code-releases/latest" }` }}
-codex = "latest"
+# codex は npm backend を明示（short-name だと aqua 側を引いて mise up が落ちる。詳細は Unix 側の同項）。
+"npm:@openai/codex" = "latest"
 node = "latest"
 python = "latest"
 deno = "latest"
@@ -77,7 +78,10 @@ ruby = "latest"
 # no asset found で落ちる。pnpm は本来 npm パッケージなので npm backend で導入（Windows と統一）。
 # aqua-registry の pnpm が .tar.gz 形式に追従したら pnpm = "latest" に戻してよい。(2026-06-02)
 "npm:pnpm" = "latest"
-codex = "latest"
+# codex は registry の short-name が npm:@openai/codex と aqua:openai/codex の両 backend に
+# マップされ、latest 解決時に aqua 側を引いて「no aqua-registry found」で mise up が落ちる。
+# 本来 npm パッケージなので npm backend を明示して曖昧解決を回避する。(2026-07-10)
+"npm:@openai/codex" = "latest"
 claude-code = "latest"
 # uv 0.11.9 で SLSA provenance 発行が止まり (GitHub trusted publisher 形式に変更)、
 # aqua-registry の signer_workflow 制約と不一致で attestation 検証が落ちる。
