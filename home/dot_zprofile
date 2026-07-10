@@ -11,3 +11,7 @@ elif [ -x "$HOME/.local/bin/mise" ]; then
 elif [ -x /opt/homebrew/bin/mise ]; then
   eval "$(/opt/homebrew/bin/mise activate zsh)"
 fi
+
+# auto_updates 付き cask（AltTab 等）はアプリ自身が更新するので brew の upgrade 対象から外す。
+# 対象に入れると既存 .app と衝突して毎回エラー＋巻き戻しになり、ログがうるさいだけなので抑止する。
+export HOMEBREW_NO_UPGRADE_AUTO_UPDATES_CASKS=1
