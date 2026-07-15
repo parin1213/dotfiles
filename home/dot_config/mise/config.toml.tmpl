@@ -81,6 +81,8 @@ codex = "latest"
 # yt-dlp: Somen 動画の目標ステ追従 (score-checker の somen-target-followup スキル) が WSL 経由で呼ぶ。
 # 未記載だと install 実体があっても shim が "No version is set" で死ぬ (2026-07-15)。
 yt-dlp = "latest"
+# ffmpeg: yt-dlp の --download-sections (somen-target-followup の章切り出し) が要求。apt は sudo 要のため mise で。
+ffmpeg = "latest"
 claude-code = "latest"
 # uv 0.11.9 で SLSA provenance 発行が止まり (GitHub trusted publisher 形式に変更)、
 # aqua-registry の signer_workflow 制約と不一致で attestation 検証が落ちる。
