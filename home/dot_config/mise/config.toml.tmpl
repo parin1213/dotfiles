@@ -45,6 +45,10 @@ yt-dlp = "latest"
 # mise.exe への hardlink にし argv0 で tool を判定する（admin 不要・全 shim が同一 inode 共有で
 # 実ディスク増なし・検証済み）。mise 更新後は reshim で貼り直す（mise install が実施）。
 windows_shim_mode = "hardlink"
+# codex / claude-code は OpenAI / Anthropic の一次配布 CLI で日次リリースが多く、
+# L2 cooldown(既定 24h) を待つと常に 1 日遅れる。信頼できる発行元なので両者だけ cooldown を
+# 外して即最新を掴む。他ツールは cooldown を維持する（詳細は CLAUDE.md「サプライチェーン L2」）。
+minimum_release_age_excludes = ["npm:@openai/codex", "claude-code"]
 {{ else -}}
 [tools]
 # --- 全 Unix 共通: precompiled・軽量。slim 機でもこれだけは入れる ---
@@ -118,6 +122,10 @@ dotnet = "8"
 # source ビルドに戻したくなったら ruby.compile を消す。(2026-06-03)
 [settings]
 ruby.compile = false
+# codex / claude-code は OpenAI / Anthropic の一次配布 CLI で日次リリースが多く、
+# L2 cooldown(既定 24h) を待つと常に 1 日遅れる。信頼できる発行元なので両者だけ cooldown を
+# 外して即最新を掴む。他ツールは cooldown を維持する（詳細は CLAUDE.md「サプライチェーン L2」）。
+minimum_release_age_excludes = ["npm:@openai/codex", "claude-code"]
 
 [env]
 MISE_PIPX_UVX = "1"
