@@ -3,7 +3,8 @@ name: pr-description-style
 description: |
   PR の説明文（本文）を書く・直すときの、節構成・読者順序（結論・前提→やったこと→意図）・
   散文を構造（実例コードブロック/テキスト図/ファイル対応表）に変換する規範と提出前セルフチェック。
-  本人の実指摘 2 件（2026-07-02 grooves/ca-matching-skill#29、2026-07-10 grooves/digester#18）から抽出。
+  本人の実指摘 3 件（2026-07-02 grooves/ca-matching-skill#29、2026-07-10 grooves/digester#18、
+  2026-07-15 grooves/ca-matching-skill#52）から抽出。
   PR を作成・編集するとき、また PR 本文やレビュー依頼文の推敲を頼まれたときに、
   japanese-tech-writing（一般規範）と併用して必ず参照する。こちらは PR 特化の上書き層。
 ---
