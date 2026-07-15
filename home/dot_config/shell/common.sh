@@ -100,12 +100,13 @@ if [ -d "$HOME/scripts" ]; then
 fi
 
 # pnpm: 言語ランタイム本体は mise 配下 (~/.local/share/mise/shims/pnpm)。
-# PNPM_HOME は `pnpm link --global` 用の global bin 置き場 (XDG 準拠)。無ければ作る（安心設計）。
+# PNPM_HOME は pnpm の XDG データ置き場。global パッケージの bin は $PNPM_HOME/bin に置かれる
+# (pnpm の global-bin-dir 既定)。PATH に載せるのは実行体のある $PNPM_HOME/bin。無ければ作る。
 export PNPM_HOME="$HOME/.local/share/pnpm"
-mkdir -p "$PNPM_HOME"
+mkdir -p "$PNPM_HOME/bin"
 case ":$PATH:" in
-  *":$PNPM_HOME:"*) ;;
-  *) export PATH="$PNPM_HOME:$PATH" ;;
+  *":$PNPM_HOME/bin:"*) ;;
+  *) export PATH="$PNPM_HOME/bin:$PATH" ;;
 esac
 
 # ---------------------------------------------------------------------
