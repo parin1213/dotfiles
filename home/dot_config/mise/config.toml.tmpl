@@ -60,6 +60,8 @@ starship = "latest"
 gitleaks = "latest"
 # サプライチェーン L3: 全言語の lockfile を OSV/GHSA と突合（詳細は CLAUDE.md「サプライチェーンセキュリティ」）。
 osv-scanner = "latest"
+# yt-dlp: Somen 動画の目標ステ追従 (score-checker の somen-target-followup スキル) が WSL 経由で呼ぶ。
+# 未記載だと install 実体があっても shim が "No version is set" で死ぬ (2026-07-15)。
 yt-dlp = "latest"
 ripgrep = "latest"
 fd = "latest"
@@ -80,6 +82,8 @@ node = "latest"
 # だったが「source compile で激重」の旧理由が precompiled 化で解消したため lite 以上に移動。
 # system ruby（apt）は使わず mise 一本化する方針。slim(raspi) は素のシェル用途で除外のまま。(2026-06-04)
 ruby = "latest"
+# ffmpeg: yt-dlp の --download-sections (somen-target-followup の章切り出し) が要求。apt は sudo 要のため mise で。
+ffmpeg = "latest"
 # pnpm は aqua 定義が古く、latest(v11.5.1 で .tar.gz 化)に対し資産名 pnpm-linux-x64 を探して
 # no asset found で落ちる。pnpm は本来 npm パッケージなので npm backend で導入（Windows と統一）。
 # aqua-registry の pnpm が .tar.gz 形式に追従したら pnpm = "latest" に戻してよい。(2026-06-02)
