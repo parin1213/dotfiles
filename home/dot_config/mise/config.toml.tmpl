@@ -7,7 +7,8 @@
 {{- if eq .chezmoi.os "windows" -}}
 [tools]
 {{ `claude-code = { version = "latest", bin = "claude", platforms = { windows-x64 = { bin = "claude.exe", url = "https://storage.googleapis.com/claude-code-dist-86c565f3-f756-42ad-8dfa-d59b1c096819/claude-code-releases/{{ version }}/win32-x64/claude.exe" } }, url = 'https://storage.googleapis.com/claude-code-dist-86c565f3-f756-42ad-8dfa-d59b1c096819/claude-code-releases/{{ version }}/{{ os(macos="darwin") }}-{{ arch() }}/claude', version_list_url = "https://storage.googleapis.com/claude-code-dist-86c565f3-f756-42ad-8dfa-d59b1c096819/claude-code-releases/latest" }` }}
-codex = "latest"
+# codex は npm backend を明示（short-name だと aqua 側を引いて mise up が落ちる。詳細は Unix 側の同項）。
+"npm:@openai/codex" = "latest"
 node = "latest"
 python = "latest"
 deno = "latest"
@@ -29,6 +30,7 @@ gitleaks = "latest"
 # サプライチェーン L3: 全言語の lockfile(npm/PyPI/cargo/gem/nuget/go) を OSV/GHSA と突合。
 # 詳細方針は ~/.claude/CLAUDE.md「サプライチェーンセキュリティ」。
 osv-scanner = "latest"
+yt-dlp = "latest"
 # zstd: 大型ローカルアーカイブ (D:\dev\aws\s3 の backup.tar.zst 等) の解凍/作成に使う。
 # mise core / aqua-registry に無い (aqua:facebook/zstd は未登録) ため github backend で
 # GitHub リリースの win64 zip を直接取得する。Unix 側は zstd の release が linux バイナリを
@@ -43,6 +45,10 @@ osv-scanner = "latest"
 # mise.exe への hardlink にし argv0 で tool を判定する（admin 不要・全 shim が同一 inode 共有で
 # 実ディスク増なし・検証済み）。mise 更新後は reshim で貼り直す（mise install が実施）。
 windows_shim_mode = "hardlink"
+# codex / claude-code は OpenAI / Anthropic の一次配布 CLI で日次リリースが多く、
+# L2 cooldown(既定 24h) を待つと常に 1 日遅れる。信頼できる発行元なので両者だけ cooldown を
+# 外して即最新を掴む。他ツールは cooldown を維持する（詳細は CLAUDE.md「サプライチェーン L2」）。
+minimum_release_age_excludes = ["npm:@openai/codex", "claude-code"]
 {{ else -}}
 [tools]
 # --- 全 Unix 共通: precompiled・軽量。slim 機でもこれだけは入れる ---
@@ -54,6 +60,9 @@ starship = "latest"
 gitleaks = "latest"
 # サプライチェーン L3: 全言語の lockfile を OSV/GHSA と突合（詳細は CLAUDE.md「サプライチェーンセキュリティ」）。
 osv-scanner = "latest"
+# yt-dlp: Somen 動画の目標ステ追従 (score-checker の somen-target-followup スキル) が WSL 経由で呼ぶ。
+# 未記載だと install 実体があっても shim が "No version is set" で死ぬ (2026-07-15)。
+yt-dlp = "latest"
 ripgrep = "latest"
 fd = "latest"
 eza = "latest"
@@ -73,16 +82,16 @@ node = "latest"
 # だったが「source compile で激重」の旧理由が precompiled 化で解消したため lite 以上に移動。
 # system ruby（apt）は使わず mise 一本化する方針。slim(raspi) は素のシェル用途で除外のまま。(2026-06-04)
 ruby = "latest"
+# ffmpeg: yt-dlp の --download-sections (somen-target-followup の章切り出し) が要求。apt は sudo 要のため mise で。
+ffmpeg = "latest"
 # pnpm は aqua 定義が古く、latest(v11.5.1 で .tar.gz 化)に対し資産名 pnpm-linux-x64 を探して
 # no asset found で落ちる。pnpm は本来 npm パッケージなので npm backend で導入（Windows と統一）。
 # aqua-registry の pnpm が .tar.gz 形式に追従したら pnpm = "latest" に戻してよい。(2026-06-02)
 "npm:pnpm" = "latest"
-codex = "latest"
-# yt-dlp: Somen 動画の目標ステ追従 (score-checker の somen-target-followup スキル) が WSL 経由で呼ぶ。
-# 未記載だと install 実体があっても shim が "No version is set" で死ぬ (2026-07-15)。
-yt-dlp = "latest"
-# ffmpeg: yt-dlp の --download-sections (somen-target-followup の章切り出し) が要求。apt は sudo 要のため mise で。
-ffmpeg = "latest"
+# codex は registry の short-name が npm:@openai/codex と aqua:openai/codex の両 backend に
+# マップされ、latest 解決時に aqua 側を引いて「no aqua-registry found」で mise up が落ちる。
+# 本来 npm パッケージなので npm backend を明示して曖昧解決を回避する。(2026-07-10)
+"npm:@openai/codex" = "latest"
 claude-code = "latest"
 # uv 0.11.9 で SLSA provenance 発行が止まり (GitHub trusted publisher 形式に変更)、
 # aqua-registry の signer_workflow 制約と不一致で attestation 検証が落ちる。
@@ -117,6 +126,10 @@ dotnet = "8"
 # source ビルドに戻したくなったら ruby.compile を消す。(2026-06-03)
 [settings]
 ruby.compile = false
+# codex / claude-code は OpenAI / Anthropic の一次配布 CLI で日次リリースが多く、
+# L2 cooldown(既定 24h) を待つと常に 1 日遅れる。信頼できる発行元なので両者だけ cooldown を
+# 外して即最新を掴む。他ツールは cooldown を維持する（詳細は CLAUDE.md「サプライチェーン L2」）。
+minimum_release_age_excludes = ["npm:@openai/codex", "claude-code"]
 
 [env]
 MISE_PIPX_UVX = "1"
