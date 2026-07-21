@@ -10,8 +10,8 @@ description: |
 
 ## 手順
 
-1. **列挙**: `gh search prs --author app/dependabot --state open`（Renovate は `app/renovate`）で対象 repo 横断の open PR を列挙。
-   除外指定（「score-checker 以外」等）を先に確認。
+1. **列挙**: `gh search prs --author app/dependabot --state open --owner <自分>`（Renovate は `app/renovate`）で open PR を列挙。
+   **`--owner` 必須**（無いと GitHub 全体の他人の PR が返る）。除外指定（「score-checker 以外」等）を先に確認。
 2. **repo 規約の確認**（repo ごとに必ず）: AGENTS.md / CLAUDE.md / branch protection を見る。
    既知の例: zundone-cli / helpdora = **squash only・CI(test) 必須・strict**、release-please 運用。lgtv-switcher = Renovate（.NET）。
 3. **1 repo 内は逐次マージ**: lockfile 競合を避けるため並列マージしない。
@@ -20,6 +20,9 @@ description: |
 4. **CI が赤い PR**: 原因を見る。
    - major bump で runtime 要件が上がった（例: engines）→ **最新 LTS へ引き上げて通す**のがユーザーの既定方針（Node は「LTS の最新がいいな」）。
    - flaky → rerun。本質的な非互換 → スキップして報告に残す（勝手に close しない）。
+   - 型レベルの小破損（SDK の型変更に repo コードが未追従等）は **bot ブランチに fix commit を積んで通す**（実績: helpdora #32, openai 6.48 の parsed 型変更にキャスト 1 行で追従）。
+     - fix を push した後は **`@dependabot rebase` 禁止**（branch が作り直され fix が消える）。base 取り込みは `gh api -X PUT repos/{owner}/{repo}/pulls/{n}/update-branch`。
+     - GitHub contents API での直接コミットは auto 分類器に拒否される。**ローカル clone → commit → push** で積む。
 5. **セキュリティアラート**は PR 処理と別枠で確認（`gh api repos/{owner}/{repo}/dependabot/alerts`）。
    transitive の場合は overrides（pnpm `overrides`）で対処した実績あり。
 6. **完了報告**: repo ごとに「マージ N 件 / スキップ N 件（理由）」＋ main CI の最終状態。
