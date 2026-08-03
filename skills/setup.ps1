@@ -24,6 +24,19 @@ New-Item -ItemType Directory -Force $SharedDir | Out-Null
 
 function Get-Toml([string]$Expr) { (& yq -p toml -o yaml $Expr $Man) }
 
+# gh 拡張を skill より先に入れる。拡張のコマンドを requires で見る skill を同一 apply で通すため。
+$ne = Get-Toml '.gh_extension | length'
+if ($ne -ne 'null') {
+  $installed = (& gh extension list 2>$null) -join "`n"
+  for ($i = 0; $i -lt [int]$ne; $i++) {
+    $repo = Get-Toml ".gh_extension[$i].repo"
+    $pin  = Get-Toml ".gh_extension[$i].pin"
+    if ($installed -like "*$repo*") { Write-Host "==> [gh ext] $repo は導入済み"; continue }
+    Write-Host "==> [gh ext] install $repo"
+    if ($pin -and $pin -ne 'null') { & gh extension install $repo --pin $pin } else { & gh extension install $repo }
+  }
+}
+
 # Claude(~/.claude/skills) と 共有(~/.agents/skills) の両方へ install。
 function Install-Both([string]$Target, [string]$Name, [string[]]$Extra) {
   & gh skill install $Target $Name @Extra --agent claude-code --scope user -f

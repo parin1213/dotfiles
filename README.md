@@ -212,6 +212,7 @@ distribute -NoPush                 # push 済みのとき（pull + apply だけ�
 - 復元: **`chezmoi apply` に統合**。`run_onchange_after_skills-setup`（sh/ps1）が manifest か setup スクリプトの変わった apply のときだけ導入器を実行し、type 別に **Claude＋共有の両方へ**導入（②=ツールのコマンド、③=`gh skill`、①/④=`--from-local`）。manifest に足して push すれば distribute の通常運用（pull + apply）で全環境に配布される。
   - gh/yq 不在・gh 未認証は skip でなく **fail** させる（skip だとハッシュ不変で二度と走らない。fail なら script state 未記録で次の apply が自動リトライ）
   - 手動で回す場合: `./skills/setup.sh`（bash）/ `powershell -ExecutionPolicy Bypass -File .\skills\setup.ps1`（Windows）
+- **gh CLI の拡張**は manifest の `[[gh_extension]]` で宣言する（mise は gh 拡張を扱えない）。導入器が skill より先に処理するので、拡張のコマンドを `requires` で見る skill も同一 apply で通る。`gh stack`（`github/gh-stack`）は拡張本体と同梱 skill をこの組みで入れている。
 
 ### 野良(④)の検収フロー（取り込み → 判断 → 昇格）
 

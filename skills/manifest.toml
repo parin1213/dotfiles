@@ -13,6 +13,16 @@
 #
 # 野良(未検証)skill は manifest に直接足さず、必ず検収フロー（README「スキル管理」参照）を
 # 通してから own(固める) か ghskill(信頼して pin) として登録する。
+#
+# [[gh_extension]] は gh CLI の拡張。skill が拡張のコマンド体系を前提にするなら、拡張本体も
+# ここで宣言して同じ apply で入るようにする（mise は gh 拡張を扱えない）。setup が skill より
+# 先に処理するので、requires で拡張のコマンドを見る skill も同一 apply で通る。
+
+[[gh_extension]]
+repo = "github/gh-stack"
+# GitHub 公式の stacked PR 拡張。`gh stack submit` が open PR を GitHub 側の Stack として
+# 登録し、PR 画面に前後のナビゲーションが出る（`gh pr create --base` を連ねるだけでは出ない）。
+# pin 無し = 最新を追従。公式 org なので latest でよい。
 
 [[skill]]
 name = "playwright-cli"
@@ -177,6 +187,19 @@ repo = "anthropics/skills"
 skill = "slack-gif-creator"
 pin = "57546260"
 # 注: core/ + requirements.txt（Pillow 等）同梱。GIF 生成には Python 依存が要る（知識・検証ツールは依存無しでも効く）。
+
+# --- GitHub 公式スキル（github org・拡張同梱） ---
+[[skill]]
+name = "gh-stack"
+type = "ghskill"
+# 上の [[gh_extension]] で入れる拡張が同梱する skill（skills/gh-stack/SKILL.md）。
+# 検収済み（2026-08-03）: refs/tags/v0.1.0 / tree c95c8b5b の SKILL.md 891 行のみ。
+# scripts / allowed-tools 無し・外部取得や隠し指示なしの純知識スキル。
+# pin 無し = 最新 tagged release を追従。拡張本体を latest で追うので skill も揃える
+# （拡張が更新されてコマンドが変わったとき、skill だけ古いと存在しないコマンドを勧める）。
+repo = "github/gh-stack"
+skill = "gh-stack"
+requires = "gh"
 
 # --- 野良採用（検収フロー通過済み・このリポに vendor して固める） ---
 [[skill]]

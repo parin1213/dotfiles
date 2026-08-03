@@ -25,6 +25,27 @@ command -v yq >/dev/null 2>&1 || { echo "ERROR: yq が無い（mise install 後�
 command -v gh >/dev/null 2>&1 || { echo "ERROR: gh が無い" >&2; exit 1; }
 mkdir -p "$SHARED_DIR"
 
+# gh 拡張を skill より先に入れる。拡張のコマンドを requires で見る skill を同一 apply で通すため。
+ne="$(yq -p toml -o yaml '.gh_extension | length' "$MAN")"
+if [ "$ne" != "null" ]; then
+  installed="$(gh extension list 2>/dev/null || true)"
+  for i in $(seq 0 $((ne - 1))); do
+    repo="$(yq -p toml -o yaml ".gh_extension[$i].repo" "$MAN")"
+    pin="$(yq -p toml -o yaml ".gh_extension[$i].pin" "$MAN")"
+    if printf '%s\n' "$installed" | grep -qF "$repo"; then
+      echo "==> [gh ext] $repo は導入済み"
+      continue
+    fi
+    if [ "$pin" != "null" ] && [ -n "$pin" ]; then
+      echo "==> [gh ext] install $repo (pin $pin)"
+      gh extension install "$repo" --pin "$pin"
+    else
+      echo "==> [gh ext] install $repo"
+      gh extension install "$repo"
+    fi
+  done
+fi
+
 # Claude(~/.claude/skills) と 共有(~/.agents/skills) の両方へ install。
 # $1=repo or src, $2=skill name, 残り=共通追加フラグ（--from-local / --pin <v> 等）
 install_both() {
