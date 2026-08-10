@@ -46,8 +46,11 @@ type = "ghskill"
 # よって gh skill を採用（sentry cli setup でも配備できるが skill version をバイナリに固定したい時用）。
 repo = "getsentry/cli"
 skill = "sentry-cli"
-# pin 無し = 最新 tagged release を追従（解決例: 0.35.0）。skill version は CLI version に概ね追従し
-# mise の npm:sentry=latest とほぼ整合。厳密に固定したい時だけ pin = "X.Y.Z"。更新は gh skill update。
+# 0.41.0 から skill が隠しディレクトリへ移動し gh skill が発見できない（no standard skills found,
+# --allow-hidden-dirs を要求）。未検証の隠しディレクトリ展開は検収フローに反するため last-good に pin。
+# 戻す条件: 上流が標準配置に戻す、または gh skill 側が隠し配置を正式サポートし検収して問題ないと確認できたら
+# pin を外す（確認日: 2026-08-10）。
+pin = "0.40.0"
 requires = "sentry"   # sentry バイナリ（mise: npm:sentry）が無い環境では skip
 
 [[skill]]
