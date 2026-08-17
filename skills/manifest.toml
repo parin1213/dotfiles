@@ -70,6 +70,16 @@ repo = "mattpocock/skills"
 skill = "grill-with-docs"
 pin = "aaf2453f"
 
+[[skill]]
+name = "show-me"
+type = "ghskill"
+# 野良(humanlayer/skills)を検収フローで採用（SKILL.md 1枚・scripts/allowed-tools 無し・外部取得なし）。
+# 会話中の話題を擬似コード / 呼び出しツリー / ファイルツリー / Mermaid / diff / HTML で可視化させる知識スキル。
+# tag 無しリポのため moving な main でなく、検収した commit SHA で pin（上流の未検証変更を取り込まない）。
+repo = "humanlayer/skills"
+skill = "show-me"
+pin = "3c262914"
+
 # --- Obsidian 準公式スキル（kepano = Steph Ango / Obsidian CEO 作・Agent Skills 仕様準拠） ---
 # 検収済み: いずれも SKILL.md のみの純知識スキル（scripts / allowed-tools 無し）。
 # tag 無しリポのため検収した commit SHA で pin（上流の未検証変更を取り込まない）。
