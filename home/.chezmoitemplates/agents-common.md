@@ -7,10 +7,15 @@
 */ -}}
 ## Language
 
-- Commit messages and PR titles/descriptions: Japanese by default.
-- Conventional Commit prefix (`feat:`, `fix:`, `chore:` …) は英語のまま、その後の summary を日本語にする。
-- 例: `chore(release): release-please のタグから component prefix を外す`
-- 既存リポジトリが明確に英語コミットで揃っている場合のみ英語にする。
+- ALWAYS: **コミットメッセージを書く直前に `git log --oneline -20` で既存の言語を確認し、それに合わせる**。
+  リポジトリの履歴が下の既定より優先する。手順で担保しないと既定の日本語で書いてしまう（`crowd_agent` で指摘 2026-08-21）
+  - **`crowd_agent` は英語**。`dotfiles` は日本語
+  - 判定は subject 行の言語で行う。`feat:` 等の prefix は両方共通なので判定材料にしない
+  - 混在していて多数派が読み取れないときだけユーザーに確認する
+- 既定（履歴が無い新規リポジトリ）: commit messages と PR タイトルは日本語。
+  Conventional Commit prefix (`feat:`, `fix:`, `chore:` …) は英語のまま、その後の summary を日本語にする。
+  例: `chore(release): release-please のタグから component prefix を外す`
+- PR 本文・レビューコメント・Issue は、コミットが英語のリポジトリでも**日本語**（読者は社内）。
 - 生成物（エラーメッセージ・ログ・README 等）も日本語。明示指示がない限り英語で書かない。
 
 ## Security
