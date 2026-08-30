@@ -22,6 +22,10 @@ brew "grep"                   # GNU grep (PATH 先頭で使う)
 brew "wget"
 
 # --- Git / Dev workflow ---
+# macOS 標準の git は Apple 版 (2026-08 時点で 2.50) で、config-based hooks (2.54 で追加) が
+# 使えない。hk など hook を ~/.gitconfig に入れる仕組みが repo ローカルへ落ちるため、
+# PATH 先頭に来る brew 版を入れる。
+brew "git"
 brew "difftastic"             # `git-difft` alias で利用
 brew "gitleaks"               # secret scan (pre-commit と併用)
 brew "pre-commit"             # git hooks
