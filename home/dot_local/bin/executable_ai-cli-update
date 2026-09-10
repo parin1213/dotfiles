@@ -1,0 +1,72 @@
+#!/bin/sh
+# claude-code / codex を毎日 mise で最新に上げる。両 CLI は日次リリースで、手動 mise up だと
+# 数週間置き去りになる（config.toml の minimum_release_age_excludes で cooldown も外してある）。
+# 実行元は OS スケジューラ（mac: Library/LaunchAgents/com.parin1213.ai-cli-update.plist）。
+# どのバージョンを入れるかの正本は ~/.config/mise/config.toml の [tools]。ここは叩くだけ。
+
+TOOLS="claude-code npm:@openai/codex"
+LOG="$HOME/.local/state/ai-cli-update.log"
+
+# グローバル config を解決させるため $HOME で実行する（cwd のプロジェクト config を拾わないように）
+cd "$HOME" || exit 1
+
+mkdir -p "$(dirname "$LOG")" 2>/dev/null
+
+log() {
+    printf '%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$1" >>"$LOG"
+}
+
+rotate_log() {
+    [ -f "$LOG" ] || return 0
+    lines=$(wc -l <"$LOG" 2>/dev/null | tr -d ' ')
+    case "$lines" in
+        '' | *[!0-9]*) return 0 ;;
+    esac
+    if [ "$lines" -gt 1000 ]; then
+        tail -n 500 "$LOG" >"$LOG.rot" 2>/dev/null && mv "$LOG.rot" "$LOG"
+    fi
+}
+rotate_log
+
+# launchd / systemd は PATH をほぼ持たないので mise は絶対パスで探す
+MISE=""
+for candidate in "$HOME/.local/bin/mise" /opt/homebrew/bin/mise /usr/local/bin/mise; do
+    if [ -x "$candidate" ]; then
+        MISE="$candidate"
+        break
+    fi
+done
+[ -n "$MISE" ] || MISE=$(command -v mise 2>/dev/null)
+[ -n "$MISE" ] || { log "ERROR: mise not found"; exit 1; }
+
+oneline() {
+    printf '%s' "$1" | tr '\n' ' ' | cut -c1-200
+}
+
+failed=0
+for tool in $TOOLS; do
+    before=$("$MISE" current "$tool" 2>/dev/null)
+    out=$("$MISE" up "$tool" 2>&1)
+    status=$?
+    after=$("$MISE" current "$tool" 2>/dev/null)
+    if [ "$status" -ne 0 ]; then
+        log "ERROR: mise up $tool failed (EXIT=$status): $(oneline "$out")"
+        failed=1
+    elif [ "$before" = "$after" ]; then
+        log "OK: $tool ${after:-unknown} (no change)"
+    else
+        log "OK: $tool ${before:-none} -> ${after:-unknown}"
+    fi
+done
+
+# mise の外（node の global npm）に同名の CLI が居ると PATH を横取りして更新が効かなくなる。
+# 実際に node 24.13.0 配下の codex 0.145.0 が crowd_agent で mise 版を隠していた（2026-09-10）。
+# 消すのは人間の判断に委ね、検知だけログに残す。
+for pkg in @openai/codex @anthropic-ai/claude-code; do
+    for dir in "$HOME"/.local/share/mise/installs/node/*/lib/node_modules/"$pkg"; do
+        [ -d "$dir" ] || continue
+        log "WARN: mise 管理外の $pkg が $dir に居る（PATH を横取りする。npm rm -g で消す）"
+    done
+done
+
+exit "$failed"

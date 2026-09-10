@@ -1,0 +1,40 @@
+{{- /*
+  claude-code / codex の日次更新を launchd に登録する plist（mac のみ）。
+  両 CLI は weight lite 以上でしか入れないので slim では出力しない（空レンダ → chezmoi は
+  ターゲットを作らない）。実行ファイルは home/dot_local/bin/executable_ai-cli-update（ロジックの正本）。
+  StartCalendarInterval で毎日 5:00。スリープ中に時刻を過ぎた場合、launchd は次の起床時に走らせる。
+  RunAtLoad は付けない（apply / ログインのたびに走らせる必要はなく、1 日 1 回で足りる）。
+  作業時間帯を避けるのは、mise up が install ディレクトリを差し替えるため、
+  実行中の codex / claude が読み込み途中のファイルを掴んでいる時間を減らしたいから。
+  plist の ProgramArguments は launchd が環境変数を展開しないため .chezmoi.homeDir で絶対パス化する。
+*/ -}}
+{{- $p := includeTemplate "profile" . | fromJson -}}
+{{- if and (eq .chezmoi.os "darwin") (ne $p.weight "slim") }}
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.parin1213.ai-cli-update</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>{{ .chezmoi.homeDir }}/.local/bin/ai-cli-update</string>
+    </array>
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>5</integer>
+        <key>Minute</key>
+        <integer>0</integer>
+    </dict>
+    <key>ProcessType</key>
+    <string>Background</string>
+    <key>LowPriorityIO</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>{{ .chezmoi.homeDir }}/.local/state/ai-cli-update.launchd.log</string>
+    <key>StandardErrorPath</key>
+    <string>{{ .chezmoi.homeDir }}/.local/state/ai-cli-update.launchd.log</string>
+</dict>
+</plist>
+{{- end -}}

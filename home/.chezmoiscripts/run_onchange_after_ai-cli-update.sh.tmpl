@@ -1,0 +1,18 @@
+{{- /*
+  claude-code / codex 日次更新の launchd 登録ブリッジ（mac かつ weight lite 以上のみ。他は空レンダ→skip）。
+  正本は Library/LaunchAgents/com.parin1213.ai-cli-update.plist.tmpl。下にそのハッシュを埋めてあるので、
+  plist を変えた apply のときだけ再実行される（vault-sync と同じ思想）。
+  bootout は初回登録時に何も無くて失敗するのが正常なので許容する（冪等登録）。
+*/ -}}
+{{- $p := includeTemplate "profile" . | fromJson -}}
+{{- if and (eq .chezmoi.os "darwin") (ne $p.weight "slim") -}}
+#!/bin/sh
+# plist hash: {{ include "Library/LaunchAgents/com.parin1213.ai-cli-update.plist.tmpl" | sha256sum }}
+set -eu
+LABEL="com.parin1213.ai-cli-update"
+PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
+UID_NUM=$(id -u)
+launchctl bootout "gui/$UID_NUM/$LABEL" >/dev/null 2>&1 || true
+launchctl bootstrap "gui/$UID_NUM" "$PLIST"
+echo "==> launchd registered: $LABEL"
+{{- end }}
