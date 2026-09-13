@@ -1,5 +1,21 @@
 {
   "model": "opus",
+{{- if ne .chezmoi.os "windows" }}
+  "hooks": {
+    "SessionStart": [
+      { "hooks": [{ "type": "command", "command": "{{ .chezmoi.homeDir }}/.local/bin/zellij-tab-title working" }] }
+    ],
+    "UserPromptSubmit": [
+      { "hooks": [{ "type": "command", "command": "{{ .chezmoi.homeDir }}/.local/bin/zellij-tab-title working" }] }
+    ],
+    "Stop": [
+      { "hooks": [{ "type": "command", "command": "{{ .chezmoi.homeDir }}/.local/bin/zellij-tab-title waiting" }] }
+    ],
+    "Notification": [
+      { "hooks": [{ "type": "command", "command": "{{ .chezmoi.homeDir }}/.local/bin/zellij-tab-title attention" }] }
+    ]
+  },
+{{- end }}
   "permissions": {
     "allow": [
       "Bash(bin/rails --version)",

@@ -1,0 +1,75 @@
+#!/usr/bin/env zsh
+# zellij-tab-title — タブ名を「そのタブでいま走っているもの」に追従させる。
+#
+# なぜ: Claude Code は会話の要約をペインタイトルに出しているが pane_frames を切っているので画面に出ない。
+#       タブ名へ写せば、並んだタブから「どれが何の話で、どれが自分の返事待ちか」が一目で分かる。
+#
+# 使い方: zellij-tab-title [working|waiting|attention|plain]
+#   working   ✳ 作業中（Claude Code の SessionStart / UserPromptSubmit から）
+#   waiting   ● 応答が返って自分の番（Stop から）
+#   attention ▲ 許可・入力待ち（Notification から）
+#   plain     記号なし。素のシェル用にリポジトリ（worktree）のディレクトリ名を出す（zsh の chpwd から）
+#
+# 手で付けたタブ名は書き換えない。自分が最後に付けた名前を state に控え、
+# 既定名（Tab #N）か その控えと一致するタブだけを対象にする。
+
+emulate -L zsh
+
+[[ -n ${ZELLIJ-} && -n ${ZELLIJ_PANE_ID-} ]] || exit 0
+(( $+commands[zellij] && $+commands[jq] )) || exit 0
+
+local mode=${1:-working} marker
+case $mode in
+  working)   marker='✳ ' ;;
+  waiting)   marker='● ' ;;
+  attention) marker='▲ ' ;;
+  plain)     marker='' ;;
+  *)         exit 0 ;;
+esac
+
+local -i max_width=15
+
+label_from_cwd() {
+  local root
+  root=$(git rev-parse --show-toplevel 2>/dev/null)
+  print -r -- "${${root:t}:-${PWD:t}}"
+}
+
+fit() {
+  local text=$1
+  (( ${(m)#text} <= max_width )) && { print -r -- $text; return }
+  local cut=${(mr:$((max_width - 1)):)text}
+  print -r -- "${cut%% ##}…"
+}
+
+local info
+info=$(zellij action list-panes --tab --command --json 2>/dev/null | jq -r \
+  --argjson pid "$ZELLIJ_PANE_ID" '
+    map(select((.is_plugin | not) and .id == $pid))[0] // empty
+    | [.tab_id, .tab_name, .title, (.pane_command // "")] | @tsv') || exit 0
+[[ -n $info ]] || exit 0
+
+local tab_id tab_name pane_title pane_command
+IFS=$'\t' read -r tab_id tab_name pane_title pane_command <<<$info
+
+local base
+if [[ $mode == plain ]]; then
+  base=$(label_from_cwd)
+else
+  # Claude Code は "✳ <要約>" の形でタイトルを出す。要約がまだ無いとタイトルはコマンド行のまま
+  base=${${pane_title#✳}## }
+  [[ -z $base || $pane_title == $pane_command ]] && base=$(label_from_cwd)
+fi
+[[ -n $base ]] || exit 0
+
+local name="${marker}$(fit $base)"
+[[ $name == $tab_name ]] && exit 0
+
+local state_dir=${XDG_STATE_HOME:-$HOME/.local/state}/zellij-tab-title/${ZELLIJ_SESSION_NAME:-default}
+local state_file=$state_dir/$tab_id
+local last=''
+[[ -r $state_file ]] && last=$(<$state_file)
+[[ $tab_name == 'Tab #'<-> || $tab_name == $last ]] || exit 0
+
+zellij action rename-tab-by-id $tab_id $name >/dev/null 2>&1 || exit 0
+mkdir -p $state_dir && print -r -- $name >| $state_file
