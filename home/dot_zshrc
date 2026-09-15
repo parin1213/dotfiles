@@ -55,6 +55,14 @@ else
 fi
 unset _zcompdump
 
+# ngrok の補完スクリプトは compdef を呼ぶので compinit より後に置く。
+# login profile 側に置くと compdef 未定義のまま評価され、シェルを開くたびに
+# "command not found: compdef" が 2 行出る（ngrok のインストーラが .zprofile に
+# 直接書き込むため、再発したらここへ移し直す）。
+if command -v ngrok &>/dev/null; then
+  eval "$(ngrok completion)"
+fi
+
 # fzf shell integration
 # - macOS (公式 install): ~/.fzf.zsh
 # - Linux apt (Ubuntu/Debian): /usr/share/doc/fzf/examples/*.zsh
