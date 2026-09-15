@@ -3,16 +3,16 @@
 {{- if ne .chezmoi.os "windows" }}
   "hooks": {
     "SessionStart": [
-      { "hooks": [{ "type": "command", "command": "{{ .chezmoi.homeDir }}/.local/bin/zellij-tab-title working" }] }
+      { "hooks": [{ "type": "command", "command": "{{ .chezmoi.homeDir }}/.local/bin/tab-title working" }] }
     ],
     "UserPromptSubmit": [
-      { "hooks": [{ "type": "command", "command": "{{ .chezmoi.homeDir }}/.local/bin/zellij-tab-title working" }] }
+      { "hooks": [{ "type": "command", "command": "{{ .chezmoi.homeDir }}/.local/bin/tab-title working" }] }
     ],
     "Stop": [
-      { "hooks": [{ "type": "command", "command": "{{ .chezmoi.homeDir }}/.local/bin/zellij-tab-title waiting" }] }
+      { "hooks": [{ "type": "command", "command": "{{ .chezmoi.homeDir }}/.local/bin/tab-title waiting" }] }
     ],
     "Notification": [
-      { "hooks": [{ "type": "command", "command": "{{ .chezmoi.homeDir }}/.local/bin/zellij-tab-title attention" }] }
+      { "hooks": [{ "type": "command", "command": "{{ .chezmoi.homeDir }}/.local/bin/tab-title attention" }] }
     ]
   },
 {{- end }}

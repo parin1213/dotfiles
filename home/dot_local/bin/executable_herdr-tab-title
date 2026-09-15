@@ -1,0 +1,73 @@
+#!/usr/bin/env zsh
+# herdr のタブ名を「そのタブでいま走っているもの」に追従させる。
+#
+# なぜ: herdr のサイドバーは状態（作業中 / 許可待ち / 完了）を出すが、タブ名は既定で連番のまま。
+#       Claude Code が出している会話の要約をタブ名へ写すと、状態と中身が 1 行で揃う。
+#       状態記号はサイドバーが持つので、ここでは付けない。
+#
+# 使い方: herdr-tab-title [working|waiting|attention|auto|plain]
+#   working / waiting / attention / auto
+#         Claude Code のターミナルタイトル（要約）。無ければリポジトリ名。
+#         状態の呼び分けは受け取るだけで区別しない（状態はサイドバーが持つ）。
+#   plain リポジトリ（worktree）のディレクトリ名。素のシェルの chpwd から
+#
+# 手で付けたタブ名は書き換えない。自分が最後に付けた名前を state に控え、
+# 既定名（連番）か その控えと一致するタブだけを対象にする。
+
+emulate -L zsh
+
+[[ -n ${HERDR_ENV-} && -n ${HERDR_PANE_ID-} && -n ${HERDR_TAB_ID-} ]] || exit 0
+local herdr=${HERDR_BIN_PATH:-}
+[[ -n $herdr && -x $herdr ]] || herdr=${commands[herdr]:-}
+[[ -n $herdr ]] || exit 0
+(( $+commands[jq] )) || exit 0
+
+local mode=${1:-auto}
+case $mode in
+  plain)                                  ;;
+  auto|working|waiting|attention) mode=auto ;;
+  *)                              exit 0  ;;
+esac
+
+local -i max_width=15
+
+label_from_cwd() {
+  local root
+  root=$(git rev-parse --show-toplevel 2>/dev/null)
+  print -r -- "${${root:t}:-${PWD:t}}"
+}
+
+fit() {
+  local text=$1
+  (( ${(m)#text} <= max_width )) && { print -r -- $text; return }
+  local cut=${(mr:$((max_width - 1)):)text}
+  print -r -- "${cut%% ##}…"
+}
+
+local base
+if [[ $mode == plain ]]; then
+  base=$(label_from_cwd)
+else
+  base=$("$herdr" pane get "$HERDR_PANE_ID" 2>/dev/null \
+    | jq -r '.result.pane.terminal_title_stripped // empty') || exit 0
+  [[ -n $base ]] || base=$(label_from_cwd)
+fi
+[[ -n $base ]] || exit 0
+
+local name=$(fit $base)
+
+local tab_json label number
+tab_json=$("$herdr" tab get "$HERDR_TAB_ID" 2>/dev/null) || exit 0
+label=$(print -r -- $tab_json | jq -r '.result.tab.label // empty')
+number=$(print -r -- $tab_json | jq -r '.result.tab.number // empty')
+[[ $name == $label ]] && exit 0
+
+local state_dir=${XDG_STATE_HOME:-$HOME/.local/state}/herdr-tab-title
+local state_file=$state_dir/${HERDR_TAB_ID//:/_}
+local last=''
+[[ -r $state_file ]] && last=$(<$state_file)
+# 既定名は連番。それか自分が前回付けた名前のときだけ書き換える。
+[[ $label == $number || $label == $last ]] || exit 0
+
+"$herdr" tab rename "$HERDR_TAB_ID" "$name" >/dev/null 2>&1 || exit 0
+mkdir -p $state_dir && print -r -- $name >| $state_file

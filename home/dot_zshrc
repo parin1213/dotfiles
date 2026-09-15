@@ -131,13 +131,13 @@ if [[ -f ~/.zfunc/_dora ]]; then
   autoload -Uz compinit && compinit -u
 fi
 
-# zellij のタブ名を cwd のリポジトリ名に追従させる（Claude Code が走るタブは hooks 側が付ける）。
+# タブ名を cwd のリポジトリ名に追従させる（Claude Code が走るタブは hooks 側が付ける）。
 # chpwd だけで足りる: 名前の元が cwd なので、毎プロンプトで問い合わせても結果は変わらない。
-if [[ -n ${ZELLIJ-} && -x $HOME/.local/bin/zellij-tab-title ]]; then
+if [[ ( -n ${HERDR_ENV-} || -n ${ZELLIJ-} ) && -x $HOME/.local/bin/tab-title ]]; then
   autoload -Uz add-zsh-hook
-  _zellij_tab_title() { "$HOME/.local/bin/zellij-tab-title" plain }
-  add-zsh-hook chpwd _zellij_tab_title
-  _zellij_tab_title
+  _tab_title() { "$HOME/.local/bin/tab-title" plain }
+  add-zsh-hook chpwd _tab_title
+  _tab_title
 fi
 
 # =========================================

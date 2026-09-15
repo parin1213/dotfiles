@@ -1,0 +1,10 @@
+#!/usr/bin/env zsh
+# いま走っている multiplexer 向けのタブ名スクリプトへ振り分ける。
+# Claude Code の hooks はこれ 1 本を呼ぶ。どちらでもなければ黙って終わる。
+#
+# HERDR を先に見る: herdr のサーバを zellij の中から起動すると ZELLIJ 系の環境変数が
+# ペインへ引き継がれるため、ZELLIJ を先に見ると herdr のペインで zellij 側へ流れる。
+emulate -L zsh
+[[ -n ${HERDR_ENV-} ]] && exec "$HOME/.local/bin/herdr-tab-title" "$@"
+[[ -n ${ZELLIJ-} ]] && exec "$HOME/.local/bin/zellij-tab-title" "$@"
+exit 0
