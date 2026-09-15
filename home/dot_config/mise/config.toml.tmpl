@@ -71,6 +71,12 @@ yq = "latest"
 gh = "latest"
 ast-grep = "latest"
 "aqua:zellij-org/zellij" = "latest"
+{{ if eq $p.env "mac" -}}
+# herdr: Ghostty の既定セッションを zellij から置き換えて試用中。エージェントの状態
+# (作業中/許可待ち/完了) をサイドバーに出し、headless セッションへ外から命令を打てる。
+# Mac に限定しているのは、他機へ配る前に CPU 使用量と日本語入力の相性を見るため。
+"aqua:herdrdev/herdr" = "latest"
+{{ end -}}
 {{ if ne $p.weight "slim" -}}
 # --- lite 以上（surface-go3 / WSL / mac / 通常 Linux）: agent core ＋ 軽い extras ＋ 個人 npm ---
 # slim 機（raspi 等・素のシェル用途）では除外。必要になったら個別に mise use する。
