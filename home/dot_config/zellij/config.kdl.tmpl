@@ -461,10 +461,9 @@ pane_frames false
 //   - true (default)
 //   - false
 //
-// 永続化は欲しい（端末/デーモン再起動を跨いでレイアウト・tab・cwd を復元したい）ので有効のまま。
-// resurrect 時の "Press ENTER to run" 待ちは attach 側の `-f`(--force-run-commands) で即実行に
-// する（SSH 自動アタッチを `zellij attach -c -f main` にしてある）。よって serialization は切らない。
-session_serialization true
+// 復元は無効。復元されるのはレイアウトと cwd だけで、その中で走っていた Claude Code 等の
+// 状態は戻らない。空のペインだけが大量に付いてくるので、attach は常に素のセッションから始める。
+session_serialization false
  
 // Whether pane viewports are serialized along with the session, default is false
 // Options:
@@ -557,12 +556,12 @@ session_serialization true
 // Whether to show tips on startup
 // Default: true
 // 
-// show_startup_tips false
+show_startup_tips false
  
 // Whether to show release notes on first version run
 // Default: true
 // 
-// show_release_notes false
+show_release_notes false
  
 // Whether to enable mouse hover effects and pane grouping functionality
 // default is true
