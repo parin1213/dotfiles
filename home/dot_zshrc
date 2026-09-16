@@ -1,16 +1,12 @@
 # =========================================
-# 0. SSH 接続時は zellij に自動アタッチ（単一 "main" セッション）
-# =========================================
-# 対話 SSH かつ未 zellij かつ zellij が PATH に居るときだけ起動する。
-# - 単一 "main" に統一: モバイル回線断→再接続で同じ作業に復帰できる。
-# - exec で置換: zellij を抜けると ssh も閉じる（余計なシェルを残さない）。
-# - 非対話 `ssh host <cmd>` は interactive 判定で素通り（provision を壊さない）。
-# - zellij が開く新ペイン内は $ZELLIJ がセット済みなので再入しない。
-# - -f(--force-run-commands): 直列化セッションを resurrect する際の "Press ENTER to run"
-#   待ちをスキップして即復元する（永続は残しつつシェル自動復元をデフォルトに）。
-# .zprofile(login) が mise activate 済みなので、この時点で zellij(shim) は PATH 上。
-if [[ -o interactive && -n "$SSH_CONNECTION" && -z "$ZELLIJ" ]] && command -v zellij >/dev/null 2>&1; then
-  exec zellij attach -c -f main
+# 0. SSH 接続時は herdr に自動アタッチ（常駐セッション）
+#
+# 対話 SSH かつ未 herdr かつ herdr が PATH に居るときだけ起動する。
+# - exec で置換: herdr を抜けると ssh も閉じる（余計なシェルを残さない）。
+# - herdr が開くペイン内は $HERDR_ENV がセット済みなので再入しない。
+# - .zprofile(login) が mise activate 済みなので、この時点で herdr(shim) は PATH 上。
+if [[ -o interactive && -n "$SSH_CONNECTION" && -z "$HERDR_ENV" ]] && command -v herdr >/dev/null 2>&1; then
+  exec herdr
 fi
 
 # =========================================
@@ -133,9 +129,9 @@ fi
 
 # タブ名を cwd のリポジトリ名に追従させる（Claude Code が走るタブは hooks 側が付ける）。
 # chpwd だけで足りる: 名前の元が cwd なので、毎プロンプトで問い合わせても結果は変わらない。
-if [[ ( -n ${HERDR_ENV-} || -n ${ZELLIJ-} ) && -x $HOME/.local/bin/tab-title ]]; then
+if [[ -n ${HERDR_ENV-} && -x $HOME/.local/bin/herdr-tab-title ]]; then
   autoload -Uz add-zsh-hook
-  _tab_title() { "$HOME/.local/bin/tab-title" plain }
+  _tab_title() { "$HOME/.local/bin/herdr-tab-title" plain }
   add-zsh-hook chpwd _tab_title
   _tab_title
 fi

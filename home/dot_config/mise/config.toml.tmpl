@@ -9,6 +9,9 @@
 {{ `claude-code = { version = "latest", bin = "claude", platforms = { windows-x64 = { bin = "claude.exe", url = "https://storage.googleapis.com/claude-code-dist-86c565f3-f756-42ad-8dfa-d59b1c096819/claude-code-releases/{{ version }}/win32-x64/claude.exe" } }, url = 'https://storage.googleapis.com/claude-code-dist-86c565f3-f756-42ad-8dfa-d59b1c096819/claude-code-releases/{{ version }}/{{ os(macos="darwin") }}-{{ arch() }}/claude', version_list_url = "https://storage.googleapis.com/claude-code-dist-86c565f3-f756-42ad-8dfa-d59b1c096819/claude-code-releases/latest" }` }}
 # codex は npm backend を明示（short-name だと aqua 側を引いて mise up が落ちる。詳細は Unix 側の同項）。
 "npm:@openai/codex" = "latest"
+# herdr: 対話セッションの multiplexer（Unix 側と同じ理由）。Windows ネイティブは Mac / Linux より
+# 対応が遅れているので、不調なら WSL 側の herdr に寄せる。
+"aqua:herdrdev/herdr" = "latest"
 node = "latest"
 python = "latest"
 deno = "latest"
@@ -70,13 +73,9 @@ jq = "latest"
 yq = "latest"
 gh = "latest"
 ast-grep = "latest"
-"aqua:zellij-org/zellij" = "latest"
-{{ if eq $p.env "mac" -}}
-# herdr: Ghostty の既定セッションを zellij から置き換えて試用中。エージェントの状態
-# (作業中/許可待ち/完了) をサイドバーに出し、headless セッションへ外から命令を打てる。
-# Mac に限定しているのは、他機へ配る前に CPU 使用量と日本語入力の相性を見るため。
+# herdr: 対話セッションの multiplexer。エージェントの状態 (作業中/許可待ち/完了) を
+# サイドバーに出し、attach しているクライアントが無いセッションへも外から命令を打てる。
 "aqua:herdrdev/herdr" = "latest"
-{{ end -}}
 {{ if ne $p.weight "slim" -}}
 # --- lite 以上（surface-go3 / WSL / mac / 通常 Linux）: agent core ＋ 軽い extras ＋ 個人 npm ---
 # slim 機（raspi 等・素のシェル用途）では除外。必要になったら個別に mise use する。

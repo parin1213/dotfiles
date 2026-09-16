@@ -50,17 +50,11 @@ shell-integration-features = cursor,sudo,title
 #    login shell 経由で起動し mise(shim) を PATH に乗せる（直接 exec だと mise activate 前で
 #    multiplexer が PATH に無い）。
 #    SSH 先は接続先 .zshrc 側で自動アタッチ済みなので、これはローカル GUI 端末専用。
-{{- if eq $p.env "mac" }}
 command = zsh -l -c "herdr"
-{{- else }}
-command = zsh -l -c "zellij attach -c -f main"
-{{- end }}
 # ② 端末の「新タブ」を OS タブではなく multiplexer の新タブにする。1ウィンドウ=1クライアントを保つ。
-{{- if eq $p.env "mac" }}
 #    herdr は prefix 方式なので Ctrl+b(0x02) + c を送る。
+{{- if eq $p.os "darwin" }}
 keybind = cmd+t=text:\x02c
-{{- else if eq $p.os "darwin" }}
-keybind = cmd+t=text:\x1bt
 {{- else }}
-keybind = ctrl+shift+t=text:\x1bt
+keybind = ctrl+shift+t=text:\x02c
 {{- end }}
