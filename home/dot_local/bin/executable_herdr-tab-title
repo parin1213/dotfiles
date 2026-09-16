@@ -28,7 +28,9 @@ case ${1:-auto} in
   *) exit 0 ;;
 esac
 
-local -i max_width=15
+# タブバーは狭く、詳しい話はサイドバーが terminal_title_stripped を丸ごと出す。
+# ここは「どのタブか見分けがつく」最小限でよいので短く切る。HERDR_TAB_TITLE_WIDTH で変えられる。
+local -i max_width=${HERDR_TAB_TITLE_WIDTH:-10}
 
 label_from_cwd() {
   local root
@@ -36,11 +38,21 @@ label_from_cwd() {
   print -r -- "${${root:t}:-${PWD:t}}"
 }
 
+# 表示幅で測って切る（日本語は 2 幅）。省略記号は付けない。1 セル惜しいのと、
+# 切れていること自体はサイドバーを見れば分かるため。助詞・記号の直後で切れるなら
+# そこまで戻して、語の途中でぶつ切りになるのを避ける。
 fit() {
   local text=$1
   (( ${(m)#text} <= max_width )) && { print -r -- $text; return }
-  local cut=${(mr:$((max_width - 1)):)text}
-  print -r -- "${cut%% ##}…"
+  local cut=${(mr:$max_width:)text}
+  # 語の途中でぶつ切りにしない。末尾が助詞・区切り記号・空白ならそこまで戻す。
+  # ただし半分より短くなるなら戻さない（見分けがつかなくなるため）。
+  local trimmed=$cut
+  while [[ -n $trimmed && $trimmed[-1] == (の|を|に|が|は|で|へ|と|や|も|　|" "|・|:|：|/|／|\||｜|-) ]]; do
+    trimmed=$trimmed[1,-2]
+  done
+  (( ${(m)#trimmed} >= max_width / 2 )) && cut=$trimmed
+  print -r -- $cut
 }
 
 # エージェントが出しているタイトルが第一候補。無い（素のシェル等）ときだけ cwd に落とす。
