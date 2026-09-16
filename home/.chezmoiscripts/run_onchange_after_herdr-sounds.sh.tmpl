@@ -1,0 +1,40 @@
+{{- /*
+  herdr の通知音を VOICEVOX から焼く（Unix のみ。Windows では空レンダ→スキップ）。
+  音声そのものはリポジトリに置かない。公開リポなので再配布になるため、
+  各マシンで手元の VOICEVOX から生成する。
+  セリフはこのスクリプト内に書いてあり、run_onchange は内容が変わった時だけ再実行するので、
+  セリフを直した apply のときだけ焼き直る。
+*/ -}}
+{{ if ne .chezmoi.os "windows" -}}
+#!/bin/sh
+set -eu
+
+DONE_TEXT='作業が終了したのだ'
+REQUEST_TEXT='内容を見てほしいのだ'
+DIR="$HOME/.config/herdr/sounds"
+
+# mise の shim を PATH に乗せる。apply が mise 未活性のシェルから走ることがある。
+[ -d "$HOME/.local/share/mise/shims" ] && PATH="$HOME/.local/share/mise/shims:$PATH"
+export PATH
+
+command -v zd >/dev/null 2>&1     || exit 0
+command -v ffmpeg >/dev/null 2>&1 || exit 0
+# engine が落ちていたら諦める。ここで VOICEVOX を起こしに行くと apply が待たされる。
+curl -fsS -m 2 http://127.0.0.1:50021/version >/dev/null 2>&1 || {
+  echo "herdr-sounds: VOICEVOX engine が応答しないので生成をスキップ（herdr の既定音に落ちる）"
+  exit 0
+}
+
+mkdir -p "$DIR"
+TMP="$(mktemp -d)"
+trap 'rm -rf "$TMP"' EXIT
+
+bake() {
+  zd -o "$TMP/$2.wav" --no-play -q "$1" >/dev/null 2>&1 || return 0
+  ffmpeg -y -loglevel error -i "$TMP/$2.wav" -codec:a libmp3lame -q:a 4 "$DIR/$2.mp3" || return 0
+  echo "herdr-sounds: $2.mp3 を生成"
+}
+
+bake "$DONE_TEXT"    zundamon-done
+bake "$REQUEST_TEXT" zundamon-request
+{{ end -}}
