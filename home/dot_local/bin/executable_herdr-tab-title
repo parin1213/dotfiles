@@ -56,11 +56,22 @@ fit() {
 }
 
 # エージェントが出しているタイトルが第一候補。無い（素のシェル等）ときだけ cwd に落とす。
-local base
-base=$("$herdr" pane get "$HERDR_PANE_ID" 2>/dev/null \
+local title base
+title=$("$herdr" pane get "$HERDR_PANE_ID" 2>/dev/null \
   | jq -r '.result.pane.terminal_title_stripped // empty') || exit 0
+base=$title
 [[ -n $base ]] || base=$(label_from_cwd)
 [[ -n $base ]] || exit 0
+
+# Spaces 一覧は同じディレクトリ名のワークスペースが並ぶと見分けがつかない。
+# いま何の話をしているかを $topic として渡す。エージェントが居なければ場所の名前で代替。
+if [[ -n ${HERDR_WORKSPACE_ID-} ]]; then
+  local topic=$title
+  [[ -n $topic ]] || topic=$("$herdr" workspace get "$HERDR_WORKSPACE_ID" 2>/dev/null \
+    | jq -r '.result.workspace.label // empty')
+  [[ -n $topic ]] && "$herdr" workspace report-metadata "$HERDR_WORKSPACE_ID" \
+    --source herdr-tab-title --token "topic=$topic" >/dev/null 2>&1
+fi
 
 local name=$(fit $base)
 
