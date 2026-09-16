@@ -5,11 +5,12 @@
 #       Claude Code が出している会話の要約をタブ名へ写すと、状態と中身が 1 行で揃う。
 #       状態記号はサイドバーが持つので、ここでは付けない。
 #
+# タイトルを常に優先し、ディレクトリ名は**タイトルが無いときだけ**の代役にする。
+# 目立たせたいのは「何の話をしているか」であって、どこで作業しているかではない。
+#
 # 使い方: herdr-tab-title [working|waiting|attention|auto|plain]
-#   working / waiting / attention / auto
-#         Claude Code のターミナルタイトル（要約）。無ければリポジトリ名。
-#         状態の呼び分けは受け取るだけで区別しない（状態はサイドバーが持つ）。
-#   plain リポジトリ（worktree）のディレクトリ名。素のシェルの chpwd から
+#   引数は呼び出し元の都合で受け取るだけで、付ける名前は変えない
+#   （状態の区別はサイドバーが持つ）。
 #
 # 手で付けたタブ名は書き換えない。自分が最後に付けた名前を state に控え、
 # 既定名（連番）か その控えと一致するタブだけを対象にする。
@@ -22,11 +23,9 @@ local herdr=${HERDR_BIN_PATH:-}
 [[ -n $herdr ]] || exit 0
 (( $+commands[jq] )) || exit 0
 
-local mode=${1:-auto}
-case $mode in
-  plain)                                  ;;
-  auto|working|waiting|attention) mode=auto ;;
-  *)                              exit 0  ;;
+case ${1:-auto} in
+  plain|auto|working|waiting|attention) ;;
+  *) exit 0 ;;
 esac
 
 local -i max_width=15
@@ -44,14 +43,11 @@ fit() {
   print -r -- "${cut%% ##}…"
 }
 
+# エージェントが出しているタイトルが第一候補。無い（素のシェル等）ときだけ cwd に落とす。
 local base
-if [[ $mode == plain ]]; then
-  base=$(label_from_cwd)
-else
-  base=$("$herdr" pane get "$HERDR_PANE_ID" 2>/dev/null \
-    | jq -r '.result.pane.terminal_title_stripped // empty') || exit 0
-  [[ -n $base ]] || base=$(label_from_cwd)
-fi
+base=$("$herdr" pane get "$HERDR_PANE_ID" 2>/dev/null \
+  | jq -r '.result.pane.terminal_title_stripped // empty') || exit 0
+[[ -n $base ]] || base=$(label_from_cwd)
 [[ -n $base ]] || exit 0
 
 local name=$(fit $base)
