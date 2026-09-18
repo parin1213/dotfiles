@@ -61,6 +61,9 @@ chezmoi = "latest"
 zoxide = "latest"
 starship = "latest"
 gitleaks = "latest"
+# pre-commit: グローバル git hook が全リポで呼ぶ。config に載せないと prune で実体が消えて
+# hook ごと落ちる（brew 版に暗黙で依存していた状態を解消した）。
+pre-commit = "latest"
 # サプライチェーン L3: 全言語の lockfile を OSV/GHSA と突合（詳細は CLAUDE.md「サプライチェーンセキュリティ」）。
 osv-scanner = "latest"
 # yt-dlp: Somen 動画の目標ステ追従 (score-checker の somen-target-followup スキル) が WSL 経由で呼ぶ。
