@@ -20,9 +20,6 @@
                                              "PackageIdentifier":  "Microsoft.VisualStudio.Community"
                                          },
                                          {
-                                             "PackageIdentifier":  "Zellij.Zellij"
-                                         },
-                                         {
                                              "PackageIdentifier":  "jdx.mise"
                                          },
                                          {

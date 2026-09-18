@@ -109,7 +109,7 @@ dotfiles/
     │   ├── shell/common.sh             # zsh/bash 共通層（Unix）
     │   ├── starship.toml.tmpl          # プロンプト（OS ロゴを表示）
     │   ├── mise/config.toml.tmpl       # OS 分岐 ＋ raspi は slim
-    │   ├── ghostty/ / gh/ / zellij/
+    │   ├── ghostty/ / gh/ / herdr/
     │   └── …
     ├── Documents/…/Microsoft.PowerShell_profile.ps1            # Windows
     └── AppData/…/WindowsTerminal/…/settings.json.tmpl          # Windows（背景画像パス注入）
@@ -154,7 +154,7 @@ distribute -NoPush                 # push 済みのとき（pull + apply だけ�
 
 ### mise ツールセット
 
-- **全 OS 共通の軽量 CLI**：`rg` / `fd` / `eza` / `zoxide` / `starship` / `gh` / `jq` / `yq` / `gitleaks` / `ast-grep` / `zellij` / `chezmoi`。
+- **全 OS 共通の軽量 CLI**：`rg` / `fd` / `eza` / `zoxide` / `starship` / `gh` / `jq` / `yq` / `gitleaks` / `ast-grep` / `herdr` / `chezmoi`。
 - **raspi 以外**はこれに加えてフルセット：`node` / `python` / `ruby` / `deno` / `rust` / `terraform` / `dotnet` / `gcloud` / `aws-cli` / npm・pipx パッケージ等。
 - **raspi は slim**（hostname `raspi*` で自動）。コンパイル系（ruby/python）や大型 DL（dotnet/gcloud）を除外。
 - mise config は全 OS 管理（Windows は `config.toml.tmpl` の raw 文字列で `{{ version }}` 記法の衝突を回避）。
