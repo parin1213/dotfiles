@@ -29,7 +29,7 @@
 {{- if eq $p.weight "slim" }}
 - slim 機（素のシェル用途）。重いランタイムは入れない（mise は軽量ツールのみ）。必要時だけ個別に `mise use`。
 {{- else if eq $p.weight "lite" }}
-- lite 機（低スペック）。agent core（node/python/claude-code/codex 等）までは入るが、重い/クラウド系（ruby/dotnet/gcloud/aws-cli/terraform/gemini-cli）は除外。必要時だけ個別に `mise use`。
+- lite 機（低スペック）。agent core（node/python/claude-code/codex 等）までは入るが、重い/クラウド系（ruby/dotnet/gcloud/aws-cli/terraform）は除外。必要時だけ個別に `mise use`。
 {{- end }}
 - dotfiles は `~/src/dotfiles`（git で同期）。`chezmoi apply` で配置。
 {{- else if eq $p.os "darwin" }}

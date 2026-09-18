@@ -22,6 +22,3 @@ AppData
 {{ if eq .chezmoi.os "linux" -}}
 Pictures
 {{ end -}}
-{{ if eq .chezmoi.os "darwin" -}}
-.gemini
-{{ end -}}

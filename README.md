@@ -103,7 +103,7 @@ dotfiles/
     ├── Pictures/                # 背景画像 sakura.jpg / ajisai.jpg（linux は除外）
     ├── .chezmoitemplates/       # 共有テンプレ partial（profile / profile-env / agents-common / agents-env）
     ├── dot_local/bin/           # ~/.local/bin（bootstrap 名前解決 shim 等）
-    ├── dot_agents/ dot_claude/ dot_codex/ dot_gemini/   # エージェント指示（.tmpl）
+    ├── dot_agents/ dot_claude/ dot_codex/               # エージェント指示（.tmpl）
     ├── dot_zshrc / dot_zshenv / dot_zprofile / dot_tmux.conf
     ├── dot_config/
     │   ├── shell/common.sh             # zsh/bash 共通層（Unix）
@@ -169,7 +169,7 @@ distribute -NoPush                 # push 済みのとき（pull + apply だけ�
 | Ubuntu / Debian | Ubuntu / Debian |
 | Raspberry Pi | Pi（hostname `raspi*`。OS が Debian でも Pi ロゴ） |
 
-### エージェント指示（.agents / Claude / Codex / Gemini）
+### エージェント指示（.agents / Claude / Codex）
 
 共通指示の正本は `home/.chezmoitemplates/agents-common.md`。各ツールの指示は、これと環境固有 partial
 （`agents-env.md`）を `includeTemplate` で合成して生成する。
@@ -179,7 +179,6 @@ distribute -NoPush                 # push 済みのとき（pull + apply だけ�
 | `~/.agents/AGENTS.md` | 共通 ＋ 環境固有 |
 | `~/.claude/CLAUDE.md` | 共通 ＋ 環境固有 ＋ Claude 固有（rate limit / permissions / モデル運用） |
 | `~/.codex/AGENTS.md` | 共通 ＋ 環境固有 ＋ Codex 固有 |
-| `~/.gemini/GEMINI.md` | 共通 ＋ 環境固有 |
 
 共通指示を直す → `agents-common.md` を編集 → `chezmoi apply`（全ツールへ波及）。
 
@@ -207,7 +206,7 @@ distribute -NoPush                 # push 済みのとき（pull + apply だけ�
 | **④ 野良（未検証）** | **検収フロー**で取り込んで判断 → ①/③ へ昇格 | 採用後に確定 | `/grill-me` 等の個人配布 |
 
 - 配置: `skills/`（追跡）= ①自作 ＋ ④から採用した skill。`skills-staging/`（gitignore）= ④検収中。
-- **配置先（2 ターゲット）**: Claude=`~/.claude/skills`（`--agent claude-code`）/ 共有=`~/.agents/skills`（`--dir`。Codex / Cursor / Gemini CLI 等が読む標準 dir）。**両 dir は別物**（Claude は `.agents/skills` を読まない）。
+- **配置先（2 ターゲット）**: Claude=`~/.claude/skills`（`--agent claude-code`）/ 共有=`~/.agents/skills`（`--dir`。Codex / Cursor 等が読む標準 dir）。**両 dir は別物**（Claude は `.agents/skills` を読まない）。
   - 注: `gh skill --agent codex` は `~/.codex/skills` へ入れるが Codex の標準読取は `.agents/skills` なので、Codex 向けは `--dir ~/.agents/skills` に固定する。
 - 復元: **`chezmoi apply` に統合**。`run_onchange_after_skills-setup`（sh/ps1）が manifest か setup スクリプトの変わった apply のときだけ導入器を実行し、type 別に **Claude＋共有の両方へ**導入（②=ツールのコマンド、③=`gh skill`、①/④=`--from-local`）。manifest に足して push すれば distribute の通常運用（pull + apply）で全環境に配布される。
   - gh/yq 不在・gh 未認証は skip でなく **fail** させる（skip だとハッシュ不変で二度と走らない。fail なら script state 未記録で次の apply が自動リトライ）

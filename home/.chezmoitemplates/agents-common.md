@@ -1,6 +1,6 @@
 {{- /*
   共通エージェント指示（全ツール・全環境共通）の正本。
-  Claude(CLAUDE.md) / Codex(AGENTS.md) / Gemini(GEMINI.md) / ~/.agents/AGENTS.md が
+  Claude(CLAUDE.md) / Codex(AGENTS.md) / ~/.agents/AGENTS.md が
   chezmoi の {{ template "agents-common.md" . }} で取り込む。
   共通指示を直したいときは、このファイル（chezmoi source:
   home/.chezmoitemplates/agents-common.md）を編集する。

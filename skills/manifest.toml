@@ -7,7 +7,7 @@
 #   own     = 自作 or 野良から採用したもの（このリポの skills/<name>/ から from-local install）
 #
 # 配置先: setup.sh が ①③④ を Claude(~/.claude/skills, --agent claude-code) と
-# 共有(~/.agents/skills, --dir。Codex/Cursor/Gemini CLI 等が読む標準 dir) の両方へ入れる。
+# 共有(~/.agents/skills, --dir。Codex/Cursor 等が読む標準 dir) の両方へ入れる。
 # （gh skill の --agent codex は ~/.codex/skills へ入れるが Codex の標準読取は .agents/skills なので使わない）
 # ② tool は install コマンド自身が配置（ツール同梱の skill-deploy サブコマンドを実行）。
 #

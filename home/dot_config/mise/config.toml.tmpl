@@ -115,12 +115,11 @@ uv = "0.11.8"
 {{ if eq $p.weight "full" -}}
 # --- full 機（WSL / mac / 通常 Linux）のみ: 重い/クラウド系 ---
 # lite（surface-go3 等の低スペック機）では除外。dotnet/gcloud/aws-cli は大型 DL、
-# terraform/gemini-cli はニッチ。必要なら個別に mise use。
+# terraform はニッチ。必要なら個別に mise use。
 # （ruby は precompiled 化で軽くなったため lite 以上ブロックへ移動した。）
 terraform = "latest"
 aws-cli = { version = "latest", symlink_bins = "true" }
 gcloud = "latest"
-gemini-cli = "latest"
 dotnet = "8"
 {{ end -}}
 

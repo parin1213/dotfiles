@@ -67,7 +67,7 @@ OS ネイティブ(install/*)  →  CLI/runtime(mise)  →  設定(chezmoi apply
 | OS パッケージ | `install/packages/{apt.txt,Brewfile,winget-packages.json}`（※現状 env 差なし＝全 Linux 一律） |
 | infra daemon（docker 等） | `.chezmoidata.toml` に列追加 → `profile` で素通し → `profile-env` で `DF_` → `linux.sh` に §節 |
 | **アプリ（HA 等）** | `install/apps/<name>.sh` を置き、対象 env の `apps` に `"<name>"` を足す。**それだけ** |
-| 共通エージェント指示 | `home/.chezmoitemplates/agents-common.md`（CLAUDE/AGENTS/GEMINI が取り込む） |
+| 共通エージェント指示 | `home/.chezmoitemplates/agents-common.md`（CLAUDE/AGENTS が取り込む） |
 | エージェントスキル | `skills/manifest.toml` に宣言。apply の `run_onchange_after_skills-setup` が全環境へ配布（環境差は `requires` で宣言） |
 
 ### アプリ層の作法（app 軸）

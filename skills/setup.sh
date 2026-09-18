@@ -5,7 +5,7 @@
 #
 # 配置先（Agent Skills 仕様準拠の 2 ターゲット）:
 #   - Claude   : ~/.claude/skills      （gh skill の --agent claude-code）
-#   - 共有     : ~/.agents/skills       （--dir 指定。Codex / Cursor / Gemini CLI 等が読む標準 dir）
+#   - 共有     : ~/.agents/skills       （--dir 指定。Codex / Cursor 等が読む標準 dir）
 #   ※ gh skill の --agent codex は ~/.codex/skills へ入れるが、Codex の標準読み取りは
 #     ~/.agents/skills なので、Codex 向けは --dir で .agents/skills に固定する。
 #

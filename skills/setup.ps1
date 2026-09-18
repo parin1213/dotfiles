@@ -6,7 +6,7 @@
 #
 # 配置先（Agent Skills 仕様準拠の 2 ターゲット）:
 #   - Claude : ~/.claude/skills        （gh skill の --agent claude-code）
-#   - 共有   : ~/.agents/skills          （--dir 指定。Codex / Cursor / Gemini CLI 等が読む標準 dir）
+#   - 共有   : ~/.agents/skills          （--dir 指定。Codex / Cursor 等が読む標準 dir）
 #
 # 前提: gh(winget: GitHub.cli・要認証), yq(mise) が PATH 上。
 #   type=tool は対応ツールが mise 導入済みのこと。不在なら fail（次の apply が自動リトライ）。
