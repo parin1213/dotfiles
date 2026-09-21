@@ -214,6 +214,21 @@ repo = "github/gh-stack"
 skill = "gh-stack"
 requires = "gh"
 
+# --- TypeSafe 公式スキル（typesafe-ai org） ---
+[[skill]]
+name = "typesafe-ai"
+type = "ghskill"
+# ベンダ公式（typesafe-ai org / blog=typesafe.ai / MIT）。System One の設計と Choice・Score・Noul の
+# 使い分け、HTTP API と SDK の書き方を持つ純知識スキル。使用時に docs.typesafe.ai の該当ページを
+# 読みに行く設計なので、参照先が自社ドメインに限られることを確認してある。
+# 検収済み（2026-09-21）: skills/typesafe-ai/SKILL.md 149 行と LICENSE のみ。
+# scripts / allowed-tools 無し、外部実行や隠し指示なし。
+repo = "typesafe-ai/skills"
+skill = "typesafe-ai"
+# GitHub release（tag）が無いリポなので、検収した commit SHA で pin する。
+# 戻す条件: 上流が tagged release を出したら pin をそのタグへ切り替える（確認日: 2026-09-21）。
+pin = "65a39f39"
+
 # --- 野良採用（検収フロー通過済み・このリポに vendor して固める） ---
 [[skill]]
 name = "japanese-tech-writing"
