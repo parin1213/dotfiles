@@ -8,7 +8,7 @@
 */ -}}
 {{ if ne .chezmoi.os "windows" -}}
 #!/bin/sh
-# codex standard v1
+# codex standard v2
 export PATH="$HOME/.local/share/mise/shims:$PATH"
 command -v codex >/dev/null 2>&1 || exit 0
 PYBIN="$(command -v python3 || command -v python || true)"
@@ -21,6 +21,8 @@ doc = tomlkit.parse(p.read_text(encoding="utf-8")) if p.exists() else tomlkit.do
 doc["model"] = "gpt-5.5"
 doc["model_reasoning_effort"] = "high"
 doc["personality"] = "pragmatic"
+# 起動時の自己更新確認を止める。更新は ai-cli-update（毎日 mise）が担うので、起動のたびに聞かれると作業が止まる
+doc["check_for_update_on_startup"] = False
 tui = doc.get("tui")
 if tui is None:
     tui = tomlkit.table(); doc["tui"] = tui
