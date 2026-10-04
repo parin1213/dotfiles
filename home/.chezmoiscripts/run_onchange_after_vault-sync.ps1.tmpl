@@ -18,7 +18,12 @@ if ($Existing) {
     Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false
 }
 
-$Action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$ScriptPath`""
+{{- /*
+  powershell.exe を直接起動すると既定ターミナル (Windows Terminal) が窓を開き、
+  -WindowStyle Hidden でも 15 分ごとに一瞬表示される。conhost --headless で窓の無い
+  コンソールを与え、子の git 等もそこで動かす。
+*/}}
+$Action = New-ScheduledTaskAction -Execute "conhost.exe" -Argument "--headless powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$ScriptPath`""
 # RepetitionDuration に [TimeSpan]::MaxValue は使えない（タスク XML の Duration 上限超えで
 # 0x80041318。local-pc の Win10 で実測）。10 年で実質無期限とする。
 $Trigger = New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Minutes 15) -RepetitionDuration (New-TimeSpan -Days 3650)
