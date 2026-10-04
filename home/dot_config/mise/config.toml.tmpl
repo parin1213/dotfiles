@@ -14,6 +14,8 @@
 "aqua:herdrdev/herdr" = "latest"
 node = "latest"
 python = "latest"
+# ruby は Claude Code の ruby-lsp プラグインが呼ぶ gem:ruby-lsp の前提。
+ruby = "latest"
 deno = "latest"
 rust = "latest"
 terraform = "latest"
@@ -21,6 +23,14 @@ terraform = "latest"
 "npm:pnpm" = "latest"
 "npm:zundone-cli" = "latest"
 "npm:sentry" = "latest"
+# Claude Code の LSP プラグイン (typescript-lsp / pyright-lsp / ruby-lsp) が PATH から呼ぶ言語サーバー。
+# typescript-language-server は typescript を同梱しないので、workspace に無いとき用に typescript も入れる。
+"npm:typescript-language-server" = "latest"
+"npm:typescript" = "latest"
+"npm:pyright" = "latest"
+# gem backend の latest はプレリリース (0.27.0.beta*) を拾うので正式版の系列で止める。
+# 戻す条件: 0.27 の正式版が出たら "0.27" に上げる。(2026-10-04)
+"gem:ruby-lsp" = "0.26"
 chezmoi = "latest"
 starship = "latest"
 zoxide = "latest"
@@ -114,6 +124,14 @@ uv = "0.11.8"
 "pipx:markitdown" = "latest"
 "npm:zundone-cli" = "latest"
 "npm:helpdora" = "latest"
+# Claude Code の LSP プラグイン (typescript-lsp / pyright-lsp / ruby-lsp) が PATH から呼ぶ言語サーバー。
+# typescript-language-server は typescript を同梱しないので、workspace に無いとき用に typescript も入れる。
+"npm:typescript-language-server" = "latest"
+"npm:typescript" = "latest"
+"npm:pyright" = "latest"
+# gem backend の latest はプレリリース (0.27.0.beta*) を拾うので正式版の系列で止める。
+# 戻す条件: 0.27 の正式版が出たら "0.27" に上げる。(2026-10-04)
+"gem:ruby-lsp" = "0.26"
 {{ end -}}
 {{ if eq $p.weight "full" -}}
 # --- full 機（WSL / mac / 通常 Linux）のみ: 重い/クラウド系 ---
