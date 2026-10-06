@@ -36,6 +36,7 @@
   },
   "enabledPlugins": {
     "codex@openai-codex": true,
+    "concise@concise": true,
     "rust-analyzer-lsp@claude-plugins-official": true,
     "cc-plugin-you-should-know@builtin": true,
     "claude-md-management@claude-plugins-official": true,
@@ -49,9 +50,22 @@
         "source": "github",
         "repo": "openai/codex-plugin-cc"
       }
+    },
+    "concise": {
+      "source": {
+        "source": "github",
+        "repo": "kmizu/concise"
+      }
     }
   },
   "effortLevel": "high",
+  "pluginConfigs": {
+    "agents-md@builtin": {
+      "options": {
+        "instructionFiles": "claude-md-and-agents-md"
+      }
+    }
+  },
   "skipDangerousModePermissionPrompt": true,
   "theme": "dark",
   "tui": "fullscreen",
