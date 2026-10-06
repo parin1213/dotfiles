@@ -1,21 +1,24 @@
 {
+{{- /* herdr のタブ名と Spaces の $topic を更新する hook。Windows は .ps1 を powershell 経由で呼ぶ。 */ -}}
+{{- $tabTitle := printf "%s/.local/bin/herdr-tab-title" .chezmoi.homeDir }}
+{{- if eq .chezmoi.os "windows" }}
+{{-   $tabTitle = printf "powershell -NoProfile -ExecutionPolicy Bypass -File %s/.local/bin/herdr-tab-title.ps1" (.chezmoi.homeDir | replace "\\" "/") }}
+{{- end }}
   "model": "opus",
-{{- if ne .chezmoi.os "windows" }}
   "hooks": {
     "SessionStart": [
-      { "hooks": [{ "type": "command", "command": "{{ .chezmoi.homeDir }}/.local/bin/herdr-tab-title working" }] }
+      { "hooks": [{ "type": "command", "command": "{{ $tabTitle }} working" }] }
     ],
     "UserPromptSubmit": [
-      { "hooks": [{ "type": "command", "command": "{{ .chezmoi.homeDir }}/.local/bin/herdr-tab-title working" }] }
+      { "hooks": [{ "type": "command", "command": "{{ $tabTitle }} working" }] }
     ],
     "Stop": [
-      { "hooks": [{ "type": "command", "command": "{{ .chezmoi.homeDir }}/.local/bin/herdr-tab-title waiting" }] }
+      { "hooks": [{ "type": "command", "command": "{{ $tabTitle }} waiting" }] }
     ],
     "Notification": [
-      { "hooks": [{ "type": "command", "command": "{{ .chezmoi.homeDir }}/.local/bin/herdr-tab-title attention" }] }
+      { "hooks": [{ "type": "command", "command": "{{ $tabTitle }} attention" }] }
     ]
   },
-{{- end }}
   "permissions": {
     "allow": [
       "Bash(bin/rails --version)",
