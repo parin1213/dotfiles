@@ -51,10 +51,16 @@ shell-integration-features = cursor,sudo,title
 #    multiplexer が PATH に無い）。
 #    SSH 先は接続先 .zshrc 側で自動アタッチ済みなので、これはローカル GUI 端末専用。
 command = zsh -l -c "herdr"
-# ② 端末の「新タブ」を OS タブではなく multiplexer の新タブにする。1ウィンドウ=1クライアントを保つ。
-#    herdr は prefix 方式なので Ctrl+b(0x02) + c を送る。
+# ② 端末の「新タブ」「分割」を、OS タブや Ghostty の分割ではなく multiplexer の操作にする。
+#    Ghostty で分割すると、新しい区画でも command の herdr が起動し、同じセッションが半分の幅で
+#    二重に映る。1ウィンドウ=1クライアントを保つ。
+#    herdr は prefix 方式なので Ctrl+b(0x02) に続けて、新タブ c / 左右分割 v / 上下分割 - を送る。
 {{- if eq $p.os "darwin" }}
 keybind = cmd+t=text:\x02c
+keybind = cmd+d=text:\x02v
+keybind = cmd+shift+d=text:\x02-
 {{- else }}
 keybind = ctrl+shift+t=text:\x02c
+keybind = ctrl+shift+o=text:\x02v
+keybind = ctrl+shift+e=text:\x02-
 {{- end }}
