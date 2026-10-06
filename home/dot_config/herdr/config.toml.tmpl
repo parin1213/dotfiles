@@ -1,12 +1,27 @@
 # herdr の設定。chezmoi が正本なので、直接編集せず source を直して chezmoi apply する。
+# source は template（OS で中身が変わる）なので、差分の取り込みに chezmoi add は使えない。
 # herdr 自身もこのファイルを書き換える（初回の onboarding、`herdr config reset-keys`）。
-# 差分が出たら herdr 側が書いた分なので、残すなら chezmoi add で source へ取り込む。
+# herdr が書いた分を残したいときは、実体の差分を見て source の template を手で直す。
 
 onboarding = false
-
+{{ if eq .chezmoi.os "windows" }}
+# Windows の既定シェルは PowerShell 5.1。zoxide / starship / eza を仕込んでいるのは
+# pwsh 7 のプロファイル（Documents/PowerShell/）なので、ペインも pwsh で開く。
+[terminal]
+default_shell = "pwsh"
+{{ end }}
 [theme]
 name = "tokyo-night"
 auto_switch = false
+
+# レート上限はアカウント単位なので、ペインを何枚開いても数字は 1 つ。
+# ペイン単位のサイドバーに出すと同じ値が並ぶだけなので、セッションに 1 つしかない右端に置く。
+# herdr-rate-limit は PATH から解決する（Windows は同名の .cmd が拾われる）。
+# 中身は Claude Code の statusLine が書く ~/.claude/cache/rate-limit.json を読むだけ。
+[ui]
+tab_bar_right = [
+  { type = "command", command = "herdr-rate-limit", interval_seconds = 60, timeout_seconds = 5 },
+]
 
 [ui.toast]
 delivery = "off"

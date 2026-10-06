@@ -5,6 +5,7 @@ AppData
 .claude/statusline.ps1
 .local/bin/bootstrap.ps1
 .local/bin/distribute.ps1
+.local/bin/herdr-rate-limit.cmd
 .local/bin/herdr-tab-title.ps1
 .local/bin/obsidian-vault-sync.ps1
 {{ end -}}

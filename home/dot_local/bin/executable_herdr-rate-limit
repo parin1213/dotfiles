@@ -1,0 +1,74 @@
+#!/usr/bin/env node
+// herdr のタブバー右端に Claude のレート上限を 1 行で出す。
+//
+// なぜタブバーか: 上限はアカウント単位なので、ペインを 5 つ開いても数字は 1 つ。
+//   ペイン単位のサイドバーに出すと同じ値が 5 行並ぶ。右端はセッションに 1 つしかない場所。
+//
+// 値は Claude Code の statusLine が書く ~/.claude/cache/rate-limit.json から読む。
+// API も credential も触らないので、herdr の更新間隔で何度叩いても副作用がない。
+//
+// 出力例: 5h 25%→12:10 · 7d 5%→9/19 20:00
+//
+// herdr は Windows で cmd.exe /d /c 経由で呼ぶ。拡張子なしのこのファイルは cmd から
+// 直接実行できないので、隣の herdr-rate-limit.cmd が node に渡す。
+// その .cmd に日本語コメントを置くと cmd.exe が OEM コードページで読んで文字化けし、
+// 壊れた行がコマンドとして解釈されるため、説明はこちらに置く。
+
+'use strict';
+
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+
+const DUMP = path.join(os.homedir(), '.claude', 'cache', 'rate-limit.json');
+
+// 5 時間窓より古い dump は、いまの残量の手がかりにならない。
+// Claude Code を閉じている間ずっと古い数字を出し続けないように、この歳で捨てる。
+const MAX_AGE_MS = 5 * 60 * 60 * 1000;
+
+// リセット時刻。今日中なら HH:mm、日を跨ぐなら M/D HH:mm。
+// 7d は数日先が普通なので、呼ぶ側が alwaysDate で日付を強制する。
+function formatReset(iso, alwaysDate) {
+  if (!iso) return '';
+  const at = new Date(iso);
+  if (Number.isNaN(at.getTime())) return '';
+
+  const hhmm = `${String(at.getHours()).padStart(2, '0')}:${String(at.getMinutes()).padStart(2, '0')}`;
+  const now = new Date();
+  const sameDay =
+    at.getFullYear() === now.getFullYear() &&
+    at.getMonth() === now.getMonth() &&
+    at.getDate() === now.getDate();
+
+  if (!alwaysDate && sameDay) return hhmm;
+  return `${at.getMonth() + 1}/${at.getDate()} ${hhmm}`;
+}
+
+function entry(label, pct, resetIso, alwaysDate) {
+  if (typeof pct !== 'number') return '';
+  const reset = formatReset(resetIso, alwaysDate);
+  return reset ? `${label} ${pct}%→${reset}` : `${label} ${pct}%`;
+}
+
+function main() {
+  let dump;
+  try {
+    dump = JSON.parse(fs.readFileSync(DUMP, 'utf8'));
+  } catch {
+    // statusLine が一度も走っていない、または Pro/Max 以外で rate_limits が来ない。
+    return '';
+  }
+
+  const updatedAt = Date.parse(dump.updated_at);
+  if (Number.isFinite(updatedAt) && Date.now() - updatedAt > MAX_AGE_MS) return '';
+
+  const parts = [
+    entry('5h', dump.five_hour_pct, dump.five_hour_resets_at_local, false),
+    entry('7d', dump.seven_day_pct, dump.seven_day_resets_at_local, true),
+  ].filter(Boolean);
+
+  return parts.join(' · ');
+}
+
+const line = main();
+if (line) process.stdout.write(`${line}\n`);
