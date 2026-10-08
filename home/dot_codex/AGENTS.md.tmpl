@@ -14,6 +14,7 @@
 
 # Codex 固有
 
+- 業務リポジトリで作業するときは、`~/.claude/CLAUDE.work.md` が存在すれば作業前に読む。業務固有の運用指示はそのファイルに従う。
 - model / reasoning effort / personality は `~/.codex/config.toml` で管理（指示ファイルには書かない）。
 - skills は `~/.agents/skills/` 配下に置き、今後はここで作成・管理する。
 - approval / sandbox は project ごとに `~/.codex/config.toml` の `trust_level` / `sandbox_mode` で設定する。
