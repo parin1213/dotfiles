@@ -39,6 +39,8 @@ $icons = @(
   @{ name = 'terminal';      cat = 'app';   appx = 'Microsoft.WindowsTerminal' }
   @{ name = 'vscode';        cat = 'app';   exe = "$env:LOCALAPPDATA\Programs\Microsoft VS Code\Code.exe" }
   @{ name = 'claude-code';   cat = 'app';   svgRects = "$HOME\.vscode\extensions\anthropic.claude-code-*\resources\clawd.svg" }
+  # Codex（CLI）は Codex アプリのキー（ChatGPT のマーク）と見分けるため、Codex 拡張に入っている Codex のロゴを使う
+  @{ name = 'codex-cli';     cat = 'app';   png = "$HOME\.vscode\extensions\openai.chatgpt-*\webview\assets\codex-app-ga-logo-*.png" }
   @{ name = 'github-pr';     cat = 'app';   url = 'https://github.com/fluidicon.png' }
   @{ name = 'screenshot';    cat = 'dev';   glyph = 0xF7ED; label = 'スクショ' }
   @{ name = 'meet-mic';      cat = 'mtg';   glyph = 0xE720; label = 'Meet' }
@@ -89,9 +91,13 @@ foreach ($i in $icons) {
       $g.FillRectangle($brush, [float]($ox + $x1 * $scale), [float]($oy + [math]::Min($ya, $yb) * $scale),
         [float](($x2 - $x1) * $scale), [float]([math]::Abs($ya - $yb) * $scale))
     }
-  } elseif ($i.exe -or $i.url -or $i.appx) {
+  } elseif ($i.exe -or $i.url -or $i.appx -or $i.png) {
     # アプリは公式のロゴを暗い地の中央に置く。ロゴで分かるのでラベルは付けない
-    if ($i.exe) {
+    if ($i.png) {
+      # 拡張機能などに同梱の画像。更新でフォルダ名が変わるので、ワイルドカードで最新を取る
+      $file = Get-ChildItem $i.png | Sort-Object LastWriteTime | Select-Object -Last 1
+      $logo = [System.Drawing.Image]::FromFile($file.FullName)
+    } elseif ($i.exe) {
       $logo = [System.Drawing.Icon]::ExtractIcon($i.exe, 0, 256).ToBitmap()
     } elseif ($i.appx) {
       # ストアアプリはパッケージのタイル用ロゴを使う。256px の背景なし版を優先する

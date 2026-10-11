@@ -1,14 +1,18 @@
-# herdr で Claude Code を起動する（Stream Deck の Claude Code キーから呼ぶ）。
+# herdr で Claude Code か Codex を起動する（Stream Deck の Claude Code / Codex キーから呼ぶ）。
+#   例: start-agent.ps1 -Kind codex
 #   ターミナルが前面のとき: herdr で今見ているペインが何も動いていないシェルならそこで起動する。
 #                           Claude / Codex などが動いているペインには触らず、同じ Space に同じディレクトリでタブを開いて起動する。
 #   それ以外のとき        : ホームディレクトリに新しい Space を作って起動し、ターミナルを前面に出す。
-# ホームディレクトリの「このフォルダを信頼するか」は、chezmoi の claude-trust スクリプトが信頼済みにしてある。
-param([string]$Cwd = $HOME)
+# ホームディレクトリの「このフォルダを信頼するか」は、chezmoi の claude-trust / codex-config スクリプトが信頼済みにしてある。
+param(
+  [ValidateSet('claude', 'codex')][string]$Kind = 'claude',
+  [string]$Cwd = $HOME
+)
 
 $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding $false
 # Stream Deck からは画面なしで動くので、失敗したときに追えるよう直近 1 回分の記録を残す
-Start-Transcript -LiteralPath (Join-Path $env:TEMP 'start-claude.log') -Force | Out-Null
+Start-Transcript -LiteralPath (Join-Path $env:TEMP "start-$Kind.log") -Force | Out-Null
 
 Add-Type -Namespace StreamDeck -Name Fg -MemberDefinition @'
 [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
@@ -25,10 +29,10 @@ if (-not $herdr) { throw 'herdr が見つからない' }
 
 function Invoke-Herdr { & $herdr @args | ConvertFrom-Json }
 
-# Claude を起動する。名前は herdr 全体で重複できず、小文字・数字・- _ だけなので、ペイン ID から作る
-function Start-Claude([string]$PaneId) {
-  $name = 'claude-' + ($PaneId.ToLowerInvariant() -replace '[^a-z0-9_-]', '-')
-  $out = & $herdr agent start $name --kind claude --pane $PaneId --timeout 30000 2>&1 | Out-String
+# エージェントを起動する。名前は herdr 全体で重複できず、小文字・数字・- _ だけなので、ペイン ID から作る
+function Start-Agent([string]$PaneId) {
+  $name = "$Kind-" + ($PaneId.ToLowerInvariant() -replace '[^a-z0-9_-]', '-')
+  $out = & $herdr agent start $name --kind $Kind --pane $PaneId --timeout 30000 2>&1 | Out-String
   Write-Output $out
   return $out -notmatch 'not at|not_at_prompt|pane_busy'
 }
@@ -45,15 +49,15 @@ if ($terminalInFront -and $clients) {
   # Claude / Codex やエディタが動いているペインに打ち込むと、その作業を壊すため
   $fgNames = (Invoke-Herdr pane process-info --pane $focused.pane_id).result.process_info.foreground_processes.name
   $idleShell = $fgNames -and -not ($fgNames | Where-Object { $_ -notin 'pwsh.exe', 'powershell.exe', 'cmd.exe', 'bash.exe', 'zsh', 'bash', 'fish' })
-  if ($focused -and -not $focused.agent -and $idleShell -and (Start-Claude $focused.pane_id)) { exit 0 }
+  if ($focused -and -not $focused.agent -and $idleShell -and (Start-Agent $focused.pane_id)) { exit 0 }
   # エージェントやほかのプログラムが動いているペインなら、触らずに隣にタブを開く
   $tab = Invoke-Herdr tab create --workspace $focused.workspace_id --cwd $focused.cwd --focus
-  [void](Start-Claude $tab.result.root_pane.pane_id)
+  [void](Start-Agent $tab.result.root_pane.pane_id)
   exit 0
 }
 
 $created = Invoke-Herdr workspace create --cwd $Cwd --focus
-[void](Start-Claude $created.result.root_pane.pane_id)
+[void](Start-Agent $created.result.root_pane.pane_id)
 
 # herdr の画面（server 以外の herdr.exe）が無ければ開く。あれば Windows Terminal を前面に出す
 if (-not $clients) {

@@ -94,10 +94,11 @@ const PROFILES = [
   {
     name: 'エンジニアリング',
     pages: [
-      { // 3,0 は Codex 送信（ChatGPT & Codex 公式プラグイン）
+      {
         '0,0': open('ターミナル', 'terminal', PS('focus-app.ps1', '-Process WindowsTerminal -Launch wt.exe')),
         '1,0': open('VS Code', 'vscode', `"${VSCODE}"`),
-        '2,0': open('Claude Code', 'claude-code', PS('start-claude.ps1')),
+        '2,0': open('Claude Code', 'claude-code', PS('start-agent.ps1', '-Kind claude')),
+        '3,0': open('Codex', 'codex-cli', PS('start-agent.ps1', '-Kind codex')),
         '0,1': web('GitHub PR', 'github-pr', 'https://github.com/pulls'),
         '1,1': hotkey('範囲スクショ', 'screenshot', { win: true, shift: true, key: 'S' }),
         '2,1': hotkey('Meet ミュート', 'meet-mic', { ctrl: true, key: 'D' }),
