@@ -52,6 +52,16 @@ const VSCODE = 'C:\\Users\\schwa\\AppData\\Local\\Programs\\Microsoft VS Code\\C
 // schtasks はコンソールアプリなので、conhost --headless で黒い窓を出さずに走らせる
 const TASK = (name) => `conhost.exe --headless schtasks.exe /run /tn "\\StreamDeck\\${name}"`;
 const APP = (aumid) => `explorer.exe shell:AppsFolder\\${aumid}`;
+const PS = (file, args = '') => `conhost.exe --headless pwsh -NoProfile -File "${join(import.meta.dirname, file)}" ${args}`.trim();
+
+// ブラウザでインストールしたアプリ（PWA）があればそれを開き、無ければサイトを開く。
+// PWA はスタートメニューに「<名前>.lnk」として入るので、生成時にそのショートカットの起動コマンドを読む
+const pwaOrWeb = (title, icon, appName, url) => {
+  const cmd = execFileSync('pwsh', ['-NoProfile', '-Command', `
+    $l = Get-ChildItem "$env:APPDATA\\Microsoft\\Windows\\Start Menu\\Programs" -Recurse -Filter '${appName}.lnk' | Select-Object -First 1
+    if ($l) { $s = (New-Object -ComObject WScript.Shell).CreateShortcut($l.FullName); '"' + $s.TargetPath + '" ' + $s.Arguments }`], { encoding: 'utf8' }).trim();
+  return cmd ? open(title, icon, cmd) : web(title, icon, url);
+};
 
 // キーの位置は "列,行"。Infobar は Neo コントローラの "1,0"（自作プラグインができるまでは時計）
 const PROFILES = [
@@ -61,7 +71,7 @@ const PROFILES = [
       { // 普段使い。2,1 は PC⇄Mac（自作プラグイン）
         '0,0': media('再生/停止', 'play-pause', 1),
         '1,0': media('ミュート', 'mute', 4),
-        '2,0': web('YouTube Music', 'youtube-music', 'https://music.youtube.com/'),
+        '2,0': pwaOrWeb('YouTube Music', 'youtube-music', 'YouTube Music', 'https://music.youtube.com/'),
         '3,0': open('Obsidian', 'obsidian', `"${OBSIDIAN}"`),
         '0,1': open('原神', 'genshin', TASK('Genshin')),
         '1,1': open('崩壊：スターレイル', 'hsr', TASK('HSR')),
@@ -85,9 +95,9 @@ const PROFILES = [
     name: 'エンジニアリング',
     pages: [
       { // 3,0 は Codex 送信（ChatGPT & Codex 公式プラグイン）
-        '0,0': open('ターミナル', 'terminal', 'wt.exe'),
+        '0,0': open('ターミナル', 'terminal', PS('focus-app.ps1', '-Process WindowsTerminal -Launch wt.exe')),
         '1,0': open('VS Code', 'vscode', `"${VSCODE}"`),
-        '2,0': open('Claude Code', 'claude-code', `conhost.exe --headless pwsh -NoProfile -File "${join(import.meta.dirname, 'new-claude-space.ps1')}"`),
+        '2,0': open('Claude Code', 'claude-code', PS('start-claude.ps1')),
         '0,1': web('GitHub PR', 'github-pr', 'https://github.com/pulls'),
         '1,1': hotkey('範囲スクショ', 'screenshot', { win: true, shift: true, key: 'S' }),
         '2,1': hotkey('Meet ミュート', 'meet-mic', { ctrl: true, key: 'D' }),
