@@ -1,0 +1,26 @@
+{{- /*
+  Claude Code でホームディレクトリを信頼済みにする（Unix のみ。Windows は .ps1 版が担当）。
+  herdr の Space をホームで開くたびに「このフォルダを信頼するか」で止まらないようにするため。
+  ~/.claude.json は Claude Code が自分で書き換えるので丸ごと管理せず、projects.<home>.hasTrustDialogAccepted だけ立てる。
+  run_onchange はスクリプト内容が変わった時だけ再実行する。node が無ければ何もしない。
+*/ -}}
+{{ if ne .chezmoi.os "windows" -}}
+#!/bin/sh
+# claude trust v1
+export PATH="$HOME/.local/share/mise/shims:$PATH"
+command -v node >/dev/null 2>&1 || exit 0
+node --input-type=module - <<'JSEOF'
+import { existsSync, readFileSync, writeFileSync, renameSync } from 'node:fs';
+import { homedir } from 'node:os';
+import { join } from 'node:path';
+const file = join(homedir(), '.claude.json');
+if (!existsSync(file)) process.exit(0);
+const config = JSON.parse(readFileSync(file, 'utf8'));
+const key = homedir();
+config.projects ??= {};
+config.projects[key] = { ...config.projects[key], hasTrustDialogAccepted: true };
+writeFileSync(`${file}.tmp-trust`, JSON.stringify(config, null, 2));
+renameSync(`${file}.tmp-trust`, file);
+console.log(`claude: trusted ${key}`);
+JSEOF
+{{ end -}}

@@ -6,7 +6,7 @@
   codex 未導入なら何もしない。Windows は [windows] sandbox=elevated も設定する。
 */ -}}
 {{ if eq .chezmoi.os "windows" -}}
-# codex standard v2
+# codex standard v3
 $env:Path = "$env:LOCALAPPDATA\mise\shims;$env:Path"
 if (-not (Get-Command codex -ErrorAction SilentlyContinue)) { exit 0 }
 $py = (Get-Command python -ErrorAction SilentlyContinue).Source
@@ -37,6 +37,16 @@ win = doc.get("windows")
 if win is None:
     win = tomlkit.table(); doc["windows"] = win
 win["sandbox"] = "elevated"
+# ホームディレクトリを信頼済みにする。Stream Deck から herdr の Space をホームで開くたびに
+# 「このフォルダを信頼するか」で止まらないようにするため
+projects = doc.get("projects")
+if projects is None:
+    projects = tomlkit.table(); doc["projects"] = projects
+home = str(pathlib.Path.home())
+proj = projects.get(home)
+if proj is None:
+    proj = tomlkit.table(); projects[home] = proj
+proj["trust_level"] = "trusted"
 p.parent.mkdir(parents=True, exist_ok=True)
 p.write_text(tomlkit.dumps(doc), encoding="utf-8")
 print("codex: standard global settings merged (runtime state preserved)")

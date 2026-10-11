@@ -1,6 +1,6 @@
 # herdr に新しい Space を作り、そこで Claude Code を起動する（Stream Deck の Claude Code キーから呼ぶ）。
 # 作った Space に切り替え、herdr の画面が開いていなければ Windows Terminal で開く。
-# ホームディレクトリでは Claude Code が毎回「このフォルダを信頼するか」を聞くので、その回答は人に任せる。
+# ホームディレクトリの「このフォルダを信頼するか」は、chezmoi の claude-trust スクリプトが信頼済みにしてある。
 param([string]$Cwd = $HOME)
 
 $ErrorActionPreference = 'Stop'
@@ -17,7 +17,7 @@ if (-not $herdr) { throw 'herdr が見つからない' }
 $created = & $herdr workspace create --cwd $Cwd --focus | ConvertFrom-Json
 $pane = $created.result.root_pane.pane_id
 
-# 信頼の確認で止まると agent_not_ready が返るが、Claude は起動済みなので失敗として扱わない
+# 信頼済みでないフォルダを渡すと確認で止まり agent_not_ready が返るが、Claude は起動済みなので失敗として扱わない
 & $herdr agent start claude --kind claude --pane $pane --timeout 30000 | Out-Null
 
 # herdr の画面（server 以外の herdr.exe）が無ければ開く。あれば Windows Terminal を前面に出す
