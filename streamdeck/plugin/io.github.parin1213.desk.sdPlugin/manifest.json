@@ -32,7 +32,7 @@
       "Icon": "imgs/actions/space",
       "Controllers": ["Keypad"],
       "UserTitleEnabled": false,
-      "States": [{ "Image": "imgs/actions/space", "ShowTitle": false }]
+      "States": [{ "Image": "imgs/keys/space", "ShowTitle": false }]
     },
     {
       "UUID": "io.github.parin1213.desk.claude-5h",
@@ -41,7 +41,7 @@
       "Icon": "imgs/actions/limit",
       "Controllers": ["Keypad"],
       "UserTitleEnabled": false,
-      "States": [{ "Image": "imgs/actions/limit", "ShowTitle": false }]
+      "States": [{ "Image": "imgs/keys/claude-5h", "ShowTitle": false }]
     },
     {
       "UUID": "io.github.parin1213.desk.claude-7d",
@@ -50,7 +50,7 @@
       "Icon": "imgs/actions/limit",
       "Controllers": ["Keypad"],
       "UserTitleEnabled": false,
-      "States": [{ "Image": "imgs/actions/limit", "ShowTitle": false }]
+      "States": [{ "Image": "imgs/keys/claude-7d", "ShowTitle": false }]
     },
     {
       "UUID": "io.github.parin1213.desk.timer",
@@ -59,7 +59,7 @@
       "Icon": "imgs/actions/timer",
       "Controllers": ["Keypad"],
       "UserTitleEnabled": false,
-      "States": [{ "Image": "imgs/actions/timer", "ShowTitle": false }]
+      "States": [{ "Image": "imgs/keys/timer", "ShowTitle": false }]
     },
     {
       "UUID": "io.github.parin1213.desk.switch-input",
@@ -68,7 +68,7 @@
       "Icon": "imgs/actions/switch",
       "Controllers": ["Keypad"],
       "UserTitleEnabled": false,
-      "States": [{ "Image": "imgs/actions/switch", "ShowTitle": false }]
+      "States": [{ "Image": "imgs/keys/switch", "ShowTitle": false }]
     }
   ]
 }

@@ -7,7 +7,7 @@
     "node": ">=24"
   },
   "scripts": {
-    "build": "esbuild src/plugin.js --bundle --platform=node --format=esm --target=node24 --outfile=io.github.parin1213.desk.sdPlugin/bin/plugin.js \"--banner:js=import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);\"",
+    "build": "node scripts/key-images.mjs && esbuild src/plugin.js --bundle --platform=node --format=esm --target=node24 --outfile=io.github.parin1213.desk.sdPlugin/bin/plugin.js \"--banner:js=import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);\"",
     "link": "node scripts/link.mjs",
     "restart": "node scripts/link.mjs --restart-only"
   },
