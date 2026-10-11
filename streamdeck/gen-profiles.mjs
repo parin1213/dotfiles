@@ -63,6 +63,18 @@ const pwaOrWeb = (title, icon, appName, url) => {
   return cmd ? open(title, icon, cmd) : web(title, icon, url);
 };
 
+// AI ページ。上段は herdr の Space 1〜4（置いた列で何番目かが決まる）。2,1 の Codex 送信は公式プラグイン待ち。
+// エンジニアリングでもターミナルを見ながら Space を切り替えたいので、両方のプロファイルに置く（ActionID が重ならないよう毎回作る）
+const aiPage = () => ({
+  '0,0': desk('herdr Space', 'space'),
+  '1,0': desk('herdr Space', 'space'),
+  '2,0': desk('herdr Space', 'space'),
+  '3,0': desk('herdr Space', 'space'),
+  '0,1': desk('Claude 5 時間', 'claude-5h'),
+  '1,1': desk('Claude 7 日', 'claude-7d'),
+  '3,1': open('Codex アプリ', 'codex-app', APP('OpenAI.Codex_2p2nqsd0c76g0!App')),
+});
+
 // キーの位置は "列,行"。Infobar は Neo コントローラの "1,0" で、どのページも使用率を出す
 const PROFILES = [
   {
@@ -78,15 +90,7 @@ const PROFILES = [
         '2,1': desk('PC ⇄ Mac', 'switch-input'),
         '3,1': open('ロック', 'lock', 'rundll32.exe user32.dll,LockWorkStation'),
       },
-      { // AI。上段は herdr の Space 1〜4（置いた列で何番目かが決まる）。2,1 の Codex 送信は公式プラグイン待ち
-        '0,0': desk('herdr Space', 'space'),
-        '1,0': desk('herdr Space', 'space'),
-        '2,0': desk('herdr Space', 'space'),
-        '3,0': desk('herdr Space', 'space'),
-        '0,1': desk('Claude 5 時間', 'claude-5h'),
-        '1,1': desk('Claude 7 日', 'claude-7d'),
-        '3,1': open('Codex アプリ', 'codex-app', APP('OpenAI.Codex_2p2nqsd0c76g0!App')),
-      },
+      aiPage(),
       { // 会議中（Google Meet）
         '0,0': hotkey('マイク', 'mic', { ctrl: true, key: 'D' }),
         '1,0': hotkey('カメラ', 'camera', { ctrl: true, key: 'E' }),
@@ -112,6 +116,7 @@ const PROFILES = [
         '2,1': hotkey('Meet ミュート', 'meet-mic', { ctrl: true, key: 'D' }),
         '3,1': hotkey('Meet カメラ', 'meet-camera', { ctrl: true, key: 'E' }),
       },
+      aiPage(),
     ],
   },
 ];
