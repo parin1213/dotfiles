@@ -48,6 +48,9 @@ const desk = (name, id, settings = {}) => ({
 
 const OBSIDIAN = 'C:\\Users\\schwa\\AppData\\Local\\Programs\\Obsidian\\Obsidian.exe';
 const VSCODE = 'C:\\Users\\schwa\\AppData\\Local\\Programs\\Microsoft VS Code\\Code.exe';
+// ストア版の Windows Terminal はパスにバージョンが入るので、生成時に今入っているものを引く
+const TERMINAL = execFileSync('pwsh', ['-NoProfile', '-Command',
+  "(Get-AppxPackage Microsoft.WindowsTerminal).InstallLocation + '\\WindowsTerminal.exe'"], { encoding: 'utf8' }).trim();
 // ゲームは register-game-tasks.ps1 が登録したタスクを起動する（UAC を出さないため）。
 // schtasks はコンソールアプリなので、conhost --headless で黒い窓を出さずに走らせる
 const TASK = (name) => `conhost.exe --headless schtasks.exe /run /tn "\\StreamDeck\\${name}"`;
@@ -73,6 +76,18 @@ const aiPage = () => ({
   '0,1': desk('Claude 5 時間', 'claude-5h'),
   '1,1': desk('Claude 7 日', 'claude-7d'),
   '3,1': open('Codex アプリ', 'codex-app', APP('OpenAI.Codex_2p2nqsd0c76g0!App')),
+});
+
+// エンジニアリングのリンクのページ
+const linkPage = () => ({
+  '0,0': open('ターミナル', 'terminal', PS('focus-app.ps1', '-Process WindowsTerminal -Launch wt.exe')),
+  '1,0': open('VS Code', 'vscode', `"${VSCODE}"`),
+  '2,0': open('Claude Code', 'claude-code', PS('start-agent.ps1', '-Kind claude')),
+  '3,0': open('Codex', 'codex-cli', PS('start-agent.ps1', '-Kind codex')),
+  '0,1': web('GitHub PR', 'github-pr', 'https://github.com/pulls'),
+  '1,1': hotkey('範囲スクショ', 'screenshot', { win: true, shift: true, key: 'S' }),
+  '2,1': hotkey('Meet ミュート', 'meet-mic', { ctrl: true, key: 'D' }),
+  '3,1': hotkey('Meet カメラ', 'meet-camera', { ctrl: true, key: 'E' }),
 });
 
 // キーの位置は "列,行"。Infobar は Neo コントローラの "1,0" で、どのページも使用率を出す
@@ -103,22 +118,11 @@ const PROFILES = [
       },
     ],
   },
-  {
-    name: 'エンジニアリング',
-    pages: [
-      {
-        '0,0': open('ターミナル', 'terminal', PS('focus-app.ps1', '-Process WindowsTerminal -Launch wt.exe')),
-        '1,0': open('VS Code', 'vscode', `"${VSCODE}"`),
-        '2,0': open('Claude Code', 'claude-code', PS('start-agent.ps1', '-Kind claude')),
-        '3,0': open('Codex', 'codex-cli', PS('start-agent.ps1', '-Kind codex')),
-        '0,1': web('GitHub PR', 'github-pr', 'https://github.com/pulls'),
-        '1,1': hotkey('範囲スクショ', 'screenshot', { win: true, shift: true, key: 'S' }),
-        '2,1': hotkey('Meet ミュート', 'meet-mic', { ctrl: true, key: 'D' }),
-        '3,1': hotkey('Meet カメラ', 'meet-camera', { ctrl: true, key: 'E' }),
-      },
-      aiPage(),
-    ],
-  },
+  // Stream Deck はプロファイル 1 つに紐付けられるアプリが 1 つなので、同じ中身をアプリごとに作る。
+  ...[
+    { name: 'エンジニアリング（ターミナル）', app: TERMINAL },
+    { name: 'エンジニアリング（VS Code）', app: VSCODE },
+  ].map((p) => ({ ...p, pages: [linkPage(), aiPage()] })),
 ];
 
 for (const p of PROFILES) {
@@ -146,6 +150,9 @@ for (const p of PROFILES) {
   p.pages.forEach((keys, i) => writePage(pageIds[i], keys));
   writePage(defaultId, {});
   writeFileSync(join(dir, 'manifest.json'), JSON.stringify({
+    // AppIdentifier は Stream Deck の「アプリケーション」の紐付けで、取り込んでも残る。
+    // 最初に出すページ（Current）は取り込みで 1 ページ目に戻されるので指定しない
+    ...(p.app ? { AppIdentifier: p.app } : {}),
     Device: DEVICE, Name: p.name,
     Pages: { Current: pageIds[0], Default: defaultId, Pages: pageIds },
     Version: '3.0',
