@@ -23,3 +23,9 @@ id_rsa*
 *.credentials.json
 **/auth.json
 **/hosts.yml
+
+# Stream Deck の生成物（gen-profiles.mjs / make-icons.ps1 の出力）
+/streamdeck/out/
+# ゲームのアイコンは HoYoverse の画像なので公開リポジトリに入れない。make-icons.ps1 が HoYoPlay から作る
+/streamdeck/icons/genshin.png
+/streamdeck/icons/starrail.png
