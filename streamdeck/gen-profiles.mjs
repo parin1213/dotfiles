@@ -48,7 +48,9 @@ const clock = () => ({
 
 const OBSIDIAN = 'C:\\Users\\schwa\\AppData\\Local\\Programs\\Obsidian\\Obsidian.exe';
 const VSCODE = 'C:\\Users\\schwa\\AppData\\Local\\Programs\\Microsoft VS Code\\Code.exe';
-const HOYOPLAY = 'C:\\Program Files\\HoYoPlay\\launcher.exe';
+// ゲームは register-game-tasks.ps1 が登録したタスクを起動する（UAC を出さないため）。
+// schtasks はコンソールアプリなので、conhost --headless で黒い窓を出さずに走らせる
+const TASK = (name) => `conhost.exe --headless schtasks.exe /run /tn "\\StreamDeck\\${name}"`;
 const APP = (aumid) => `explorer.exe shell:AppsFolder\\${aumid}`;
 
 // キーの位置は "列,行"。Infobar は Neo コントローラの "1,0"（自作プラグインができるまでは時計）
@@ -61,8 +63,8 @@ const PROFILES = [
         '1,0': media('ミュート', 'mute', 4),
         '2,0': web('YouTube Music', 'youtube-music', 'https://music.youtube.com/'),
         '3,0': open('Obsidian', 'obsidian', `"${OBSIDIAN}"`),
-        '0,1': open('原神', 'genshin', `"${HOYOPLAY}" --game=hk4e_global`),
-        '1,1': open('崩壊：スターレイル', 'starrail', `"${HOYOPLAY}" --game=hkrpg_global`),
+        '0,1': open('原神', 'genshin', TASK('Genshin')),
+        '1,1': open('崩壊：スターレイル', 'starrail', TASK('StarRail')),
         '3,1': open('ロック', 'lock', 'rundll32.exe user32.dll,LockWorkStation'),
       },
       { // AI。上段の Space 4 つと使用率、Codex 送信は自作 / 公式プラグイン待ち
