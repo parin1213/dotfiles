@@ -9,6 +9,7 @@ Stream Deck Neo のプロファイルとキー画像を生成する。Stream Dec
 | `make-icons.ps1` | キー画像（144×144 PNG）を `icons/` に作る。Windows のフォントを使うので Windows で実行する |
 | `icons/` | 生成済みのキー画像。Mac でも使えるようにコミットしている。ゲーム（原神 / 崩壊：スターレイル）とアプリを開くキー（Obsidian、YouTube Music、Codex、Windows Terminal、VS Code、Claude Code、GitHub）は各社のロゴなので含めず、`make-icons.ps1` が手元のアプリ（exe・ストアアプリのパッケージ）や公式サイトから作る |
 | `register-game-tasks.ps1` | 原神 / 崩壊：スターレイルを「最上位の特権で実行」するタスクとして登録する。ゲームのキーはこのタスクを起動するので、UAC を出さずに立ち上がる。管理者として 1 回実行する |
+| `new-claude-space.ps1` | Claude Code のキーから呼ぶ。herdr に新しい Space をホームディレクトリで作り、Claude Code を起動して前面に出す |
 | `gen-profiles.mjs` | プロファイル「通常」（普段使い / AI / 会議中）と「エンジニアリング」を `out/*.streamDeckProfile` に作る |
 
 自作プラグインや公式プラグインが要るキー（PC⇄Mac、Space、使用率、経過時間、Codex 送信）は空けてある。

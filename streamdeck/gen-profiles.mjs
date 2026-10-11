@@ -87,7 +87,7 @@ const PROFILES = [
       { // 3,0 は Codex 送信（ChatGPT & Codex 公式プラグイン）
         '0,0': open('ターミナル', 'terminal', 'wt.exe'),
         '1,0': open('VS Code', 'vscode', `"${VSCODE}"`),
-        '2,0': open('Claude Code', 'claude-code', 'wt.exe -w 0 new-tab pwsh -NoExit -Command claude'),
+        '2,0': open('Claude Code', 'claude-code', `conhost.exe --headless pwsh -NoProfile -File "${join(import.meta.dirname, 'new-claude-space.ps1')}"`),
         '0,1': web('GitHub PR', 'github-pr', 'https://github.com/pulls'),
         '1,1': hotkey('範囲スクショ', 'screenshot', { win: true, shift: true, key: 'S' }),
         '2,1': hotkey('Meet ミュート', 'meet-mic', { ctrl: true, key: 'D' }),
