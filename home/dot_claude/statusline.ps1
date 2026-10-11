@@ -16,9 +16,12 @@ $OutputEncoding           = New-Object System.Text.UTF8Encoding $false
 # 不要になったら $debugLog を $null にすれば無効化される。
 $debugLog = "$env:USERPROFILE\.claude\statusline.log"
 
-# 公式ドキュメント推奨パターン: $input は automatic variable で stdin pipeline を表す。
-# `-File` 起動でも parent process が stdin を pipe してくれていれば取れる。
-$raw = $input | Out-String
+# stdin はバイト列のまま受け取り、UTF-8 として自分で解釈する。
+# $input は PowerShell が起動時の既定（日本語環境では Shift_JIS）で文字列にしてしまい、上の InputEncoding が効かない。
+# セッション名などに日本語が入ると化けた文字が閉じの " を飲み込み、JSON が壊れて何も表示されなくなる。
+$stdin = New-Object System.IO.MemoryStream
+[Console]::OpenStandardInput().CopyTo($stdin)
+$raw = [System.Text.Encoding]::UTF8.GetString($stdin.ToArray())
 if ($debugLog) {
   $ts = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
   "--- $ts ---`nSTDIN ($($raw.Length) chars):`n$raw" | Out-File -FilePath $debugLog -Encoding utf8 -Append
