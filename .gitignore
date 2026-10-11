@@ -37,3 +37,7 @@ id_rsa*
 /streamdeck/icons/claude-code.png
 /streamdeck/icons/codex-cli.png
 /streamdeck/icons/github-pr.png
+# 自作プラグインのビルド結果と依存（pnpm build で作る）
+/streamdeck/plugin/node_modules/
+/streamdeck/plugin/io.github.parin1213.desk.sdPlugin/bin/
+/streamdeck/plugin/io.github.parin1213.desk.sdPlugin/logs/

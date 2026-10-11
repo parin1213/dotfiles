@@ -1,0 +1,3 @@
+# esbuild の postinstall はバイナリの確認だけで、ビルドには要らないので走らせない
+allowBuilds:
+  esbuild: false

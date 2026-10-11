@@ -1,5 +1,5 @@
 // Stream Deck Neo のプロファイル（通常 / エンジニアリング）を生成する。
-// 標準アクションだけで作れるキーを置き、自作プラグインや公式プラグインが要るキーは空けておく。
+// 標準アクションと自作プラグイン（plugin/）のキーを置く。公式プラグインが要るキーは空けておく。
 // 出力は out/<名前>.streamDeckProfile（中身は ProfilesV3 と同じ構造）。取り込みは README を参照。
 // キー画像は make-icons.ps1 が作る icons/*.png を使う。
 import { mkdirSync, writeFileSync, rmSync, copyFileSync } from 'node:fs';
@@ -39,11 +39,11 @@ const hotkey = (title, icon, { ctrl = false, alt = false, shift = false, win = f
   return action('com.elgato.streamdeck.system.hotkey', 'Hotkey', title, icon, { Coalesce: true, Hotkeys: [first, EMPTY_KEY, EMPTY_KEY, EMPTY_KEY] });
 };
 
-const clock = () => ({
-  ActionID: randomUUID(), LinkedTitle: true, Name: 'Digital time',
-  Plugin: { Name: 'Digital Time', UUID: 'com.elgato.streamdeck.system.digitaltime', Version: '1.0' },
-  Resources: null, Settings: { '24HourFormat': true, layout: 'digital_time_07', location: '', theme: 'white' },
-  State: 0, States: [{}], UUID: 'com.elgato.streamdeck.system.digitaltime',
+// 自作プラグインのアクション。絵はプラグインが実行中に描くので、画像は持たせない
+const DESK = { Name: 'Desk', UUID: 'io.github.parin1213.desk', Version: '0.1.0.0' };
+const desk = (name, id, settings = {}) => ({
+  ActionID: randomUUID(), LinkedTitle: false, Name: name, Plugin: DESK,
+  Resources: null, Settings: settings, State: 0, States: [{ ShowTitle: false }], UUID: `${DESK.UUID}.${id}`,
 });
 
 const OBSIDIAN = 'C:\\Users\\schwa\\AppData\\Local\\Programs\\Obsidian\\Obsidian.exe';
@@ -63,24 +63,31 @@ const pwaOrWeb = (title, icon, appName, url) => {
   return cmd ? open(title, icon, cmd) : web(title, icon, url);
 };
 
-// キーの位置は "列,行"。Infobar は Neo コントローラの "1,0"（自作プラグインができるまでは時計）
+// キーの位置は "列,行"。Infobar は Neo コントローラの "1,0" で、どのページも使用率を出す
 const PROFILES = [
   {
     name: '通常',
     pages: [
-      { // 普段使い。2,1 は PC⇄Mac（自作プラグイン）
+      { // 普段使い
         '0,0': media('再生/停止', 'play-pause', 1),
         '1,0': media('ミュート', 'mute', 4),
         '2,0': pwaOrWeb('YouTube Music', 'youtube-music', 'YouTube Music', 'https://music.youtube.com/'),
         '3,0': open('Obsidian', 'obsidian', `"${OBSIDIAN}"`),
         '0,1': open('原神', 'genshin', TASK('Genshin')),
         '1,1': open('崩壊：スターレイル', 'hsr', TASK('HSR')),
+        '2,1': desk('PC ⇄ Mac', 'switch-input'),
         '3,1': open('ロック', 'lock', 'rundll32.exe user32.dll,LockWorkStation'),
       },
-      { // AI。上段の Space 4 つと使用率、Codex 送信は自作 / 公式プラグイン待ち
+      { // AI。上段は herdr の Space 1〜4（置いた列で何番目かが決まる）。2,1 の Codex 送信は公式プラグイン待ち
+        '0,0': desk('herdr Space', 'space'),
+        '1,0': desk('herdr Space', 'space'),
+        '2,0': desk('herdr Space', 'space'),
+        '3,0': desk('herdr Space', 'space'),
+        '0,1': desk('Claude 5 時間', 'claude-5h'),
+        '1,1': desk('Claude 7 日', 'claude-7d'),
         '3,1': open('Codex アプリ', 'codex-app', APP('OpenAI.Codex_2p2nqsd0c76g0!App')),
       },
-      { // 会議中（Google Meet）。3,1 は経過時間（自作プラグイン）
+      { // 会議中（Google Meet）
         '0,0': hotkey('マイク', 'mic', { ctrl: true, key: 'D' }),
         '1,0': hotkey('カメラ', 'camera', { ctrl: true, key: 'E' }),
         '2,0': hotkey('挙手', 'hand', { ctrl: true, alt: true, key: 'H' }),
@@ -88,6 +95,7 @@ const PROFILES = [
         '0,1': hotkey('チャット', 'chat', { ctrl: true, alt: true, key: 'C' }),
         '1,1': hotkey('参加者', 'people', { ctrl: true, alt: true, key: 'P' }),
         '2,1': open('会議メモ', 'meeting-note', `"${OBSIDIAN}"`),
+        '3,1': desk('経過時間', 'timer'),
       },
     ],
   },
@@ -118,13 +126,14 @@ for (const p of PROFILES) {
     const pdir = join(dir, 'Profiles', id.toUpperCase());
     mkdirSync(join(pdir, 'Images'), { recursive: true });
     for (const a of Object.values(keys)) {
+      if (!a.States[0].Image) continue;
       const img = a.States[0].Image.replace('Images/', '');
       copyFileSync(join(ICONS, img), join(pdir, 'Images', img));
     }
     writeFileSync(join(pdir, 'manifest.json'), JSON.stringify({
       Controllers: [
         { Actions: Object.keys(keys).length ? keys : null, Type: 'Keypad' },
-        { Actions: { '1,0': clock() }, Type: 'Neo' },
+        { Actions: { '1,0': desk('使用率（Infobar）', 'infobar') }, Type: 'Neo' },
       ],
       Icon: '', Name: '',
     }));

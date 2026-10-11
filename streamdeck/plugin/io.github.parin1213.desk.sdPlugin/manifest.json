@@ -1,0 +1,74 @@
+{
+  "$schema": "https://schemas.elgato.com/streamdeck/plugins/manifest.json",
+  "UUID": "io.github.parin1213.desk",
+  "Name": "Desk",
+  "Version": "0.1.0.0",
+  "Author": "parin1213",
+  "Description": "herdr の Space と Claude Code / Codex の使用率を出し、PC⇄Mac の入力切り替えと経過時間を扱う自作プラグイン",
+  "Icon": "imgs/plugin",
+  "Category": "Desk",
+  "CategoryIcon": "imgs/category",
+  "CodePath": "bin/plugin.js",
+  "SDKVersion": 3,
+  "Software": { "MinimumVersion": "7.6" },
+  "Nodejs": { "Version": "24" },
+  "OS": [
+    { "Platform": "windows", "MinimumVersion": "10" },
+    { "Platform": "mac", "MinimumVersion": "13" }
+  ],
+  "Actions": [
+    {
+      "UUID": "io.github.parin1213.desk.infobar",
+      "Name": "使用率（Infobar）",
+      "Tooltip": "Claude Code と Codex の 5 時間 / 7 日の使用率。承認待ちの Space があるとその表示に切り替わる",
+      "Icon": "imgs/actions/infobar",
+      "Controllers": ["Neo"],
+      "States": [{ "Image": "imgs/actions/infobar" }]
+    },
+    {
+      "UUID": "io.github.parin1213.desk.space",
+      "Name": "herdr Space",
+      "Tooltip": "herdr の Space の状態と話題。押すとその Space に移る。何番目の Space かは置いた列で決まる",
+      "Icon": "imgs/actions/space",
+      "Controllers": ["Keypad"],
+      "UserTitleEnabled": false,
+      "States": [{ "Image": "imgs/actions/space", "ShowTitle": false }]
+    },
+    {
+      "UUID": "io.github.parin1213.desk.claude-5h",
+      "Name": "Claude 5 時間",
+      "Tooltip": "Claude Code の 5 時間枠の使用率とリセット時刻",
+      "Icon": "imgs/actions/limit",
+      "Controllers": ["Keypad"],
+      "UserTitleEnabled": false,
+      "States": [{ "Image": "imgs/actions/limit", "ShowTitle": false }]
+    },
+    {
+      "UUID": "io.github.parin1213.desk.claude-7d",
+      "Name": "Claude 7 日",
+      "Tooltip": "Claude Code の 7 日枠の使用率とリセット日時",
+      "Icon": "imgs/actions/limit",
+      "Controllers": ["Keypad"],
+      "UserTitleEnabled": false,
+      "States": [{ "Image": "imgs/actions/limit", "ShowTitle": false }]
+    },
+    {
+      "UUID": "io.github.parin1213.desk.timer",
+      "Name": "経過時間",
+      "Tooltip": "押すと 0 から数え直す。長押しで止める",
+      "Icon": "imgs/actions/timer",
+      "Controllers": ["Keypad"],
+      "UserTitleEnabled": false,
+      "States": [{ "Image": "imgs/actions/timer", "ShowTitle": false }]
+    },
+    {
+      "UUID": "io.github.parin1213.desk.switch-input",
+      "Name": "PC ⇄ Mac",
+      "Tooltip": "Dell の入力を DDC/CI で Mac（Thunderbolt 4）に切り替える",
+      "Icon": "imgs/actions/switch",
+      "Controllers": ["Keypad"],
+      "UserTitleEnabled": false,
+      "States": [{ "Image": "imgs/actions/switch", "ShowTitle": false }]
+    }
+  ]
+}
