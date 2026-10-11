@@ -28,7 +28,7 @@ $icons = @(
   @{ name = 'genshin';       cat = 'daily'; ico = "$hoyo\hk4e_global.ico" }
   @{ name = 'hsr';           cat = 'daily'; ico = "$hoyo\hkrpg_global.ico" }
   @{ name = 'lock';          cat = 'sys';   glyph = 0xE72E; label = 'ロック' }
-  @{ name = 'codex-app';     cat = 'ai';    glyph = 0xE99A; label = 'Codex' }
+  @{ name = 'codex-app';     cat = 'app';   appx = 'OpenAI.Codex' }
   @{ name = 'mic';           cat = 'mtg';   glyph = 0xE720; label = 'マイク' }
   @{ name = 'camera';        cat = 'mtg';   glyph = 0xE714; label = 'カメラ' }
   @{ name = 'hand';          cat = 'mtg';   text = [string][char]0x270B; font = 'Segoe UI Symbol'; label = '挙手' }
@@ -36,10 +36,10 @@ $icons = @(
   @{ name = 'chat';          cat = 'mtg';   glyph = 0xE8BD; label = 'チャット' }
   @{ name = 'people';        cat = 'mtg';   glyph = 0xE716; label = '参加者' }
   @{ name = 'meeting-note';  cat = 'mtg';   glyph = 0xE70B; label = '会議メモ' }
-  @{ name = 'terminal';      cat = 'dev';   glyph = 0xE756; label = 'ターミナル' }
-  @{ name = 'vscode';        cat = 'dev';   glyph = 0xE943; label = 'VS Code' }
-  @{ name = 'claude-code';   cat = 'ai';    glyph = 0xF4A5; label = 'Claude' }
-  @{ name = 'github-pr';     cat = 'dev';   glyph = 0xE8AB; label = 'PR' }
+  @{ name = 'terminal';      cat = 'app';   appx = 'Microsoft.WindowsTerminal' }
+  @{ name = 'vscode';        cat = 'app';   exe = "$env:LOCALAPPDATA\Programs\Microsoft VS Code\Code.exe" }
+  @{ name = 'claude-code';   cat = 'app';   appx = 'Claude' }
+  @{ name = 'github-pr';     cat = 'app';   url = 'https://github.com/fluidicon.png' }
   @{ name = 'screenshot';    cat = 'dev';   glyph = 0xF7ED; label = 'スクショ' }
   @{ name = 'meet-mic';      cat = 'mtg';   glyph = 0xE720; label = 'Meet' }
   @{ name = 'meet-camera';   cat = 'mtg';   glyph = 0xE714; label = 'Meet' }
@@ -73,10 +73,20 @@ foreach ($i in $icons) {
     # ゲームは公式アイコンをそのまま全面に敷く。ラベルはアイコン内のロゴと重なるので付けない
     $icon = New-Object System.Drawing.Icon($i.ico, 256, 256)
     $g.DrawImage($icon.ToBitmap(), 0, 0, $S, $S)
-  } elseif ($i.exe -or $i.url) {
+  } elseif ($i.exe -or $i.url -or $i.appx) {
     # アプリは公式のロゴを暗い地の中央に置く。ロゴで分かるのでラベルは付けない
     if ($i.exe) {
       $logo = [System.Drawing.Icon]::ExtractIcon($i.exe, 0, 256).ToBitmap()
+    } elseif ($i.appx) {
+      # ストアアプリはパッケージのタイル用ロゴを使う。256px の背景なし版を優先する
+      $pkg = Get-AppxPackage -Name $i.appx | Select-Object -First 1
+      [xml]$manifest = Get-Content (Join-Path $pkg.InstallLocation 'AppxManifest.xml')
+      $rel = @($manifest.Package.Applications.Application)[0].VisualElements.Square44x44Logo
+      $dir = Join-Path $pkg.InstallLocation (Split-Path $rel)
+      $base = [IO.Path]::GetFileNameWithoutExtension($rel)
+      $file = Get-ChildItem $dir -Filter "$base.targetsize-256_altform-unplated.png" | Select-Object -First 1
+      if (-not $file) { $file = Get-ChildItem $dir -Filter "$base*.png" | Sort-Object Length -Descending | Select-Object -First 1 }
+      $logo = [System.Drawing.Image]::FromFile($file.FullName)
     } else {
       $cache = Join-Path $PSScriptRoot "out\$($i.name)-source.png"
       New-Item -ItemType Directory -Force (Split-Path $cache) | Out-Null
