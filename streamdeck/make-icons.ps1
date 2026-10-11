@@ -38,7 +38,7 @@ $icons = @(
   @{ name = 'meeting-note';  cat = 'mtg';   glyph = 0xE70B; label = '会議メモ' }
   @{ name = 'terminal';      cat = 'app';   appx = 'Microsoft.WindowsTerminal' }
   @{ name = 'vscode';        cat = 'app';   exe = "$env:LOCALAPPDATA\Programs\Microsoft VS Code\Code.exe" }
-  @{ name = 'claude-code';   cat = 'app';   appx = 'Claude' }
+  @{ name = 'claude-code';   cat = 'app';   svgRects = "$HOME\.vscode\extensions\anthropic.claude-code-*\resources\clawd.svg" }
   @{ name = 'github-pr';     cat = 'app';   url = 'https://github.com/fluidicon.png' }
   @{ name = 'screenshot';    cat = 'dev';   glyph = 0xF7ED; label = 'スクショ' }
   @{ name = 'meet-mic';      cat = 'mtg';   glyph = 0xE720; label = 'Meet' }
@@ -73,6 +73,22 @@ foreach ($i in $icons) {
     # ゲームは公式アイコンをそのまま全面に敷く。ラベルはアイコン内のロゴと重なるので付けない
     $icon = New-Object System.Drawing.Icon($i.ico, 256, 256)
     $g.DrawImage($icon.ToBitmap(), 0, 0, $S, $S)
+  } elseif ($i.svgRects) {
+    # Claude Code のマスコット（Clawd）。VS Code 拡張に入っている SVG は四角形を並べた 1 本の path なので、
+    # 「M x y1 V y2 H x2 …」の組から四角形を読み取って描く（System.Drawing は SVG を読めないため）
+    $svgFile = Get-ChildItem $i.svgRects | Sort-Object LastWriteTime | Select-Object -Last 1
+    [xml]$svg = Get-Content $svgFile.FullName
+    $vb = $svg.svg.viewBox -split '\s+' | ForEach-Object { [double]$_ }
+    $scale = 104 / [math]::Max($vb[2], $vb[3])
+    $ox = (144 - $vb[2] * $scale) / 2; $oy = (144 - $vb[3] * $scale) / 2
+    $brush = New-Object System.Drawing.SolidBrush([System.Drawing.ColorTranslator]::FromHtml($svg.svg.path.fill))
+    $g.SmoothingMode = 'None'
+    foreach ($m in [regex]::Matches($svg.svg.path.d, 'M([\d.]+) ([\d.]+)V([\d.]+)H([\d.]+)')) {
+      $x1 = [double]$m.Groups[1].Value; $ya = [double]$m.Groups[2].Value
+      $yb = [double]$m.Groups[3].Value; $x2 = [double]$m.Groups[4].Value
+      $g.FillRectangle($brush, [float]($ox + $x1 * $scale), [float]($oy + [math]::Min($ya, $yb) * $scale),
+        [float](($x2 - $x1) * $scale), [float]([math]::Abs($ya - $yb) * $scale))
+    }
   } elseif ($i.exe -or $i.url -or $i.appx) {
     # アプリは公式のロゴを暗い地の中央に置く。ロゴで分かるのでラベルは付けない
     if ($i.exe) {
