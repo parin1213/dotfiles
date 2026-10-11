@@ -56,9 +56,18 @@ fit() {
 }
 
 # エージェントが出しているタイトルが第一候補。無い（素のシェル等）ときだけ cwd に落とす。
-local title base
-title=$("$herdr" pane get "$HERDR_PANE_ID" 2>/dev/null \
-  | jq -r '.result.pane.terminal_title_stripped // empty') || exit 0
+local title base pane_json
+pane_json=$("$herdr" pane get "$HERDR_PANE_ID" 2>/dev/null) || exit 0
+title=$(print -r -- $pane_json | jq -r '.result.pane.terminal_title_stripped // empty')
+
+# herdr-topic.mjs が会話から作ったタイトルがあれば、セッション名より優先する。
+# セッション名は最初の発言で 1 回しか付かず、話が移っても変わらないため。
+# エージェントが終わって素のシェルに戻ったペインでは使わない。
+local topic_file=${XDG_STATE_HOME:-$HOME/.local/state}/herdr-topic/${HERDR_PANE_ID//:/_}.txt
+if [[ -r $topic_file && -n $(print -r -- $pane_json | jq -r '.result.pane.agent // empty') ]]; then
+  local generated=$(<$topic_file)
+  [[ -n $generated ]] && title=$generated
+fi
 base=$title
 [[ -n $base ]] || base=$(label_from_cwd)
 [[ -n $base ]] || exit 0

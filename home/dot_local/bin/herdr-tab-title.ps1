@@ -103,6 +103,18 @@ $pane = Invoke-Herdr @('pane', 'get', $env:HERDR_PANE_ID)
 $title = ''
 if ($pane) { $title = [string]$pane.result.pane.terminal_title_stripped }
 
+$stateRoot = $env:XDG_STATE_HOME
+if (-not $stateRoot) { $stateRoot = Join-Path $env:USERPROFILE '.local\state' }
+
+# herdr-topic.mjs が会話から作ったタイトルがあれば、セッション名より優先する。
+# セッション名は最初の発言で 1 回しか付かず、話が移っても変わらないため。
+# エージェントが終わって素のシェルに戻ったペインでは使わない。
+$topicFile = Join-Path $stateRoot ('herdr-topic\' + ($env:HERDR_PANE_ID -replace ':', '_') + '.txt')
+if ($pane -and $pane.result.pane.agent -and (Test-Path -LiteralPath $topicFile)) {
+  $generated = ([System.IO.File]::ReadAllText($topicFile, (New-Object System.Text.UTF8Encoding $false))).Trim()
+  if ($generated) { $title = $generated }
+}
+
 $base = $title
 if (-not $base) { $base = Get-CwdLabel }
 if (-not $base) { exit 0 }
@@ -128,8 +140,6 @@ $label = [string]$tab.result.tab.label
 $number = [string]$tab.result.tab.number
 if ($name -eq $label) { exit 0 }
 
-$stateRoot = $env:XDG_STATE_HOME
-if (-not $stateRoot) { $stateRoot = Join-Path $env:USERPROFILE '.local\state' }
 $stateDir = Join-Path $stateRoot 'herdr-tab-title'
 $stateFile = Join-Path $stateDir ($env:HERDR_TAB_ID -replace ':', '_')
 

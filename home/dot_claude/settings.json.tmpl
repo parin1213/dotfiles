@@ -4,16 +4,20 @@
 {{- if eq .chezmoi.os "windows" }}
 {{-   $tabTitle = printf "powershell -NoProfile -ExecutionPolicy Bypass -File %s/.local/bin/herdr-tab-title.ps1" (.chezmoi.homeDir | replace "\\" "/") }}
 {{- end }}
+{{- /* 会話から今の話題のタイトルを作る hook。Haiku を裏で呼ぶので hook 自体はすぐ戻る。 */ -}}
+{{- $topic := printf "node %s/.local/bin/herdr-topic.mjs" (.chezmoi.homeDir | replace "\\" "/") }}
   "model": "opus",
   "hooks": {
     "SessionStart": [
-      { "hooks": [{ "type": "command", "command": "{{ $tabTitle }} working" }] }
+      { "hooks": [{ "type": "command", "command": "{{ $tabTitle }} working" }] },
+      { "hooks": [{ "type": "command", "command": "{{ $topic }}" }] }
     ],
     "UserPromptSubmit": [
       { "hooks": [{ "type": "command", "command": "{{ $tabTitle }} working" }] }
     ],
     "Stop": [
-      { "hooks": [{ "type": "command", "command": "{{ $tabTitle }} waiting" }] }
+      { "hooks": [{ "type": "command", "command": "{{ $tabTitle }} waiting" }] },
+      { "hooks": [{ "type": "command", "command": "{{ $topic }}" }] }
     ],
     "Notification": [
       { "hooks": [{ "type": "command", "command": "{{ $tabTitle }} attention" }] }
