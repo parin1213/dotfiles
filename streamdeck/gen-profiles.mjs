@@ -64,7 +64,7 @@ const PROFILES = [
         '2,0': web('YouTube Music', 'youtube-music', 'https://music.youtube.com/'),
         '3,0': open('Obsidian', 'obsidian', `"${OBSIDIAN}"`),
         '0,1': open('原神', 'genshin', TASK('Genshin')),
-        '1,1': open('崩壊：スターレイル', 'starrail', TASK('StarRail')),
+        '1,1': open('崩壊：スターレイル', 'hsr', TASK('HSR')),
         '3,1': open('ロック', 'lock', 'rundll32.exe user32.dll,LockWorkStation'),
       },
       { // AI。上段の Space 4 つと使用率、Codex 送信は自作 / 公式プラグイン待ち

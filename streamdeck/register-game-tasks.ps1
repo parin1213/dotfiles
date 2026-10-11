@@ -7,12 +7,17 @@
 
 $games = @(
   @{ name = 'Genshin';  exe = 'C:\Program Files\HoYoPlay\games\Genshin Impact game\GenshinImpact.exe' }
-  @{ name = 'StarRail'; exe = 'C:\Program Files\HoYoPlay\games\Star Rail Games\StarRail.exe' }
+  @{ name = 'HSR';      exe = 'C:\Program Files\HoYoPlay\games\Star Rail Games\StarRail.exe' }
 )
 
 $user = "$env:USERDOMAIN\$env:USERNAME"
 $principal = New-ScheduledTaskPrincipal -UserId $user -LogonType Interactive -RunLevel Highest
 $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit ([TimeSpan]::Zero) -MultipleInstances IgnoreNew
+
+# 一覧から外れたタスク（名前を変えたときの旧名など）は消して、\StreamDeck\ を一覧と一致させる
+Get-ScheduledTask -TaskPath '\StreamDeck\' -ErrorAction SilentlyContinue |
+  Where-Object { $_.TaskName -notin $games.name } |
+  ForEach-Object { Unregister-ScheduledTask -TaskPath '\StreamDeck\' -TaskName $_.TaskName -Confirm:$false; "削除: \StreamDeck\$($_.TaskName)" }
 
 foreach ($g in $games) {
   if (-not (Test-Path -LiteralPath $g.exe)) { Write-Warning "見つからないので飛ばす: $($g.exe)"; continue }

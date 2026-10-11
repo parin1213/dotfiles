@@ -28,6 +28,6 @@ id_rsa*
 /streamdeck/out/
 # ゲームとアプリのアイコンは各社のロゴ・画像なので公開リポジトリに入れない。make-icons.ps1 が手元のアプリや公式サイトから作る
 /streamdeck/icons/genshin.png
-/streamdeck/icons/starrail.png
+/streamdeck/icons/hsr.png
 /streamdeck/icons/obsidian.png
 /streamdeck/icons/youtube-music.png

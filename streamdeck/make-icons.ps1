@@ -26,7 +26,7 @@ $icons = @(
   @{ name = 'youtube-music'; cat = 'app';   url = 'https://music.youtube.com/img/favicon_144.png' }
   @{ name = 'obsidian';      cat = 'app';   exe = "$env:LOCALAPPDATA\Programs\Obsidian\Obsidian.exe" }
   @{ name = 'genshin';       cat = 'daily'; ico = "$hoyo\hk4e_global.ico" }
-  @{ name = 'starrail';      cat = 'daily'; ico = "$hoyo\hkrpg_global.ico" }
+  @{ name = 'hsr';           cat = 'daily'; ico = "$hoyo\hkrpg_global.ico" }
   @{ name = 'lock';          cat = 'sys';   glyph = 0xE72E; label = 'ロック' }
   @{ name = 'codex-app';     cat = 'ai';    glyph = 0xE99A; label = 'Codex' }
   @{ name = 'mic';           cat = 'mtg';   glyph = 0xE720; label = 'マイク' }
