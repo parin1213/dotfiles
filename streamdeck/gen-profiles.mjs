@@ -119,10 +119,9 @@ const PROFILES = [
     ],
   },
   // Stream Deck はプロファイル 1 つに紐付けられるアプリが 1 つなので、同じ中身をアプリごとに作る。
-  ...[
-    { name: 'エンジニアリング（ターミナル）', app: TERMINAL },
-    { name: 'エンジニアリング（VS Code）', app: VSCODE },
-  ].map((p) => ({ ...p, pages: [linkPage(), aiPage()] })),
+  // 最初に出すページを指定しても取り込みで 1 ページ目に戻るので、ページの並びで決める: ターミナルは AI が先、VS Code はリンクが先
+  { name: 'エンジニアリング（ターミナル）', app: TERMINAL, pages: [aiPage(), linkPage()] },
+  { name: 'エンジニアリング（VS Code）', app: VSCODE, pages: [linkPage(), aiPage()] },
 ];
 
 for (const p of PROFILES) {
@@ -151,7 +150,6 @@ for (const p of PROFILES) {
   writePage(defaultId, {});
   writeFileSync(join(dir, 'manifest.json'), JSON.stringify({
     // AppIdentifier は Stream Deck の「アプリケーション」の紐付けで、取り込んでも残る。
-    // 最初に出すページ（Current）は取り込みで 1 ページ目に戻されるので指定しない
     ...(p.app ? { AppIdentifier: p.app } : {}),
     Device: DEVICE, Name: p.name,
     Pages: { Current: pageIds[0], Default: defaultId, Pages: pageIds },

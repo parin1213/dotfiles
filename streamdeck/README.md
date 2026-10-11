@@ -13,7 +13,7 @@ Stream Deck Neo のプロファイルとキー画像を生成する。Stream Dec
 | `focus-app.ps1` | アプリが起動していればそのウィンドウを前面に出し、無ければ起動する。ターミナルのキーから呼ぶ |
 | `switch-input.ps1` | モニターの入力を DDC/CI で切り替える。PC⇄Mac キーが `-Model U2725QE -Source 0x19`（Dell を TB4 = Mac に）で呼ぶ。`-List` で DDC に応答するモニターの model を出す |
 | `plugin/` | 自作プラグイン（`io.github.parin1213.desk`）。Infobar の使用率と時計（承認待ちの Space があればその表示）、herdr の Space キー、Claude 5h / 7d、経過時間、PC⇄Mac。Space キーは置いた列で 1〜4 番目の Space を出し、押すとその Space に移ってターミナルを前に出す |
-| `gen-profiles.mjs` | YouTube Music はブラウザでインストールしたアプリ（PWA）があればそれを、無ければサイトを開くキーにする。プロファイル「通常」（普段使い / AI / 会議中）と「エンジニアリング（ターミナル）」「エンジニアリング（VS Code）」（中身は同じでリンクと AI の 2 ページ。Stream Deck はプロファイル 1 つにアプリ 1 つしか紐付けられないため 2 つ作る）を `out/*.streamDeckProfile` に作る |
+| `gen-profiles.mjs` | YouTube Music はブラウザでインストールしたアプリ（PWA）があればそれを、無ければサイトを開くキーにする。プロファイル「通常」（普段使い / AI / 会議中）と「エンジニアリング（ターミナル）」「エンジニアリング（VS Code）」（中身は同じリンクと AI の 2 ページで、ターミナル用は AI が先。Stream Deck はプロファイル 1 つにアプリ 1 つしか紐付けられないため 2 つ作る）を `out/*.streamDeckProfile` に作る |
 
 公式プラグインが要るキー（Codex 送信）は空けてある。
 
@@ -27,4 +27,4 @@ Space キーに出る話題は `~/.local/bin/herdr-topic.mjs`（Claude Code の 
 2. `node gen-profiles.mjs`
 3. Stream Deck アプリで、取り込み済みの同名プロファイルを削除する（取り込みは上書きではなく追加になる）
 4. `out/*.streamDeckProfile` をダブルクリックして取り込む
-5. 「エンジニアリング（ターミナル）」は実機で 2 ページ目（AI）に送っておく。取り込むと 1 ページ目に戻るため。アプリの紐付けはプロファイルに入っているので要らない
+5. アプリの紐付けはプロファイルに入っているので、取り込めば終わり
