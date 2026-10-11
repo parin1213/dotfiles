@@ -1,6 +1,6 @@
 ﻿# Stream Deck Neo のキー画像（144×144 PNG）を icons/ に作る。
 # 用途ごとの色のグラデーションに、Segoe Fluent Icons のグリフとラベルを焼き込む。
-# ゲームは HoYoPlay 同梱の公式アイコンを使う。
+# ゲームは HoYoPlay 同梱の公式アイコン、アプリは exe か公式サイトのロゴを使う。
 # フォントが Windows にしか無いので、生成は Windows で行い、PNG はコミットして Mac でも使う。
 # 実行: pwsh -File make-icons.ps1
 Add-Type -AssemblyName System.Drawing
@@ -14,6 +14,7 @@ $palette = @{
   mtg   = @('#0d9488', '#16a34a')
   dev   = @('#1e40af', '#0891b2')
   sys   = @('#334155', '#0f172a')
+  app   = @('#27272a', '#09090b')
 }
 
 $hoyo = 'C:\Program Files\HoYoPlay\1.18.0.380\ico'
@@ -22,8 +23,8 @@ $hoyo = 'C:\Program Files\HoYoPlay\1.18.0.380\ico'
 $icons = @(
   @{ name = 'play-pause';    cat = 'daily'; glyph = 0xF5B0; label = '再生' }
   @{ name = 'mute';          cat = 'daily'; glyph = 0xE74F; label = 'ミュート' }
-  @{ name = 'youtube-music'; cat = 'daily'; glyph = 0xEC4F; label = 'YT Music' }
-  @{ name = 'obsidian';      cat = 'daily'; glyph = 0xE70B; label = 'Obsidian' }
+  @{ name = 'youtube-music'; cat = 'app';   url = 'https://music.youtube.com/img/favicon_144.png' }
+  @{ name = 'obsidian';      cat = 'app';   exe = "$env:LOCALAPPDATA\Programs\Obsidian\Obsidian.exe" }
   @{ name = 'genshin';       cat = 'daily'; ico = "$hoyo\hk4e_global.ico" }
   @{ name = 'starrail';      cat = 'daily'; ico = "$hoyo\hkrpg_global.ico" }
   @{ name = 'lock';          cat = 'sys';   glyph = 0xE72E; label = 'ロック' }
@@ -72,6 +73,18 @@ foreach ($i in $icons) {
     # ゲームは公式アイコンをそのまま全面に敷く。ラベルはアイコン内のロゴと重なるので付けない
     $icon = New-Object System.Drawing.Icon($i.ico, 256, 256)
     $g.DrawImage($icon.ToBitmap(), 0, 0, $S, $S)
+  } elseif ($i.exe -or $i.url) {
+    # アプリは公式のロゴを暗い地の中央に置く。ロゴで分かるのでラベルは付けない
+    if ($i.exe) {
+      $logo = [System.Drawing.Icon]::ExtractIcon($i.exe, 0, 256).ToBitmap()
+    } else {
+      $cache = Join-Path $PSScriptRoot "out\$($i.name)-source.png"
+      New-Item -ItemType Directory -Force (Split-Path $cache) | Out-Null
+      if (-not (Test-Path $cache)) { Invoke-WebRequest $i.url -OutFile $cache }
+      $logo = [System.Drawing.Image]::FromFile($cache)
+    }
+    $g.DrawImage($logo, 20, 20, 104, 104)
+    $logo.Dispose()
   } elseif ($i.text) {
     $f = New-Object System.Drawing.Font($i.font, 54, [System.Drawing.GraphicsUnit]::Pixel)
     $g.DrawString($i.text, $f, [System.Drawing.Brushes]::White, (New-Object System.Drawing.RectangleF(0, 8, $S, 96)), $center)
