@@ -4,7 +4,7 @@
   "Name": "Desk",
   "Version": "0.1.0.0",
   "Author": "parin1213",
-  "Description": "herdr の Space と Claude Code / Codex の使用率を出し、PC⇄Mac の入力切り替えと経過時間を扱う自作プラグイン",
+  "Description": "herdr の Space と Claude Code / Codex の使用率を出し、アプリの未読数・コマンド実行・PC⇄Mac の入力切り替え・経過時間を扱う自作プラグイン",
   "Icon": "imgs/plugin",
   "Category": "Desk",
   "CategoryIcon": "imgs/category",
@@ -64,11 +64,29 @@
     {
       "UUID": "io.github.parin1213.desk.switch-input",
       "Name": "PC ⇄ Mac",
-      "Tooltip": "Dell の入力を DDC/CI で Mac（Thunderbolt 4）に切り替える",
+      "Tooltip": "Dell の入力を DDC/CI で切り替える。PC では Mac（Thunderbolt 4）に、Mac では PC（DisplayPort）にする",
       "Icon": "imgs/actions/switch",
       "Controllers": ["Keypad"],
       "UserTitleEnabled": false,
       "States": [{ "Image": "imgs/keys/switch", "ShowTitle": false }]
+    },
+    {
+      "UUID": "io.github.parin1213.desk.app",
+      "Name": "アプリ（未読数）",
+      "Tooltip": "押すとアプリを開く。Mac では Dock のバッジ（未読数）をキーの右上に出す",
+      "Icon": "imgs/actions/app",
+      "Controllers": ["Keypad"],
+      "UserTitleEnabled": false,
+      "States": [{ "Image": "imgs/actions/app", "ShowTitle": false }]
+    },
+    {
+      "UUID": "io.github.parin1213.desk.run",
+      "Name": "コマンド実行",
+      "Tooltip": "設定の cmd と args でコマンドを実行する。Mac の標準の「開く」は引数付きのコマンドを走らせられないため",
+      "Icon": "imgs/actions/run",
+      "Controllers": ["Keypad"],
+      "UserTitleEnabled": false,
+      "States": [{ "Image": "imgs/actions/run", "ShowTitle": false }]
     }
   ]
 }

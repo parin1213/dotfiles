@@ -168,7 +168,26 @@ export function timerKey(t) {
   ].join(''));
 }
 
-export const switchKey = (busy) => svgUrl([
+// to は切り替え先の名前（PC では「Mac」、Mac では「PC」）
+export const switchKey = (busy, to = 'Mac') => svgUrl([
   bg(PAL.sys), icon('swap', 42, 26, 60, { sw: 1.6, opacity: busy ? 0.5 : 1 }),
-  text(72, 128, busy ? '切替中…' : 'Mac に切替', { size: 18, anchor: 'middle' }),
+  text(72, 128, busy ? '切替中…' : `${to} に切替`, { size: 18, anchor: 'middle' }),
 ].join(''));
+
+// アプリのキー。logo は icons/ の PNG（暗い地にロゴを置いた 144×144）を data URL にしたもの。
+// badge は Dock のバッジの文字（未読数、または「•」）。空なら何も重ねない。
+// 数字が長いときは丸を横に伸ばし、4 桁以上は 999+ にまとめる
+export function appKey(logo, badge) {
+  const body = [logo ? `<image href="${logo}" width="144" height="144"/>` : bg(PAL.app)];
+  if (badge) {
+    const label = /^\d+$/.test(badge) && Number(badge) > 999 ? '999+' : badge;
+    const w = Math.max(48, 22 + [...label].length * 18);
+    body.push(
+      `<rect x="${140 - w}" y="4" width="${w}" height="48" rx="24" fill="#ef4444"/>`,
+      `<rect x="${140 - w}" y="4" width="${w}" height="48" rx="24" fill="none" stroke="#09090b" stroke-width="3"/>`,
+      // 「•」（件数なしの未読）はフォントによって位置がずれるので、文字ではなく丸で描く
+      label === '•' ? `<circle cx="${140 - w / 2}" cy="28" r="9" fill="#fff"/>` : text(140 - w / 2, 39, label, { size: 30, anchor: 'middle', font: NUM, weight: 800 }),
+    );
+  }
+  return svgUrl(body.join(''));
+}

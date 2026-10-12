@@ -1,7 +1,8 @@
 // Stream Deck Neo 用の自作プラグイン。
 // - Infobar: Claude Code / Codex の 5 時間・7 日の使用率と時計。承認待ちの Space があればその表示に切り替える
-// - Space キー: herdr の Space の状態と話題。押すとその Space に移ってターミナルを前に出す
+// - Space キー: herdr の Space の状態と話題。エージェントが最近動いた順に並べる。押すとその Space に移ってターミナルを前に出す
 // - Claude 5h / 7d キー、経過時間キー、PC⇄Mac キー
+// - アプリキー（Mac は Dock のバッジで未読数を出す）、コマンド実行キー（Mac の「開く」は引数付きコマンドを走らせられないため）
 // キーと Infobar の絵は render.js が SVG で組み立てる。
 import streamDeck, { SingletonAction } from '@elgato/streamdeck';
 import { execFile } from 'node:child_process';
@@ -9,7 +10,7 @@ import { existsSync, readFileSync, readdirSync, realpathSync, statSync, openSync
 import { homedir } from 'node:os';
 import { delimiter, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { infobar, limitKey, spaceKey, switchKey, timerKey } from './render.js';
+import { appKey, infobar, limitKey, spaceKey, switchKey, timerKey } from './render.js';
 
 const win = process.platform === 'win32';
 const log = streamDeck.logger;
@@ -19,8 +20,10 @@ const ID = 'io.github.parin1213.desk';
 
 // ---- データ ----------------------------------------------------------------
 
+// Stream Deck から起動されたプロセスは PATH が素の状態なので、Mac では mise と Homebrew の置き場所を足す
+const env = win ? process.env : { ...process.env, PATH: [join(homedir(), '.local', 'share', 'mise', 'shims'), '/opt/homebrew/bin', process.env.PATH].join(delimiter) };
 const run = (cmd, args, timeout = 10_000) => new Promise((resolve) => {
-  execFile(cmd, args, { windowsHide: true, timeout, encoding: 'utf8' }, (err, stdout, stderr) => resolve({ ok: !err, stdout, stderr }));
+  execFile(cmd, args, { windowsHide: true, timeout, encoding: 'utf8', env }, (err, stdout, stderr) => resolve({ ok: !err, stdout, stderr }));
 });
 
 // Stream Deck から起動されたプロセスは PATH が素の状態のことがあるので、mise の置き場所も探す
@@ -123,16 +126,40 @@ const setImage = (a, url) => { if (lastImage.get(a.id) !== url) { lastImage.set(
 let spaces = [];
 let claude = null, codex = null;
 
+// Space ごとの「エージェントが最後に動いた時刻」。作業中・承認待ちの間と、状態が変わった瞬間を動いたとみなす。
+// herdr で Space を開いただけでは数えない（キーを押すたびに並びが入れ替わると、押したいキーの位置が動くため）。
+// herdr の snapshot には時刻が無いので、プラグインが観測して global settings に残す（Stream Deck を再起動しても並びを保つ）
+let lastActive = {};
+const lastStatus = new Map();
+let activeDirty = false, activeSavedAt = 0;
+function trackActivity() {
+  const now = Date.now();
+  const ids = new Set(spaces.map((s) => s.id));
+  for (const s of spaces) {
+    const changed = lastStatus.has(s.id) && lastStatus.get(s.id) !== s.status;
+    if (!(s.id in lastActive) || changed || s.status === 'working' || s.status === 'blocked') { lastActive[s.id] = now; activeDirty = true; }
+    lastStatus.set(s.id, s.status);
+  }
+  for (const id of Object.keys(lastActive)) if (!ids.has(id)) { delete lastActive[id]; activeDirty = true; }
+  if (activeDirty && now - activeSavedAt > 30_000) {
+    activeDirty = false; activeSavedAt = now;
+    streamDeck.settings.setGlobalSettings({ lastActive }).catch(() => {});
+  }
+}
+// 最近動いた順。同じ時刻なら Space の番号順
+const recentSpaces = () => [...spaces].sort((a, b) => (lastActive[b.id] || 0) - (lastActive[a.id] || 0) || a.number - b.number);
+
 class Space extends SingletonAction {
   manifestId = `${ID}.space`;
-  // 何番目の Space を出すかは設定の slot、無ければ置いた列（左から 1, 2, …）
+  // 最近動いた順の何番目を出すかは設定の slot、無ければ置いた列（左から 1, 2, …）
   slot(a, settings) { return Number(settings?.slot) || (a.coordinates?.column ?? 0) + 1; }
+  spaceAt(a) { return recentSpaces()[this.slot(a, this.settings.get(a.id)) - 1]; }
   settings = new Map();
-  render(a) { const n = this.slot(a, this.settings.get(a.id)); setImage(a, spaceKey(n, spaces.find((s) => s.number === n))); }
+  render(a) { setImage(a, spaceKey(this.slot(a, this.settings.get(a.id)), this.spaceAt(a))); }
   async onWillAppear(ev) { this.settings.set(ev.action.id, ev.payload.settings); lastImage.delete(ev.action.id); this.render(ev.action); }
   async onDidReceiveSettings(ev) { this.settings.set(ev.action.id, ev.payload.settings); this.render(ev.action); }
   async onKeyDown(ev) {
-    const sp = spaces.find((s) => s.number === this.slot(ev.action, this.settings.get(ev.action.id)));
+    const sp = this.spaceAt(ev.action);
     if (!sp || !herdrBin) return ev.action.showAlert();
     await run(herdrBin, ['workspace', 'focus', sp.id]);
     await focusTerminal();
@@ -193,21 +220,77 @@ class Timer extends SingletonAction {
   tick() { for (const a of this.actions) if (this.timers.get(a.id)?.start) setImage(a, timerKey(this.timers.get(a.id))); }
 }
 
-// PC から Dell を Mac（TB4 = 0x19）に切り替える。Mac から PC に戻す処理は Mac 側で別に作る
+// Dell を相手のマシンに切り替える。PC からは Mac（TB4 = 0x19）に、Mac からは PC（DP = 0x0F = 15）に
+const SWITCH_TO = win ? 'Mac' : 'PC';
 class SwitchInput extends SingletonAction {
   manifestId = `${ID}.switch-input`;
-  async onWillAppear(ev) { lastImage.delete(ev.action.id); setImage(ev.action, switchKey(false)); }
+  async onWillAppear(ev) { lastImage.delete(ev.action.id); setImage(ev.action, switchKey(false, SWITCH_TO)); }
   async onKeyDown(ev) {
-    if (!win) return ev.action.showAlert();
-    setImage(ev.action, switchKey(true));
-    const r = await ps('switch-input.ps1', ['-Model', 'U2725QE', '-Source', '0x19'], 30_000);
-    setImage(ev.action, switchKey(false));
+    setImage(ev.action, switchKey(true, SWITCH_TO));
+    const r = win
+      ? await ps('switch-input.ps1', ['-Model', 'U2725QE', '-Source', '0x19'], 30_000)
+      : await run(join(STREAMDECK_DIR, 'switch-input.sh'), ['U2725QE', '15'], 30_000);
+    setImage(ev.action, switchKey(false, SWITCH_TO));
     if (!r.ok) { log.error(`switch-input 失敗: ${r.stderr}`); ev.action.showAlert(); }
   }
 }
 
-const space = new Space(), limit5 = new Limit('5h'), limit7 = new Limit('7d'), bar = new Infobar(), timer = new Timer();
-for (const a of [space, limit5, limit7, bar, timer, new SwitchInput()]) streamDeck.actions.registerAction(a);
+// アプリを開くキー。設定: path（開くアプリ）、icon（icons/ の PNG の名前）、badge（Dock のバッジを読むアプリ名。Mac だけ）。
+// ロゴの PNG は暗い地まで描いてあるので、その上にバッジの丸だけを重ねる
+const logos = new Map();
+const logoOf = (name) => {
+  if (!name) return null;
+  if (!logos.has(name)) {
+    try { logos.set(name, 'data:image/png;base64,' + readFileSync(join(STREAMDECK_DIR, 'icons', `${name}.png`)).toString('base64')); } catch { logos.set(name, null); }
+  }
+  return logos.get(name);
+};
+// lsappinfo の StatusLabel が Dock のバッジ。権限なしで読める。アプリが動いていなければ空
+async function readBadge(app) {
+  const r = await run('lsappinfo', ['info', '-only', 'StatusLabel', app], 3000);
+  return r.stdout.match(/"label"="([^"]*)"/)?.[1] || '';
+}
+class App extends SingletonAction {
+  manifestId = `${ID}.app`;
+  settings = new Map();
+  badges = new Map();
+  render(a) {
+    const st = this.settings.get(a.id) || {};
+    setImage(a, appKey(logoOf(st.icon), this.badges.get(a.id)));
+  }
+  async onWillAppear(ev) { this.settings.set(ev.action.id, ev.payload.settings); lastImage.delete(ev.action.id); this.render(ev.action); }
+  async onDidReceiveSettings(ev) { this.settings.set(ev.action.id, ev.payload.settings); this.render(ev.action); }
+  async onKeyDown(ev) {
+    const { path } = this.settings.get(ev.action.id) || {};
+    if (!path) return ev.action.showAlert();
+    const r = win ? await run(path, []) : await run('open', ['-a', path]);
+    if (!r.ok) { log.error(`app 失敗: ${path} ${r.stderr}`); ev.action.showAlert(); }
+  }
+  async refresh() {
+    if (win) return;
+    for (const a of this.actions) {
+      const app = this.settings.get(a.id)?.badge;
+      if (!app) continue;
+      this.badges.set(a.id, await readBadge(app));
+      this.render(a);
+    }
+  }
+}
+
+// コマンドを実行するキー。設定: cmd（実行ファイル。streamdeck/ からの相対パスも可）、args（配列）。絵はプロファイルの画像を使う
+class Run extends SingletonAction {
+  manifestId = `${ID}.run`;
+  async onKeyDown(ev) {
+    const { cmd, args = [] } = ev.payload.settings || {};
+    if (!cmd) return ev.action.showAlert();
+    const file = cmd.includes('/') && !cmd.startsWith('/') ? join(STREAMDECK_DIR, cmd) : cmd;
+    const r = await run(file, args, 60_000);
+    if (!r.ok) { log.error(`run 失敗: ${cmd} ${r.stderr}`); ev.action.showAlert(); }
+  }
+}
+
+const space = new Space(), limit5 = new Limit('5h'), limit7 = new Limit('7d'), bar = new Infobar(), timer = new Timer(), app = new App();
+for (const a of [space, limit5, limit7, bar, timer, app, new SwitchInput(), new Run()]) streamDeck.actions.registerAction(a);
 
 // ---- 更新 ------------------------------------------------------------------
 
@@ -217,7 +300,7 @@ async function refreshSpaces() {
   polling = true;
   try {
     // 表示しているキーが無ければ herdr を呼ばない
-    if ([...space.actions].length || [...bar.actions].length) spaces = await readSpaces();
+    if ([...space.actions].length || [...bar.actions].length) { spaces = await readSpaces(); trackActivity(); }
     space.refresh();
     bar.refresh();
   } finally { polling = false; }
@@ -231,7 +314,11 @@ function refreshLimits() {
 // 承認待ちに変わったのをすぐ出したいので herdr は 1.5 秒ごと。使用率のファイルは 10 秒ごと
 setInterval(refreshSpaces, 1500);
 setInterval(refreshLimits, 10_000);
+// 未読数は 3 秒ごと
+setInterval(() => app.refresh(), 3000);
 setInterval(() => { timer.tick(); bar.refresh(); }, 1000);
 refreshLimits();
 
-streamDeck.connect();
+await streamDeck.connect();
+// 接続前に観測した分（初回は全部「今」になる）より、前回保存した時刻を優先する
+lastActive = { ...lastActive, ...((await streamDeck.settings.getGlobalSettings())?.lastActive || {}) };

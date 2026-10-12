@@ -11,7 +11,7 @@ const images = {
   'claude-5h': limitKey('Claude 5h', null),
   'claude-7d': limitKey('Claude 7d', null),
   timer: timerKey(null),
-  switch: switchKey(false),
+  switch: switchKey(false, process.platform === 'win32' ? 'Mac' : 'PC'),
 };
 for (const [name, url] of Object.entries(images)) {
   writeFileSync(join(dir, `${name}.svg`), Buffer.from(url.split(',')[1], 'base64'));

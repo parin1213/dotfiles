@@ -46,5 +46,9 @@ cask "font-hackgen-nerd"
 # --- Notes ---
 cask "obsidian"               # vault は別の private git repo を obsidian-git で同期
 
+# --- Stream Deck ---
+cask "elgato-stream-deck"     # 設定は streamdeck/（README の手順で取り込む）
+brew "m1ddc"                  # Stream Deck の PC⇄Mac キーが DDC/CI で Dell の入力を切り替える
+
 # --- Secrets ---
 # 1password-cli は仕事 Mac (envs.mac) では Keychain 運用のため入れない。必要時のみ `brew install 1password-cli`。

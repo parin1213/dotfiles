@@ -24,9 +24,9 @@ id_rsa*
 **/auth.json
 **/hosts.yml
 
-# Stream Deck の生成物（gen-profiles.mjs / make-icons.ps1 の出力）
+# Stream Deck の生成物（gen-profiles.mjs / make-icons.ps1 / make-icons-mac.sh の出力）
 /streamdeck/out/
-# ゲームとアプリのアイコンは各社のロゴ・画像なので公開リポジトリに入れない。make-icons.ps1 が手元のアプリや公式サイトから作る
+# ゲームとアプリのアイコンは各社のロゴ・画像なので公開リポジトリに入れない。make-icons.ps1 / make-icons-mac.sh が手元のアプリや公式サイトから作る
 /streamdeck/icons/genshin.png
 /streamdeck/icons/hsr.png
 /streamdeck/icons/obsidian.png
@@ -37,6 +37,12 @@ id_rsa*
 /streamdeck/icons/claude-code.png
 /streamdeck/icons/codex-cli.png
 /streamdeck/icons/github-pr.png
+/streamdeck/icons/slack.png
+/streamdeck/icons/chatgpt.png
+/streamdeck/icons/ghostty.png
+/streamdeck/icons/google-drive.png
+/streamdeck/icons/google-calendar.png
+/streamdeck/icons/notion.png
 # 自作プラグインのビルド結果と依存（pnpm build で作る）
 /streamdeck/plugin/node_modules/
 /streamdeck/plugin/io.github.parin1213.desk.sdPlugin/bin/
