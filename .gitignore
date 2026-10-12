@@ -43,6 +43,7 @@ id_rsa*
 /streamdeck/icons/google-drive.png
 /streamdeck/icons/google-calendar.png
 /streamdeck/icons/notion.png
+/streamdeck/icons/badges/
 # 自作プラグインのビルド結果と依存（pnpm build で作る）
 /streamdeck/plugin/node_modules/
 /streamdeck/plugin/io.github.parin1213.desk.sdPlugin/bin/

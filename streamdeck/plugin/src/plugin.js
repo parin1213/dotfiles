@@ -23,7 +23,7 @@ const ID = 'io.github.parin1213.desk';
 // Stream Deck から起動されたプロセスは PATH が素の状態なので、Mac では mise と Homebrew の置き場所を足す
 const env = win ? process.env : { ...process.env, PATH: [join(homedir(), '.local', 'share', 'mise', 'shims'), '/opt/homebrew/bin', process.env.PATH].join(delimiter) };
 const run = (cmd, args, timeout = 10_000) => new Promise((resolve) => {
-  execFile(cmd, args, { windowsHide: true, timeout, encoding: 'utf8', env }, (err, stdout, stderr) => resolve({ ok: !err, stdout, stderr }));
+  execFile(cmd, args, { windowsHide: true, timeout, encoding: 'utf8', env }, (err, stdout, stderr) => resolve({ ok: !err, stdout, stderr, error: err?.message }));
 });
 
 // Stream Deck から起動されたプロセスは PATH が素の状態のことがあるので、mise の置き場所も探す
@@ -236,15 +236,18 @@ class SwitchInput extends SingletonAction {
 }
 
 // アプリを開くキー。設定: path（開くアプリ）、icon（icons/ の PNG の名前）、badge（Dock のバッジを読むアプリ名。Mac だけ）。
-// ロゴの PNG は暗い地まで描いてあるので、その上にバッジの丸だけを重ねる
-const logos = new Map();
-const logoOf = (name) => {
-  if (!name) return null;
-  if (!logos.has(name)) {
-    try { logos.set(name, 'data:image/png;base64,' + readFileSync(join(STREAMDECK_DIR, 'icons', `${name}.png`)).toString('base64')); } catch { logos.set(name, null); }
+// Stream Deck は SVG に埋め込んだ PNG を描けないので、バッジを重ねた絵は make-icons-mac.sh が
+// icons/badges/<icon>-<1〜9 | 9+ | dot>.png に作っておき、件数に合うものをそのまま送る
+const pngs = new Map();
+const pngOf = (file) => {
+  if (!pngs.has(file)) {
+    try { pngs.set(file, 'data:image/png;base64,' + readFileSync(join(STREAMDECK_DIR, 'icons', file)).toString('base64')); } catch { pngs.set(file, null); }
   }
-  return logos.get(name);
+  return pngs.get(file);
 };
+// 件数が 10 以上なら 9+、数字でない（•）なら dot
+const badgeFile = (icon, badge) => `badges/${icon}-${/^\d+$/.test(badge) ? (Number(badge) > 9 ? '9+' : badge) : 'dot'}.png`;
+const appImage = (icon, badge) => (icon && badge && pngOf(badgeFile(icon, badge))) || (icon && pngOf(`${icon}.png`)) || appKey(badge);
 // lsappinfo の StatusLabel が Dock のバッジ。権限なしで読める。アプリが動いていなければ空
 async function readBadge(app) {
   const r = await run('lsappinfo', ['info', '-only', 'StatusLabel', app], 3000);
@@ -256,7 +259,7 @@ class App extends SingletonAction {
   badges = new Map();
   render(a) {
     const st = this.settings.get(a.id) || {};
-    setImage(a, appKey(logoOf(st.icon), this.badges.get(a.id)));
+    setImage(a, appImage(st.icon, this.badges.get(a.id)));
   }
   async onWillAppear(ev) { this.settings.set(ev.action.id, ev.payload.settings); lastImage.delete(ev.action.id); this.render(ev.action); }
   async onDidReceiveSettings(ev) { this.settings.set(ev.action.id, ev.payload.settings); this.render(ev.action); }
@@ -271,21 +274,24 @@ class App extends SingletonAction {
     for (const a of this.actions) {
       const app = this.settings.get(a.id)?.badge;
       if (!app) continue;
-      this.badges.set(a.id, await readBadge(app));
+      const badge = await readBadge(app);
+      if (badge !== this.badges.get(a.id)) log.info(`badge ${app}: "${this.badges.get(a.id) ?? ''}" -> "${badge}"`);
+      this.badges.set(a.id, badge);
       this.render(a);
     }
   }
 }
 
-// コマンドを実行するキー。設定: cmd（実行ファイル。streamdeck/ からの相対パスも可）、args（配列）。絵はプロファイルの画像を使う
+// コマンドを実行するキー。設定: cmd（実行ファイル。streamdeck/ の下にあるスクリプトは名前だけでよい）、args（配列）。絵はプロファイルの画像を使う
 class Run extends SingletonAction {
   manifestId = `${ID}.run`;
   async onKeyDown(ev) {
     const { cmd, args = [] } = ev.payload.settings || {};
     if (!cmd) return ev.action.showAlert();
-    const file = cmd.includes('/') && !cmd.startsWith('/') ? join(STREAMDECK_DIR, cmd) : cmd;
+    const local = join(STREAMDECK_DIR, cmd);
+    const file = !cmd.startsWith('/') && existsSync(local) ? local : cmd;
     const r = await run(file, args, 60_000);
-    if (!r.ok) { log.error(`run 失敗: ${cmd} ${r.stderr}`); ev.action.showAlert(); }
+    if (!r.ok) { log.error(`run 失敗: ${file} ${r.error || ''} ${r.stderr}`); ev.action.showAlert(); }
   }
 }
 

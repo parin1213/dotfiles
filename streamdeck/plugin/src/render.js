@@ -174,11 +174,11 @@ export const switchKey = (busy, to = 'Mac') => svgUrl([
   text(72, 128, busy ? '切替中…' : `${to} に切替`, { size: 18, anchor: 'middle' }),
 ].join(''));
 
-// アプリのキー。logo は icons/ の PNG（暗い地にロゴを置いた 144×144）を data URL にしたもの。
-// badge は Dock のバッジの文字（未読数、または「•」）。空なら何も重ねない。
+// ロゴの画像が無いアプリのキー。暗い地に Dock のバッジの文字（未読数、または「•」）を重ねる。
+// ロゴのあるキーは plugin.js が icons/ の PNG を使う（Stream Deck は SVG に埋め込んだ PNG を描けないため）。
 // 数字が長いときは丸を横に伸ばし、4 桁以上は 999+ にまとめる
-export function appKey(logo, badge) {
-  const body = [logo ? `<image href="${logo}" width="144" height="144"/>` : bg(PAL.app)];
+export function appKey(badge) {
+  const body = [bg(PAL.app)];
   if (badge) {
     const label = /^\d+$/.test(badge) && Number(badge) > 999 ? '999+' : badge;
     const w = Math.max(48, 22 + [...label].length * 18);

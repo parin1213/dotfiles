@@ -155,7 +155,9 @@ function macProfiles() {
   const CHROME_APPS = join(homedir(), 'Applications', 'Chrome Apps.localized');
   const GHOSTTY = `${APPS}/Ghostty.app`;
   const VSCODE = `${APPS}/Visual Studio Code.app`;
-  const app = (title, icon, path, badge) => desk(title, 'app', { path, icon, ...(badge ? { badge } : {}) }, icon);
+  // アプリキーの絵はプラグインが icons/ から描く。プロファイルに画像を入れると Stream Deck はそれを
+  // ユーザーが決めた画像として扱い、プラグインからの差し替え（未読数のバッジ）を無視するので入れない
+  const app = (title, icon, path, badge) => desk(title, 'app', { path, icon, ...(badge ? { badge } : {}) });
   const run = (title, icon, cmd, args = []) => desk(title, 'run', { cmd, args }, icon);
   // ブラウザでインストールしたアプリ（PWA）があればそれを開き、無ければサイトを開く
   const pwaOrWeb = (title, icon, appName, url) => {

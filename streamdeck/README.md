@@ -13,7 +13,7 @@ Stream Deck Neo のプロファイルとキー画像を生成する。Stream Dec
 | `start-agent.ps1` | Claude Code / Codex のキーから呼ぶ（`-Kind claude` / `-Kind codex`）。ターミナルが前面なら herdr で見ているペイン（何かが動いていれば同じ Space の新しいタブ）で、そうでなければホームに新しい Space を作って起動する |
 | `focus-app.ps1` | アプリが起動していればそのウィンドウを前面に出し、無ければ起動する。ターミナルのキーから呼ぶ |
 | `switch-input.ps1` | モニターの入力を DDC/CI で切り替える。PC⇄Mac キーが `-Model U2725QE -Source 0x19`（Dell を TB4 = Mac に）で呼ぶ。`-List` で DDC に応答するモニターの model を出す |
-| `make-icons-mac.sh` | Mac のプロファイルで使うアプリのキー画像を作る。Slack・ChatGPT・Ghostty・VS Code・Google ドライブは .app のアイコンから、カレンダーと Notion は公式サイトから。Claude Code・Codex CLI・GitHub・YouTube Music・Obsidian は Windows で作ったものを local-pc から持ってくる |
+| `make-icons-mac.sh` | Mac のプロファイルで使うアプリのキー画像を作る。Slack・ChatGPT・Ghostty・VS Code・Google ドライブは .app のアイコンから、カレンダーと Notion は公式サイトから。Slack は未読数のバッジを重ねた絵（`icons/badges/`）も作る。Claude Code・Codex CLI・GitHub・YouTube Music・Obsidian は Windows で作ったものを local-pc から持ってくる |
 | `start-agent.sh` | Mac の Claude Code / Codex キーから呼ぶ（引数 `claude` / `codex`）。`start-agent.ps1` と同じ動きで、ターミナルは Ghostty |
 | `switch-input.sh` | Mac の PC⇄Mac キーから呼ぶ。m1ddc で Dell を DP（PC、15）に切り替える |
 | `plugin/` | 自作プラグイン（`io.github.parin1213.desk`）。Infobar の使用率と時計（承認待ちの Space があればその表示）、herdr の Space キー、Claude 5h / 7d、経過時間、PC⇄Mac、アプリキー（Mac は Dock のバッジで Slack などの未読数を右上に出す）、コマンド実行キー（Mac の標準の「開く」は引数付きのコマンドを走らせられないため）。Space キーは置いた列で 1〜4 番目の Space を出し、押すとその Space に移ってターミナルを前に出す |
