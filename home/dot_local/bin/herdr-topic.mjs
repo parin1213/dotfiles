@@ -1,13 +1,16 @@
 #!/usr/bin/env node
-// Claude Code の会話から「いま何の話をしているか」の短いタイトルを作り、herdr のタブ名と Spaces の topic に出す。
+// Claude Code / Codex の会話から「いま何の話をしているか」の短いタイトルを作り、herdr のタブ名と Spaces の topic に出す。
 //
-// なぜ: Claude Code のセッション名は最初の発言から 1 回だけ付き、話が移っても変わらない。
+// なぜ: Claude Code のセッション名は最初の発言から 1 回だけ付き、話が移っても変わらない。Codex はタイトル自体を出さない。
 //       Stream Deck と herdr のサイドバーで Space を見分けるには、今の話題に合ったタイトルが要る。
 //
 // Stop hook から呼ぶ。Haiku の呼び出しに数秒かかるので、hook はすぐ戻し、裏で動く自分自身に任せる。
 // 作ったタイトルは state に書き、表示は herdr-tab-title に任せる（タブ名の手動変更を守る処理がそちらにあるため）。
+// タイトルはどちらの会話でも Claude（Haiku）で作る。
 //
-// 使い方（Claude Code の hooks.Stop と hooks.SessionStart）: node ~/.local/bin/herdr-topic.mjs
+// 使い方（hooks.Stop と hooks.SessionStart）:
+//   Claude Code: node ~/.local/bin/herdr-topic.mjs
+//   Codex      : node ~/.local/bin/herdr-topic.mjs --codex （~/.codex/hooks.json。codex-config の chezmoi スクリプトが足す）
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, openSync, readFileSync, readSync, closeSync, fstatSync, statSync, writeFileSync, unlinkSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
@@ -23,7 +26,7 @@ const MAX_WIDTH = 24;
 const width = (s) => [...s].reduce((w, ch) => w + (/[\u1100-\u115F\u2E80-\uA4CF\uAC00-\uD7A3\uF900-\uFAFF\uFE30-\uFE6F\uFF00-\uFF60\uFFE0-\uFFE6]/.test(ch) ? 2 : 1), 0);
 
 const PROMPT = [
-  'あなたはターミナルのタブに出す見出しを作る。入力は Claude Code の会話の直近部分。',
+  'あなたはターミナルのタブに出す見出しを作る。入力は AI コーディングエージェントとの会話の直近部分。',
   '今まさに取り組んでいる話題を、日本語の名詞句 1 行で出力する。全角 12 文字以内。',
   '固有名（リポジトリ名・ツール名・機能名）があれば残し、「〜について」「〜の件」などの飾りや句読点・括弧・引用符は付けない。',
   '「前のタイトル」が今の話題にも合っていれば、一字も変えずにそのまま出力する。',
@@ -33,7 +36,10 @@ const PROMPT = [
 if (process.argv[2] === '--worker') {
   worker(process.argv[3]);
 } else {
+  const codex = process.argv[2] === '--codex';
   hook();
+  // Codex の hook は標準出力を JSON として読むので、何もしない応答を返す
+  if (codex) process.stdout.write('{}\n');
 }
 
 function hook() {
@@ -102,18 +108,31 @@ function readExcerpt(path) {
   for (const line of buf.toString('utf8').split('\n')) {
     let e;
     try { e = JSON.parse(line); } catch { continue; }
-    if (e.isMeta || e.isSidechain || e.isCompactSummary || !e.message) continue;
-    const c = e.message.content;
-    const text = typeof c === 'string' ? c : Array.isArray(c) ? c.filter((p) => p.type === 'text').map((p) => p.text).join('\n') : '';
-    // コマンドの出力や system-reminder などタグで始まるものは会話ではない
-    if (!text.trim() || text.trimStart().startsWith('<')) continue;
-    if (e.type === 'user') turns.push(`ユーザー: ${text.trim().slice(0, 400)}`);
-    else if (e.type === 'assistant') turns.push(`アシスタント: ${text.trim().slice(0, 300)}`);
+    const m = message(e);
+    if (!m) continue;
+    // コマンドの出力や system-reminder、Codex が会話の頭に入れる AGENTS.md などは会話ではない
+    const text = m.text.trim();
+    if (!text || text.startsWith('<') || text.startsWith('# AGENTS.md')) continue;
+    if (m.role === 'user') turns.push(`ユーザー: ${text.slice(0, 400)}`);
+    else turns.push(`アシスタント: ${text.slice(0, 300)}`);
   }
   // 同じ話題が続いているかを見られるよう、直近のユーザー発言 3 つ分の範囲を渡す
   let users = 0, from = turns.length;
   while (from > 0 && users < 3) { from--; if (turns[from].startsWith('ユーザー:')) users++; }
   return turns.slice(from).join('\n').slice(-3000);
+}
+
+// transcript の 1 行から発言を取り出す。Claude Code は { type, message }、Codex は { type: 'response_item', payload: { type: 'message', role, content } }
+function message(e) {
+  const join = (c, types) => (typeof c === 'string' ? c : Array.isArray(c) ? c.filter((p) => types.includes(p.type)).map((p) => p.text).join('\n') : '');
+  if (e.type === 'response_item') {
+    const p = e.payload;
+    if (p?.type !== 'message' || (p.role !== 'user' && p.role !== 'assistant')) return null;
+    return { role: p.role, text: join(p.content, ['input_text', 'output_text']) };
+  }
+  if (e.isMeta || e.isSidechain || e.isCompactSummary || !e.message) return null;
+  if (e.type !== 'user' && e.type !== 'assistant') return null;
+  return { role: e.type, text: join(e.message.content, ['text']) };
 }
 
 function clean(out) {

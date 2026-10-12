@@ -6,7 +6,7 @@
   codex 未導入なら何もしない。Windows は [windows] sandbox=elevated も設定する。
 */ -}}
 {{ if eq .chezmoi.os "windows" -}}
-# codex standard v3
+# codex standard v4
 $env:Path = "$env:LOCALAPPDATA\mise\shims;$env:Path"
 if (-not (Get-Command codex -ErrorAction SilentlyContinue)) { exit 0 }
 $py = (Get-Command python -ErrorAction SilentlyContinue).Source
@@ -47,6 +47,23 @@ proj = projects.get(home)
 if proj is None:
     proj = tomlkit.table(); projects[home] = proj
 proj["trust_level"] = "trusted"
+# Codex の会話にも herdr のタブ名・Spaces の topic を付ける（herdr-topic.mjs）。
+# hooks.json は cmux や herdr もそれぞれ項目を書き足すので、丸ごと管理せず自分の項目が無いときだけ足す
+features = doc.get("features")
+if features is None:
+    features = tomlkit.table(); doc["features"] = features
+features["hooks"] = True
+import json
+hp = pathlib.Path.home() / ".codex" / "hooks.json"
+hooks = json.loads(hp.read_text(encoding="utf-8")) if hp.exists() else {}
+events = hooks.setdefault("hooks", {})
+topic_cmd = "node " + (pathlib.Path.home() / ".local" / "bin" / "herdr-topic.mjs").as_posix() + " --codex"
+for ev in ("SessionStart", "Stop"):
+    groups = events.setdefault(ev, [])
+    if not any("herdr-topic.mjs" in h.get("command", "") for g in groups for h in g.get("hooks", [])):
+        groups.append({"hooks": [{"type": "command", "command": topic_cmd, "timeout": 10}]})
+hp.parent.mkdir(parents=True, exist_ok=True)
+hp.write_text(json.dumps(hooks, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 p.parent.mkdir(parents=True, exist_ok=True)
 p.write_text(tomlkit.dumps(doc), encoding="utf-8")
 print("codex: standard global settings merged (runtime state preserved)")
