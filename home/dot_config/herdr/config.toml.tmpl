@@ -27,6 +27,8 @@ tab_bar_right = [
   { type = "command", command = "~/.config/herdr/status-limits.sh", interval_seconds = 30, timeout_seconds = 3 },
 {{- end }}
 ]
+# タブ名は herdr-tab-title が会話のタイトルか cwd から付けるので、作るたびに名前を聞かれる必要はない。
+prompt_new_tab_name = false
 
 [ui.toast]
 delivery = "off"
