@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Claude Code statusLine
 # stdin で session JSON を受け取り、1 行のステータスを ANSI カラーで出力する。
-# 表示内容: model | cwd | branch | ctx% | 5h limit(→リセット時刻) | 7d limit(→リセット時刻) | cost
+# 表示内容: model | cwd | branch | ctx% | cc 5h/7d limit(→リセット時刻) | cdx limit | cost
 # rate_limits は Pro/Max で初回 API 呼び出し後に有効。欠落時は silent に skip。
 
 input=$(cat)
@@ -41,6 +41,15 @@ reset_short() {
 R5_RESET=$(reset_short "$R5AT")
 R7_RESET=$(reset_short "$R7AT" always_date)
 
+# Codex も同じ行に出す。値は codex CLI が最後に観測したもので、ライブではない。
+# 使用率（増えていく側）で Claude Code と軸を揃えてある。
+CDX_JSON=$("${HOME}/.local/bin/codex-rate-limit" 2>/dev/null)
+cdx() { printf '%s' "$CDX_JSON" | jq -r "$1 // empty" 2>/dev/null; }
+CDXP5=$(cdx '.five_hour_pct' | cut -d. -f1)
+CDXP7=$(cdx '.seven_day_pct' | cut -d. -f1)
+CDX5_RESET=$(reset_short "$(cdx '.five_hour_resets_at')")
+CDX7_RESET=$(reset_short "$(cdx '.seven_day_resets_at')" always_date)
+
 # HOME を ~ に短縮、長ければ末尾 39 文字に省略
 # NOTE: ${var/#$HOME/~} は bash が replacement の ~ を tilde expand するので no-op になる
 CWD_DISP="$CWD"
@@ -76,8 +85,10 @@ add() { [ -n "$out" ] && out+="$sep"; out+="$1"; }
 [ -n "$CWD_DISP" ] && add "${BLUE}${CWD_DISP}${R}"
 [ -n "$BRANCH"   ] && add "${CYAN}⎇ ${BRANCH}${R}"
 [ -n "$CTX"      ] && add "$(pct_col "$CTX")ctx ${CTX}%${R}"
-[ -n "$RATE5"    ] && add "$(pct_col "$RATE5")5h ${RATE5}%${R5_RESET:+→$R5_RESET}${R}"
-[ -n "$RATE7"    ] && add "$(pct_col "$RATE7")7d ${RATE7}%${R7_RESET:+→$R7_RESET}${R}"
+[ -n "$RATE5"    ] && add "$(pct_col "$RATE5")cc 5h ${RATE5}%${R5_RESET:+→$R5_RESET}${R}"
+[ -n "$RATE7"    ] && add "$(pct_col "$RATE7")cc 7d ${RATE7}%${R7_RESET:+→$R7_RESET}${R}"
+[ -n "$CDXP5"    ] && add "$(pct_col "$CDXP5")cdx 5h ${CDXP5}%${CDX5_RESET:+→$CDX5_RESET}${R}"
+[ -n "$CDXP7"    ] && add "$(pct_col "$CDXP7")cdx 7d ${CDXP7}%${CDX7_RESET:+→$CDX7_RESET}${R}"
 [ -n "$COST"     ] && add "${DIM}\$${COST}${R}"
 
 printf '%s' "$out"

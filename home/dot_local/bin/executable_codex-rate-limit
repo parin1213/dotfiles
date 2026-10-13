@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+# Codex CLI が最後に観測した rate limit を JSON 1 行で出す。
+# 出力: {"five_hour_pct":N|null,"five_hour_resets_at":N|null,
+#        "seven_day_pct":N|null,"seven_day_resets_at":N|null,"observed_at":N|null}
+# pct は「使用率」。Claude Code の statusline が書く rate-limit.json と軸を揃えてある。
+#
+# Codex は残量 API を持たないので ~/.codex/sessions/**/*.jsonl の最後の
+# token_count イベント（.payload.rate_limits）を読む。5h / 7d の判別は
+# window_minutes で行う。primary が weekly を返すことがあり、位置では決まらない。
+
+set -u
+
+SESSIONS="${CODEX_SESSIONS_DIR:-${HOME}/.codex/sessions}"
+TAIL_BYTES=524288   # 末尾だけ見る。rollout は数 MB になるので全走査しない
+
+empty='{"five_hour_pct":null,"five_hour_resets_at":null,"seven_day_pct":null,"seven_day_resets_at":null,"observed_at":null}'
+
+latest=$(find "$SESSIONS" -type d -depth 3 2>/dev/null | sort | tail -2 | while read -r d; do
+  ls -t "$d"/*.jsonl 2>/dev/null | head -1
+done | tail -1)
+
+if [ -z "$latest" ] || [ ! -r "$latest" ]; then
+  printf '%s\n' "$empty"
+  exit 0
+fi
+
+line=$(tail -c "$TAIL_BYTES" "$latest" | grep 'rate_limits' | tail -1)
+if [ -z "$line" ]; then
+  printf '%s\n' "$empty"
+  exit 0
+fi
+
+printf '%s' "$line" | jq -c --argjson empty "$empty" '
+  (.payload.rate_limits // null) as $rl
+  | if $rl == null then $empty
+    else
+      ([$rl.primary, $rl.secondary] | map(select(. != null))) as $w
+      | ($w | map(select(.window_minutes == 300)) | first) as $h5
+      | ($w | map(select(.window_minutes == 10080)) | first) as $d7
+      | {
+          five_hour_pct: ($h5.used_percent // null),
+          five_hour_resets_at: ($h5.resets_at // null),
+          seven_day_pct: ($d7.used_percent // null),
+          seven_day_resets_at: ($d7.resets_at // null),
+          observed_at: (.timestamp // null | if . then (sub("\\.[0-9]+Z$";"Z") | fromdateiso8601) else null end)
+        }
+    end' 2>/dev/null || printf '%s\n' "$empty"

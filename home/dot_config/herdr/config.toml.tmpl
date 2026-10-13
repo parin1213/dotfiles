@@ -20,7 +20,12 @@ auto_switch = false
 # 中身は Claude Code の statusLine が書く ~/.claude/cache/rate-limit.json を読むだけ。
 [ui]
 tab_bar_right = [
+{{- if eq .chezmoi.os "windows" }}
   { type = "command", command = "herdr-rate-limit", interval_seconds = 60, timeout_seconds = 5 },
+{{- else }}
+  # Mac / Linux は Codex の rate limit も並べる（詳細は status-limits.sh）。
+  { type = "command", command = "~/.config/herdr/status-limits.sh", interval_seconds = 30, timeout_seconds = 3 },
+{{- end }}
 ]
 
 [ui.toast]
