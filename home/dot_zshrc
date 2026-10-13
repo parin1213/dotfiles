@@ -41,15 +41,21 @@ if type brew &>/dev/null; then
   FPATH="$(brew --prefix)/share/zsh-completions:$FPATH"
 fi
 
+# dora completion (~/.zfunc/_dora は `dora completion zsh` で生成済み)
+[[ -d ~/.zfunc ]] && fpath=(~/.zfunc $fpath)
+
 # compinit 高速化: 24h に 1 回だけフル検証、それ以外はキャッシュ利用
+# compinit は 1 回だけ呼ぶ（フル実行 1 回で約 0.5 秒かかる）。補完を足すときは fpath をここより前で足す。
+# 鮮度判定は [[ ]] ではなく配列代入で行う（[[ ]] の中ではグロブ修飾子が展開されず常に真になる）。
 autoload -Uz compinit
 _zcompdump="${ZDOTDIR:-$HOME}/.zcompdump"
-if [[ -n "$_zcompdump"(#qN.mh+24) ]]; then
+_zcompdump_stale=( ${_zcompdump}(N.mh+24) )
+if [[ ! -f $_zcompdump ]] || (( $#_zcompdump_stale )); then
   compinit
 else
   compinit -C
 fi
-unset _zcompdump
+unset _zcompdump _zcompdump_stale
 
 # ngrok の補完スクリプトは compdef を呼ぶので compinit より後に置く。
 # login profile 側に置くと compdef 未定義のまま評価され、シェルを開くたびに
@@ -119,13 +125,6 @@ bindkey "^[[H"  beginning-of-line   # iTerm2  Home
 bindkey "^[[F"  end-of-line         # iTerm2  End
 bindkey "^[[1~" beginning-of-line   # Ghostty Home
 bindkey "^[[4~" end-of-line         # Ghostty End
-
-# dora completion (~/.zfunc/_dora は `dora completion zsh` で生成済み)
-# fpath 追加後に compinit をもう一度呼んで _dora を取り込む。
-if [[ -f ~/.zfunc/_dora ]]; then
-  fpath=(~/.zfunc $fpath)
-  autoload -Uz compinit && compinit -u
-fi
 
 # タブ名を cwd のリポジトリ名に追従させる（Claude Code が走るタブは hooks 側が付ける）。
 # chpwd だけで足りる: 名前の元が cwd なので、毎プロンプトで問い合わせても結果は変わらない。
