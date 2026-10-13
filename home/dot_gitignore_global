@@ -24,3 +24,7 @@ mise.toml
 .playwright-cli/
 .claude/
 report/
+reports/
+.mise.local.toml
+.envrc
+.env
