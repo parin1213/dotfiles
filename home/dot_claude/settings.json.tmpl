@@ -1,5 +1,5 @@
 {
-{{- /* herdr のタブ名と Spaces の $topic を更新する hook。Windows は .ps1 を powershell 経由で呼ぶ。 */ -}}
+{{- /* herdr のタブ名と Spaces の $topic を更新する hook。Windows は .ps1 を powershell 経由で呼ぶ。名前は引数で変わらないので async で順序が入れ替わっても困らない。 */ -}}
 {{- $tabTitle := printf "%s/.local/bin/herdr-tab-title" .chezmoi.homeDir }}
 {{- if eq .chezmoi.os "windows" }}
 {{-   $tabTitle = printf "powershell -NoProfile -ExecutionPolicy Bypass -File %s/.local/bin/herdr-tab-title.ps1" (.chezmoi.homeDir | replace "\\" "/") }}
@@ -9,18 +9,18 @@
   "model": "opus",
   "hooks": {
     "SessionStart": [
-      { "hooks": [{ "type": "command", "command": "{{ $tabTitle }} working" }] },
+      { "hooks": [{ "type": "command", "command": "{{ $tabTitle }} working", "async": true }] },
       { "hooks": [{ "type": "command", "command": "{{ $topic }}" }] }
     ],
     "UserPromptSubmit": [
-      { "hooks": [{ "type": "command", "command": "{{ $tabTitle }} working" }] }
+      { "hooks": [{ "type": "command", "command": "{{ $tabTitle }} working", "async": true }] }
     ],
     "Stop": [
-      { "hooks": [{ "type": "command", "command": "{{ $tabTitle }} waiting" }] },
+      { "hooks": [{ "type": "command", "command": "{{ $tabTitle }} waiting", "async": true }] },
       { "hooks": [{ "type": "command", "command": "{{ $topic }}" }] }
     ],
     "Notification": [
-      { "hooks": [{ "type": "command", "command": "{{ $tabTitle }} attention" }] }
+      { "hooks": [{ "type": "command", "command": "{{ $tabTitle }} attention", "async": true }] }
     ]
   },
   "permissions": {

@@ -128,11 +128,17 @@ bindkey "^[[4~" end-of-line         # Ghostty End
 
 # タブ名を cwd のリポジトリ名に追従させる（Claude Code が走るタブは hooks 側が付ける）。
 # chpwd だけで足りる: 名前の元が cwd なので、毎プロンプトで問い合わせても結果は変わらない。
+# 1 回 0.1 秒かかるのでプロンプトを待たせないよう裏で走らせる。初回は最初の precmd で 1 回だけ呼び、
+# chpwd もそこで登録する。起動中に呼ぶと .zshrc.local の cd で 2 回走り、裏で並ぶと古い cwd の名前が後勝ちしうる。
 if [[ -n ${HERDR_ENV-} && -x $HOME/.local/bin/herdr-tab-title ]]; then
   autoload -Uz add-zsh-hook
-  _tab_title() { "$HOME/.local/bin/herdr-tab-title" plain }
-  add-zsh-hook chpwd _tab_title
-  _tab_title
+  _tab_title() { "$HOME/.local/bin/herdr-tab-title" plain &! }
+  _tab_title_init() {
+    add-zsh-hook -d precmd _tab_title_init
+    add-zsh-hook chpwd _tab_title
+    _tab_title
+  }
+  add-zsh-hook precmd _tab_title_init
 fi
 
 # =========================================
