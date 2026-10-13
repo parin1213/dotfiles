@@ -102,10 +102,11 @@ node = "latest"
 ruby = "latest"
 # ffmpeg: yt-dlp の --download-sections (somen-target-followup の章切り出し) が要求。apt は sudo 要のため mise で。
 ffmpeg = "latest"
-# pnpm は aqua 定義が古く、latest(v11.5.1 で .tar.gz 化)に対し資産名 pnpm-linux-x64 を探して
-# no asset found で落ちる。pnpm は本来 npm パッケージなので npm backend で導入（Windows と統一）。
-# aqua-registry の pnpm が .tar.gz 形式に追従したら pnpm = "latest" に戻してよい。(2026-06-02)
-"npm:pnpm" = "latest"
+# pnpm は aqua backend（native binary の tarball）で入れる。npm backend では動かない:
+# mise が build script を無効にして入れるため pnpm 同梱の JS プレースホルダが native binary に
+# 差し替わらず、加えて mise の bin shim が `node <target>` で叩くので Mach-O を node に食わせて
+# SyntaxError で落ちる。pnpm を上げるたびに再発するので npm backend には戻さない。
+pnpm = "latest"
 # codex は registry の short-name が npm:@openai/codex と aqua:openai/codex の両 backend に
 # マップされ、latest 解決時に aqua 側を引いて「no aqua-registry found」で mise up が落ちる。
 # 本来 npm パッケージなので npm backend を明示して曖昧解決を回避する。(2026-07-10)
