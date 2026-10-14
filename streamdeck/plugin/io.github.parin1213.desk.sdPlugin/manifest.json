@@ -87,6 +87,21 @@
       "Controllers": ["Keypad"],
       "UserTitleEnabled": false,
       "States": [{ "Image": "imgs/actions/run", "ShowTitle": false }]
+    },
+    {
+      "UUID": "io.github.parin1213.desk.page",
+      "Name": "ページ",
+      "Tooltip": "今のページ番号を出し、押すと 1 ページ目に戻る。別のページに承認待ちや未読があれば、そのページへ飛ぶ。同梱のプロファイルでだけ動く",
+      "Icon": "imgs/actions/run",
+      "Controllers": ["Keypad"],
+      "UserTitleEnabled": false,
+      "VisibleInActionsList": false,
+      "States": [{ "Image": "imgs/keys/page", "ShowTitle": false }]
     }
+  ],
+  "Profiles": [
+    { "Name": "profiles/normal", "DeviceType": 9, "DontAutoSwitchWhenInstalled": true },
+    { "Name": "profiles/terminal", "DeviceType": 9, "DontAutoSwitchWhenInstalled": true },
+    { "Name": "profiles/vscode", "DeviceType": 9, "DontAutoSwitchWhenInstalled": true }
   ]
 }

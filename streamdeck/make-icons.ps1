@@ -22,7 +22,6 @@ $hoyo = 'C:\Program Files\HoYoPlay\1.18.0.380\ico'
 # name: ファイル名 / cat: 色 / glyph: Segoe Fluent Icons のコードポイント / text + font: Fluent に無い記号 / ico: 画像を使う場合 / label: 下に出す文字
 $icons = @(
   @{ name = 'play-pause';    cat = 'daily'; glyph = 0xF5B0; label = '再生' }
-  @{ name = 'mute';          cat = 'daily'; glyph = 0xE74F; label = 'ミュート' }
   @{ name = 'youtube-music'; cat = 'app';   url = 'https://music.youtube.com/img/favicon_144.png' }
   @{ name = 'obsidian';      cat = 'app';   exe = "$env:LOCALAPPDATA\Programs\Obsidian\Obsidian.exe" }
   @{ name = 'genshin';       cat = 'daily'; ico = "$hoyo\hk4e_global.ico" }
@@ -43,8 +42,6 @@ $icons = @(
   @{ name = 'codex-cli';     cat = 'app';   png = "$HOME\.vscode\extensions\openai.chatgpt-*\webview\assets\codex-app-ga-logo-*.png" }
   @{ name = 'github-pr';     cat = 'app';   url = 'https://github.com/fluidicon.png' }
   @{ name = 'screenshot';    cat = 'dev';   glyph = 0xF7ED; label = 'スクショ' }
-  @{ name = 'meet-mic';      cat = 'mtg';   glyph = 0xE720; label = 'Meet' }
-  @{ name = 'meet-camera';   cat = 'mtg';   glyph = 0xE714; label = 'Meet' }
 )
 
 $S = 144

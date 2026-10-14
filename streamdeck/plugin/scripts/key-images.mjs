@@ -2,7 +2,7 @@
 // manifest.json の States.Image がこれを指す。実行: pnpm build（build の中で呼ぶ）
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { limitKey, spaceKey, switchKey, timerKey } from '../src/render.js';
+import { limitKey, pageKey, spaceKey, switchKey, timerKey } from '../src/render.js';
 
 const dir = join(import.meta.dirname, '..', 'io.github.parin1213.desk.sdPlugin', 'imgs', 'keys');
 mkdirSync(dir, { recursive: true });
@@ -12,6 +12,7 @@ const images = {
   'claude-7d': limitKey('Claude 7d', null),
   timer: timerKey(null),
   switch: switchKey(false, process.platform === 'win32' ? 'Mac' : 'PC'),
+  page: pageKey(1, 4, null),
 };
 for (const [name, url] of Object.entries(images)) {
   writeFileSync(join(dir, `${name}.svg`), Buffer.from(url.split(',')[1], 'base64'));

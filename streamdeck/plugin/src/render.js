@@ -194,3 +194,32 @@ export function appKey(badge) {
   }
   return svgUrl(body.join(''));
 }
+
+// 右下のページ番号キー。普段は「2/4」と行き先（1 ページ目なら「ホーム」、それ以外は「1 へ戻る」）。
+// 見るべきもの（AI の承認待ち、Slack の未読）が別のページにあるときは、そちらを件数付きで出す。
+// 終わったがまだ見ていない Space（done）は急がないので、ページ番号はそのままに上へ小さく出す（押すと AI ページへ）
+const ALERT = {
+  ai: { bg: STATUS.blocked.bg, label: '承認待ち' },
+  slack: { bg: ['#611f69', '#2b0a2c'], label: '未読' },
+};
+export function pageKey(page, pages, alert, done = 0) {
+  if (alert) {
+    const a = ALERT[alert.kind];
+    const count = /^\d+$/.test(alert.count) && Number(alert.count) > 99 ? '99+' : alert.count;
+    return svgUrl([
+      bg(a.bg),
+      // 未読が残り続けても今いるページは分かるよう、右上に小さく出す
+      text(134, 24, `${page}/${pages}`, { size: 15, anchor: 'end', opacity: 0.7, font: NUM }),
+      text(12, 36, `${alert.title} へ`, { size: 20 }),
+      count === '•' ? '<circle cx="72" cy="72" r="12" fill="#fff"/>' : text(72, 90, count, { size: 52, anchor: 'middle', font: NUM, weight: 800 }),
+      text(72, 128, a.label, { size: 19, anchor: 'middle', opacity: 0.95 }),
+    ].join(''));
+  }
+  return svgUrl([
+    bg(PAL.sys),
+    done ? `<rect x="22" y="8" width="100" height="26" rx="13" fill="${STATUS.done.bg[0]}"/>${text(72, 27, `AI 完了 ${done}`, { size: 15, anchor: 'middle' })}` : '',
+    text(80, 88, page, { size: 64, anchor: 'end', font: NUM }),
+    text(84, 88, `/${pages}`, { size: 26, opacity: 0.65, font: NUM }),
+    text(72, 128, done ? 'AI へ' : page === 1 ? 'ホーム' : '1 へ戻る', { size: 19, anchor: 'middle', opacity: 0.92 }),
+  ].join(''));
+}

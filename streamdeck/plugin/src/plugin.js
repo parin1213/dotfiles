@@ -2,21 +2,25 @@
 // - Infobar: Claude Code / Codex の 5 時間・7 日の使用率と時計。承認待ちの Space があればその表示に切り替える
 // - Space キー: herdr の Space の状態と話題。エージェントが最近動いた順に並べる。押すとその Space に移ってターミナルを前に出す
 // - Claude 5h / 7d キー、経過時間キー、PC⇄Mac キー
+// - ページキー: 右下に今のページ番号を出し、押すと 1 ページ目に戻る。別のページに見るべきもの（承認待ち・Slack の未読）があればそちらへ飛ぶ
 // - アプリキー（Mac は Dock のバッジで未読数を出す）、コマンド実行キー（Mac の「開く」は引数付きコマンドを走らせられないため）
 // キーと Infobar の絵は render.js が SVG で組み立てる。
 import streamDeck, { SingletonAction } from '@elgato/streamdeck';
 import { execFile } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, readdirSync, realpathSync, statSync, openSync, readSync, closeSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { delimiter, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { appKey, infobar, limitKey, spaceKey, switchKey, timerKey } from './render.js';
+import { appKey, infobar, limitKey, pageKey, spaceKey, switchKey, timerKey } from './render.js';
 
 const win = process.platform === 'win32';
 const log = streamDeck.logger;
 // プラグインのフォルダは dotfiles への junction / symlink。実体をたどって streamdeck/ の下のスクリプトを使う
 const STREAMDECK_DIR = join(dirname(realpathSync(fileURLToPath(import.meta.url))), '..', '..', '..');
 const ID = 'io.github.parin1213.desk';
+// プラグインのフォルダ（bin/plugin.js の 1 つ上）
+const PLUGIN_DIR = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 // ---- データ ----------------------------------------------------------------
 
@@ -130,6 +134,12 @@ let claude = null, codex = null;
 // herdr で Space を開いただけでは数えない（キーを押すたびに並びが入れ替わると、押したいキーの位置が動くため）。
 // herdr の snapshot には時刻が無いので、プラグインが観測して global settings に残す（Stream Deck を再起動しても並びを保つ）
 let lastActive = {};
+// global settings は丸ごと置き換わるので、読んだものに足して書く
+let globals = {};
+// ページキーが出た（= 入っている）同梱のプロファイル。接続中にも届くので、ここで用意しておく
+const shown = new Set(), shownWaiters = new Map();
+function profileShown(name) { if (!name) return; shown.add(name); shownWaiters.get(name)?.(); }
+function saveGlobals(patch) { globals = { ...globals, ...patch }; streamDeck.settings.setGlobalSettings(globals).catch(() => {}); }
 const lastStatus = new Map();
 let activeDirty = false, activeSavedAt = 0;
 function trackActivity() {
@@ -143,7 +153,7 @@ function trackActivity() {
   for (const id of Object.keys(lastActive)) if (!ids.has(id)) { delete lastActive[id]; activeDirty = true; }
   if (activeDirty && now - activeSavedAt > 30_000) {
     activeDirty = false; activeSavedAt = now;
-    streamDeck.settings.setGlobalSettings({ lastActive }).catch(() => {});
+    saveGlobals({ lastActive });
   }
 }
 // 最近動いた順。同じ時刻なら Space の番号順
@@ -290,6 +300,59 @@ class App extends SingletonAction {
   }
 }
 
+// 右下のページキー。設定: profile（manifest の Profiles の Name）、page（1 始まり）、pages（ページ数）。
+// ページを移れるのはプラグインに同梱したプロファイルだけなので、3 つのプロファイルは gen-profiles.mjs が plugin の profiles/ に書く
+const AI_PAGE = 2, MAIN_PAGE = 1;
+// プロファイルに切り替わったときに開くページ（ターミナルが前に来たら AI ページ）。
+// Stream Deck はアプリで切り替えたときに前に開いていたページを覚えていないので、プラグインが開き直す
+const OPEN_PAGE = { 'profiles/terminal': AI_PAGE };
+let slackBadge = '';
+// 見るべきものがあるページ。上にあるものほど先に出す
+function alerts() {
+  const list = [];
+  const blocked = spaces.filter((s) => s.status === 'blocked').length;
+  if (blocked) list.push({ page: AI_PAGE, kind: 'ai', title: 'AI', count: String(blocked) });
+  if (slackBadge) list.push({ page: MAIN_PAGE, kind: 'slack', title: 'Slack', count: slackBadge });
+  return list;
+}
+class Page extends SingletonAction {
+  manifestId = `${ID}.page`;
+  settings = new Map();
+  target(a) { const { page } = this.settings.get(a.id) || {}; return alerts().find((x) => x.page !== page); }
+  // 終わったがまだ見ていない Space の数。AI ページでは Space のキーで見えるので出さない
+  done(a) { const { page } = this.settings.get(a.id) || {}; return page === AI_PAGE ? 0 : spaces.filter((s) => s.status === 'done').length; }
+  render(a) {
+    const { page = 1, pages = 4 } = this.settings.get(a.id) || {};
+    setImage(a, pageKey(page, pages, this.target(a), this.done(a)));
+  }
+  // デバイスごとに今出ているプロファイル。別のプロファイルからページキーが出たら「切り替わった」とみなす
+  current = new Map();
+  async onWillAppear(ev) {
+    const st = ev.payload.settings || {};
+    this.settings.set(ev.action.id, st); lastImage.delete(ev.action.id); this.render(ev.action);
+    profileShown(st.profile);
+    const dev = ev.action.device.id;
+    if (!st.profile || this.current.get(dev) === st.profile) return;
+    this.current.set(dev, st.profile);
+    // 切り替わった瞬間だけ開くページへ移す。同じプロファイルの中で 1 ページ目に戻ったときは動かさない
+    const open = OPEN_PAGE[st.profile];
+    if (open && st.page !== open) await streamDeck.profiles.switchToProfile(dev, st.profile, open - 1);
+  }
+  async onDidReceiveSettings(ev) { this.settings.set(ev.action.id, ev.payload.settings); this.render(ev.action); }
+  async onKeyDown(ev) {
+    const { profile, page = 1 } = this.settings.get(ev.action.id) || {};
+    // 終わった Space があれば、どのページからでも AI ページへ（done は AI ページでは 0）
+    const dest = this.target(ev.action)?.page ?? (this.done(ev.action) ? AI_PAGE : MAIN_PAGE);
+    if (dest === page) return;
+    if (!profile) return ev.action.showAlert();
+    // switchToProfile のページは 0 始まり
+    await streamDeck.profiles.switchToProfile(ev.action.device.id, profile, dest - 1);
+  }
+  refresh() { for (const a of this.actions) this.render(a); }
+  // Slack の未読は Dock のバッジ（Mac だけ）。Slack のキーが見えていないページでも読む
+  async readSlack() { if (!win) { slackBadge = await readBadge('Slack'); this.refresh(); } }
+}
+
 // コマンドを実行するキー。設定: cmd（実行ファイル。streamdeck/ の下にあるスクリプトは名前だけでよい）、args（配列）。絵はプロファイルの画像を使う
 class Run extends SingletonAction {
   manifestId = `${ID}.run`;
@@ -303,8 +366,8 @@ class Run extends SingletonAction {
   }
 }
 
-const space = new Space(), limit5 = new Limit('5h'), limit7 = new Limit('7d'), bar = new Infobar(), timer = new Timer(), app = new App();
-for (const a of [space, limit5, limit7, bar, timer, app, new SwitchInput(), new Run()]) streamDeck.actions.registerAction(a);
+const space = new Space(), limit5 = new Limit('5h'), limit7 = new Limit('7d'), bar = new Infobar(), timer = new Timer(), app = new App(), page = new Page();
+for (const a of [space, limit5, limit7, bar, timer, app, page, new SwitchInput(), new Run()]) streamDeck.actions.registerAction(a);
 
 // ---- 更新 ------------------------------------------------------------------
 
@@ -317,6 +380,7 @@ async function refreshSpaces() {
     if ([...space.actions].length || [...bar.actions].length) { spaces = await readSpaces(); trackActivity(); }
     space.refresh();
     bar.refresh();
+    page.refresh();
   } finally { polling = false; }
 }
 function refreshLimits() {
@@ -329,10 +393,44 @@ function refreshLimits() {
 setInterval(refreshSpaces, 1500);
 setInterval(refreshLimits, 10_000);
 // 未読数は 3 秒ごと
-setInterval(() => app.refresh(), 3000);
+setInterval(() => { app.refresh(); page.readSlack(); }, 3000);
 setInterval(() => { timer.tick(); bar.refresh(); }, 1000);
 refreshLimits();
 
 await streamDeck.connect();
+const stored = (await streamDeck.settings.getGlobalSettings()) || {};
 // 接続前に観測した分（初回は全部「今」になる）より、前回保存した時刻を優先する
-lastActive = { ...lastActive, ...((await streamDeck.settings.getGlobalSettings())?.lastActive || {}) };
+lastActive = { ...lastActive, ...(stored.lastActive || {}) };
+globals = { ...globals, ...stored, lastActive };
+
+// 同梱のプロファイルは、プラグインが切り替えようとしたときに Stream Deck が「インストールしますか」と聞いて入れる。
+// 確認が出ている間に頼んだ切り替えは捨てられるので、1 つずつ頼み、そのプロファイルのページキーが出る（= 入った）のを待って次へ進む。
+// gen-profiles.mjs が作り直したら（中身が前回と違えば）全部を頼み直し、全部入ったら中身の hash を覚える（入らなければ次の起動でまた頼む）。
+// 入っているプロファイルは上書きされないので、作り直したときは先に Stream Deck で同名のプロファイルを消しておく（README）
+const waitShown = (name, ms) => new Promise((resolve) => {
+  const t = setTimeout(() => { shownWaiters.delete(name); resolve(false); }, ms);
+  shownWaiters.set(name, () => { clearTimeout(t); shownWaiters.delete(name); resolve(true); });
+});
+async function installProfiles() {
+  const names = (readJson(join(PLUGIN_DIR, 'manifest.json'))?.Profiles || []).map((p) => p.Name);
+  const files = names.map((n) => join(PLUGIN_DIR, `${n}.streamDeckProfile`)).filter((f) => existsSync(f));
+  if (files.length !== names.length) return log.warn('同梱のプロファイルが揃っていない。gen-profiles.mjs を実行する');
+  const hash = createHash('sha256');
+  for (const f of files) hash.update(readFileSync(f));
+  const digest = hash.digest('hex');
+  if (globals.profiles === digest) return;
+  let all = true;
+  for (const d of streamDeck.devices) {
+    for (const n of names.filter((x) => !shown.has(x))) {
+      const wait = waitShown(n, 120_000);
+      await streamDeck.profiles.switchToProfile(d.id, n, 0);
+      const ok = await wait;
+      log.info(`同梱のプロファイル ${n}: ${ok ? '入った' : '入らなかった'}`);
+      all &&= ok;
+    }
+    await streamDeck.profiles.switchToProfile(d.id, names[0], 0);
+  }
+  if (all) saveGlobals({ profiles: digest });
+}
+// 接続した直後はデバイスの一覧がまだ空のことがあるので、少し待つ
+setTimeout(() => installProfiles().catch((e) => log.error(`プロファイルの切り替えに失敗: ${e}`)), 5000);
