@@ -141,6 +141,9 @@ if [[ -n ${HERDR_ENV-} && -x $HOME/.local/bin/herdr-tab-title ]]; then
   add-zsh-hook precmd _tab_title_init
 fi
 
+# 日次の pkg-update（brew / mise）が失敗していたら 1 行だけ出す。夜中に落ちてもログを見に行かずに気付けるように。
+[[ -s ~/.local/state/pkg-update.failed ]] && print -P "%F{yellow}pkg-update 失敗: $(<~/.local/state/pkg-update.failed)（~/.local/state/pkg-update.log）%f"
+
 # =========================================
 # 5. ローカル/会社固有オーバーライド
 # =========================================

@@ -1,0 +1,121 @@
+#!/bin/sh
+# brew update → brew upgrade → mise up を毎日まとめて流す。手で打つと数週間置き去りになる。
+# claude-code / codex は日次リリースなので、config.toml の minimum_release_age_excludes で
+# cooldown を外して mise up が即最新を掴むようにしてある。他のツールは cooldown を守る。
+# 実行元は OS スケジューラ（mac: Library/LaunchAgents/com.parin1213.pkg-update.plist）。
+# どのバージョンを入れるかの基準は ~/.config/mise/config.toml の [tools] と brew 側。ここは叩くだけ。
+#
+# 失敗したら $FAILED に要約を書き、zsh が起動時に 1 行出す。成功したら消す。
+# ログを見に行かなくても、次にターミナルを開いたときに気付けるようにするため。
+
+LOG="$HOME/.local/state/pkg-update.log"
+FAILED="$HOME/.local/state/pkg-update.failed"
+LOCK="$HOME/.local/state/pkg-update.lock"
+
+# launchd は PATH をほぼ持たない。brew の依存解決と mise の shim の両方が要る
+PATH="/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:$HOME/.local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+export PATH
+# 誰も見ていないので対話を求めさせない。sudo が要る cask は tty が無くて失敗し、ログに残る
+export HOMEBREW_NO_ENV_HINTS=1 NONINTERACTIVE=1 HOMEBREW_NO_AUTO_UPDATE=1
+
+# グローバル config を解決させるため $HOME で実行する（cwd のプロジェクト config を拾わないように）
+cd "$HOME" || exit 1
+
+mkdir -p "$(dirname "$LOG")" 2>/dev/null
+
+log() {
+    printf '%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$1" >>"$LOG"
+}
+
+rotate_log() {
+    [ -f "$LOG" ] || return 0
+    lines=$(wc -l <"$LOG" 2>/dev/null | tr -d ' ')
+    case "$lines" in
+        '' | *[!0-9]*) return 0 ;;
+    esac
+    if [ "$lines" -gt 1000 ]; then
+        tail -n 500 "$LOG" >"$LOG.rot" 2>/dev/null && mv "$LOG.rot" "$LOG"
+    fi
+}
+rotate_log
+
+# 手動実行と launchd が重なると brew の lock で片方が落ちるので、後から来た方は何もしない
+if ! mkdir "$LOCK" 2>/dev/null; then
+    log "SKIP: 別の pkg-update が実行中"
+    exit 0
+fi
+trap 'rm -rf "$LOCK"' EXIT INT TERM
+
+# 失敗の要約。brew も mise も進捗を大量に出し、原因は末尾の ERROR 行にあるので、そこを拾う
+oneline() {
+    summary=$(printf '%s\n' "$1" | grep -E 'ERROR|Error:|error:' | grep -v -E 'ERROR (Version:|Run with)' | tail -n 2)
+    [ -n "$summary" ] || summary=$(printf '%s\n' "$1" | tail -n 2)
+    printf '%s' "$summary" | tr '\n' ' ' | cut -c1-300
+}
+
+errors=""
+fail() {
+    log "ERROR: $1"
+    errors="${errors:+$errors / }$1"
+}
+
+if command -v brew >/dev/null 2>&1; then
+    out=$(brew update 2>&1) || fail "brew update (EXIT=$?): $(oneline "$out")"
+    outdated=$(brew outdated --quiet 2>/dev/null | tr '\n' ' ')
+    if [ -z "$outdated" ]; then
+        log "OK: brew (no change)"
+    else
+        # 1 つ失敗しても残りは上がる。失敗した名前は出力に出るのでそのまま残す
+        out=$(brew upgrade 2>&1)
+        status=$?
+        if [ "$status" -ne 0 ]; then
+            fail "brew upgrade (EXIT=$status): $(oneline "$out")"
+        else
+            log "OK: brew upgraded: $outdated"
+        fi
+    fi
+fi
+
+MISE=""
+for candidate in "$HOME/.local/bin/mise" /opt/homebrew/bin/mise /usr/local/bin/mise; do
+    if [ -x "$candidate" ]; then
+        MISE="$candidate"
+        break
+    fi
+done
+if [ -z "$MISE" ]; then
+    fail "mise not found"
+else
+    "$MISE" ls --current >"$LOCK/before" 2>/dev/null
+    out=$("$MISE" up 2>&1)
+    status=$?
+    "$MISE" ls --current >"$LOCK/after" 2>/dev/null
+    if [ "$status" -ne 0 ]; then
+        fail "mise up (EXIT=$status): $(oneline "$out")"
+    fi
+    changed=$(diff "$LOCK/before" "$LOCK/after" | sed -n 's/^> *//p' | awk '{print $1"@"$2}' | tr '\n' ' ')
+    if [ "$status" -eq 0 ]; then
+        if [ -n "$changed" ]; then
+            log "OK: mise upgraded: $changed"
+        else
+            log "OK: mise (no change)"
+        fi
+    fi
+fi
+
+# mise の外（node の global npm）に同名の CLI が居ると PATH を横取りして更新が効かなくなる。
+# 実際に node 24.13.0 配下の codex 0.145.0 が crowd_agent で mise 版を隠していた（2026-09-10）。
+# 消すのは人間の判断に委ね、検知だけログに残す。
+for pkg in @openai/codex @anthropic-ai/claude-code; do
+    for dir in "$HOME"/.local/share/mise/installs/node/*/lib/node_modules/"$pkg"; do
+        [ -d "$dir" ] || continue
+        log "WARN: mise 管理外の $pkg が $dir に居る（PATH を横取りする。npm rm -g で消す）"
+    done
+done
+
+if [ -n "$errors" ]; then
+    printf '%s %s\n' "$(date +%m/%d)" "$errors" | cut -c1-200 >"$FAILED"
+    exit 1
+fi
+rm -f "$FAILED"
+exit 0

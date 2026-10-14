@@ -1,0 +1,20 @@
+{{- /*
+  brew / mise 日次更新の launchd 登録ブリッジ（mac かつ weight lite 以上のみ。他は空レンダ→skip）。
+  plist の SSoT は Library/LaunchAgents/com.parin1213.pkg-update.plist.tmpl。下にそのハッシュを埋めてあるので、
+  plist を変えた apply のときだけ再実行される（vault-sync と同じ思想）。
+  bootout は初回登録時に何も無くて失敗するのが正常なので許容する（冪等登録）。
+*/ -}}
+{{- $p := includeTemplate "profile" . | fromJson -}}
+{{- if and (eq .chezmoi.os "darwin") (ne $p.weight "slim") -}}
+#!/bin/sh
+# plist hash: {{ include "Library/LaunchAgents/com.parin1213.pkg-update.plist.tmpl" | sha256sum }}
+set -eu
+LABEL="com.parin1213.pkg-update"
+PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
+UID_NUM=$(id -u)
+# 同じ役目の旧ジョブ（claude-code / codex だけを上げていた）を外す。plist 本体は .chezmoiremove が消す
+launchctl bootout "gui/$UID_NUM/com.parin1213.ai-cli-update" >/dev/null 2>&1 || true
+launchctl bootout "gui/$UID_NUM/$LABEL" >/dev/null 2>&1 || true
+launchctl bootstrap "gui/$UID_NUM" "$PLIST"
+echo "==> launchd registered: $LABEL"
+{{- end }}

@@ -1,0 +1,3 @@
+# pkg-update に統合した旧ジョブ。launchd からの登録解除は run_onchange_after_pkg-update が行う
+.local/bin/ai-cli-update
+Library/LaunchAgents/com.parin1213.ai-cli-update.plist
