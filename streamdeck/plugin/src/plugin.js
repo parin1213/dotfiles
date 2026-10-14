@@ -2,7 +2,8 @@
 // - Infobar: Claude Code / Codex の 5 時間・7 日の使用率と時計。承認待ちの Space があればその表示に切り替える
 // - Space キー: herdr の Space の状態と話題。エージェントが最近動いた順に並べる。押すとその Space に移ってターミナルを前に出す
 // - Claude 5h / 7d キー、経過時間キー、PC⇄Mac キー
-// - ページキー: 右下に今のページ番号を出し、押すと 1 ページ目に戻る。別のページに見るべきもの（承認待ち・Slack の未読）があればそちらへ飛ぶ
+// - ページキー: 右下に今のページ番号を出し、押すと 1 ページ目に戻る。別のページに見るべきもの（承認待ち・Slack のメンション）があればそちらへ飛ぶ。
+//   終わった Space や Slack の未読チャンネルは、飛ぶほどではないので上に小さく出すだけ
 // - アプリキー（Mac は Dock のバッジで未読数を出す）、コマンド実行キー（Mac の「開く」は引数付きコマンドを走らせられないため）
 // キーと Infobar の絵は render.js が SVG で組み立てる。
 import streamDeck, { SingletonAction } from '@elgato/streamdeck';
@@ -306,13 +307,15 @@ const AI_PAGE = 2, MAIN_PAGE = 1;
 // プロファイルに切り替わったときに開くページ（ターミナルが前に来たら AI ページ）。
 // Stream Deck はアプリで切り替えたときに前に開いていたページを覚えていないので、プラグインが開き直す
 const OPEN_PAGE = { 'profiles/terminal': AI_PAGE };
+// Slack の Dock バッジ。数字はメンション / DM の件数、「•」は未読のチャンネルがあるだけ。飛ぶのは数字のときだけ
 let slackBadge = '';
+const slackMentions = () => (/^\d+$/.test(slackBadge) ? slackBadge : '');
 // 見るべきものがあるページ。上にあるものほど先に出す
 function alerts() {
   const list = [];
   const blocked = spaces.filter((s) => s.status === 'blocked').length;
   if (blocked) list.push({ page: AI_PAGE, kind: 'ai', title: 'AI', count: String(blocked) });
-  if (slackBadge) list.push({ page: MAIN_PAGE, kind: 'slack', title: 'Slack', count: slackBadge });
+  if (slackMentions()) list.push({ page: MAIN_PAGE, kind: 'slack', title: 'Slack', count: slackMentions() });
   return list;
 }
 class Page extends SingletonAction {
@@ -321,9 +324,18 @@ class Page extends SingletonAction {
   target(a) { const { page } = this.settings.get(a.id) || {}; return alerts().find((x) => x.page !== page); }
   // 終わったがまだ見ていない Space の数。AI ページでは Space のキーで見えるので出さない
   done(a) { const { page } = this.settings.get(a.id) || {}; return page === AI_PAGE ? 0 : spaces.filter((s) => s.status === 'done').length; }
+  // 上の小さな帯。Slack の未読チャンネルは、Slack のキーが見えている 1 ページ目では出さない
+  notes(a) {
+    const { page } = this.settings.get(a.id) || {};
+    const list = [];
+    const done = this.done(a);
+    if (done) list.push({ kind: 'done', label: `AI 完了 ${done}`, to: 'AI' });
+    if (slackBadge && !slackMentions() && page !== MAIN_PAGE) list.push({ kind: 'slack', label: 'Slack 未読' });
+    return list;
+  }
   render(a) {
     const { page = 1, pages = 4 } = this.settings.get(a.id) || {};
-    setImage(a, pageKey(page, pages, this.target(a), this.done(a)));
+    setImage(a, pageKey(page, pages, this.target(a), this.notes(a)));
   }
   // デバイスごとに今出ているプロファイル。別のプロファイルからページキーが出たら「切り替わった」とみなす
   current = new Map();

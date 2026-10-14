@@ -91,7 +91,7 @@
     {
       "UUID": "io.github.parin1213.desk.page",
       "Name": "ページ",
-      "Tooltip": "今のページ番号を出し、押すと 1 ページ目に戻る。別のページに承認待ちや未読があれば、そのページへ飛ぶ。同梱のプロファイルでだけ動く",
+      "Tooltip": "今のページ番号を出し、押すと 1 ページ目に戻る。別のページに承認待ちや Slack のメンションがあれば、そのページへ飛ぶ。終わった Space と Slack の未読チャンネルは上に小さく出す。同梱のプロファイルでだけ動く",
       "Icon": "imgs/actions/run",
       "Controllers": ["Keypad"],
       "UserTitleEnabled": false,

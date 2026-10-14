@@ -202,7 +202,9 @@ const ALERT = {
   ai: { bg: STATUS.blocked.bg, label: '承認待ち' },
   slack: { bg: ['#611f69', '#2b0a2c'], label: '未読' },
 };
-export function pageKey(page, pages, alert, done = 0) {
+// 上の小さな帯に出すもの（飛ぶほどではないが知っておきたいこと）。done = 終わった Space、slack = 未読のチャンネルがあるだけ
+const NOTE = { done: STATUS.done.bg[0], slack: ALERT.slack.bg[0] };
+export function pageKey(page, pages, alert, notes = []) {
   if (alert) {
     const a = ALERT[alert.kind];
     const count = /^\d+$/.test(alert.count) && Number(alert.count) > 99 ? '99+' : alert.count;
@@ -215,11 +217,15 @@ export function pageKey(page, pages, alert, done = 0) {
       text(72, 128, a.label, { size: 19, anchor: 'middle', opacity: 0.95 }),
     ].join(''));
   }
+  // 帯は 1 本。2 つあるときは「・」でつないで少し小さく出す。幅は文字数から見積もる（全角 1 文字 ≈ 15px、半角 ≈ 8px）
+  const label = notes.map((n) => n.label).join('・');
+  const w = Math.min(136, 20 + [...label].reduce((s, c) => s + (c.charCodeAt(0) > 255 ? 15 : 8), 0));
+  const to = notes.find((n) => n.to)?.to;
   return svgUrl([
     bg(PAL.sys),
-    done ? `<rect x="22" y="8" width="100" height="26" rx="13" fill="${STATUS.done.bg[0]}"/>${text(72, 27, `AI 完了 ${done}`, { size: 15, anchor: 'middle' })}` : '',
+    notes.length ? `<rect x="${72 - w / 2}" y="8" width="${w}" height="26" rx="13" fill="${NOTE[notes[0].kind]}"/>${text(72, 27, label, { size: notes.length > 1 ? 13 : 15, anchor: 'middle' })}` : '',
     text(80, 88, page, { size: 64, anchor: 'end', font: NUM }),
     text(84, 88, `/${pages}`, { size: 26, opacity: 0.65, font: NUM }),
-    text(72, 128, done ? 'AI へ' : page === 1 ? 'ホーム' : '1 へ戻る', { size: 19, anchor: 'middle', opacity: 0.92 }),
+    text(72, 128, to ? `${to} へ` : page === 1 ? 'ホーム' : '1 へ戻る', { size: 19, anchor: 'middle', opacity: 0.92 }),
   ].join(''));
 }
