@@ -122,7 +122,9 @@ uv = "0.11.8"
 "npm:ntn" = "latest"
 "npm:@playwright/cli" = "latest"
 "npm:sentry" = "latest"
-"pipx:markitdown" = "latest"
+# markitdown の依存 onnxruntime に CPython 3.15 の wheel が無く、python = "latest"(3.15) で入れると落ちる。
+# 戻す条件: onnxruntime が cp315 の wheel を出したら "latest" だけに戻す。(2026-10-15)
+"pipx:markitdown" = { version = "latest", uvx_args = "--python 3.14" }
 "npm:zundone-cli" = "latest"
 "npm:helpdora" = "latest"
 # Claude Code の LSP プラグイン (typescript-lsp / pyright-lsp / ruby-lsp) が PATH から呼ぶ言語サーバー。
