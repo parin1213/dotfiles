@@ -64,7 +64,7 @@
     {
       "UUID": "io.github.parin1213.desk.switch-input",
       "Name": "PC ⇄ Mac",
-      "Tooltip": "Dell の入力を DDC/CI で切り替える。PC では Mac（Thunderbolt 4）に、Mac では PC（DisplayPort）にする",
+      "Tooltip": "Dell の入力を DDC/CI で切り替えて、こちらの画面をロックする。PC では Mac（Thunderbolt 4）に、Mac では PC（DisplayPort）にする",
       "Icon": "imgs/actions/switch",
       "Controllers": ["Keypad"],
       "UserTitleEnabled": false,

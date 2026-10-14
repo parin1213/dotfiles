@@ -81,6 +81,7 @@ const ring = (cx, cy, r, sw, pct, color) => [
 const ICON = {
   watch: '<circle cx="12" cy="13.5" r="7.5"/><path d="M12 13.5V9.5M10 2.5h4M12 2.5v3.5M18.5 6.5l1.5-1.5"/>',
   swap: '<rect x="2.5" y="3.5" width="19" height="13" rx="2"/><path d="M8.5 20.5h7M12 16.5v4M8 8.5h8l-2.5-2.2M16 11.5H8l2.5 2.2"/>',
+  lock: '<rect x="4" y="10.5" width="16" height="11" rx="2"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5M12 15v2.5"/>',
 };
 const icon = (name, x, y, size, { sw = 1.8, opacity = 1 } = {}) =>
   `<g transform="translate(${x} ${y}) scale(${size / 24})" fill="none" stroke="#fff" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" opacity="${opacity}">${ICON[name]}</g>`;
@@ -169,8 +170,10 @@ export function timerKey(t) {
 }
 
 // to は切り替え先の名前（PC では「Mac」、Mac では「PC」）
+// 切り替えたあと画面をロックするので、入れ替えの絵の右下に錠を添える
 export const switchKey = (busy, to = 'Mac') => svgUrl([
-  bg(PAL.sys), icon('swap', 42, 26, 60, { sw: 1.6, opacity: busy ? 0.5 : 1 }),
+  bg(PAL.sys), icon('swap', 32, 26, 60, { sw: 1.6, opacity: busy ? 0.5 : 1 }),
+  icon('lock', 90, 58, 30, { sw: 2.2, opacity: busy ? 0.5 : 1 }),
   text(72, 128, busy ? '切替中…' : `${to} に切替`, { size: 18, anchor: 'middle' }),
 ].join(''));
 

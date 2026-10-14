@@ -81,15 +81,29 @@ function windowsProfiles() {
 
   // ブラウザでインストールしたアプリ（PWA）があればそれを開き、無ければサイトを開く。
   // PWA はスタートメニューに「<名前>.lnk」として入るので、生成時にそのショートカットの起動コマンドを読む
+  const pwaCmds = new Map();
   const pwaOrWeb = (title, icon, appName, url) => {
-    const cmd = execFileSync('pwsh', ['-NoProfile', '-Command', `
+    if (!pwaCmds.has(appName)) pwaCmds.set(appName, execFileSync('pwsh', ['-NoProfile', '-Command', `
       $l = Get-ChildItem "$env:APPDATA\\Microsoft\\Windows\\Start Menu\\Programs" -Recurse -Filter '${appName}.lnk' | Select-Object -First 1
-      if ($l) { $s = (New-Object -ComObject WScript.Shell).CreateShortcut($l.FullName); '"' + $s.TargetPath + '" ' + $s.Arguments }`], { encoding: 'utf8' }).trim();
+      if ($l) { $s = (New-Object -ComObject WScript.Shell).CreateShortcut($l.FullName); '"' + $s.TargetPath + '" ' + $s.Arguments }`], { encoding: 'utf8' }).trim());
+    const cmd = pwaCmds.get(appName);
     return cmd ? open(title, icon, cmd) : web(title, icon, url);
   };
 
-  // AI ページ。上段は herdr の Space 1〜4（置いた列で何番目かが決まる）。2,1 の Codex 送信は公式プラグイン待ち。
-  // エンジニアリングでもターミナルを見ながら Space を切り替えたいので、両方のプロファイルに置く（ActionID が重ならないよう毎回作る）
+  // ページは 3 つのプロファイル全部に置くので関数にして、プロファイルごとに作る（ActionID が重ならないように）。
+  // 普段使い
+  const mainPage = () => ({
+    '0,0': media('再生/停止', 'play-pause', 1),
+    '1,0': media('ミュート', 'mute', 4),
+    '2,0': pwaOrWeb('YouTube Music', 'youtube-music', 'YouTube Music', 'https://music.youtube.com/'),
+    '3,0': open('Obsidian', 'obsidian', `"${OBSIDIAN}"`),
+    '0,1': open('原神', 'genshin', TASK('Genshin')),
+    '1,1': open('崩壊：スターレイル', 'hsr', TASK('HSR')),
+    '2,1': desk('PC ⇄ Mac', 'switch-input'),
+    '3,1': open('ロック', 'lock', 'rundll32.exe user32.dll,LockWorkStation'),
+  });
+
+  // AI ページ。上段は herdr の Space 1〜4（置いた列で何番目かが決まる）。2,1 の Codex 送信は公式プラグイン待ち
   const aiPage = () => ({
     '0,0': desk('herdr Space', 'space'),
     '1,0': desk('herdr Space', 'space'),
@@ -100,7 +114,19 @@ function windowsProfiles() {
     '3,1': open('Codex アプリ', 'codex-app', APP('OpenAI.Codex_2p2nqsd0c76g0!App')),
   });
 
-  // エンジニアリングのリンクのページ
+  // 会議中（Google Meet）
+  const meetPage = () => ({
+    '0,0': hotkey('マイク', 'mic', { ctrl: true, key: 'D' }),
+    '1,0': hotkey('カメラ', 'camera', { ctrl: true, key: 'E' }),
+    '2,0': hotkey('挙手', 'hand', { ctrl: true, alt: true, key: 'H' }),
+    '3,0': hotkey('字幕', 'captions', { key: 'C' }),
+    '0,1': hotkey('チャット', 'chat', { ctrl: true, alt: true, key: 'C' }),
+    '1,1': hotkey('参加者', 'people', { ctrl: true, alt: true, key: 'P' }),
+    '2,1': open('会議メモ', 'meeting-note', `"${OBSIDIAN}"`),
+    '3,1': desk('経過時間', 'timer'),
+  });
+
+  // リンク（ターミナル・エディタ・エージェント・GitHub）
   const linkPage = () => ({
     '0,0': open('ターミナル', 'terminal', PS('focus-app.ps1', '-Process WindowsTerminal -Launch wt.exe')),
     '1,0': open('VS Code', 'vscode', `"${VSCODE}"`),
@@ -113,38 +139,7 @@ function windowsProfiles() {
   });
 
   // キーの位置は "列,行"。Infobar は Neo コントローラの "1,0" で、どのページも使用率を出す
-  return [
-    {
-      name: '通常',
-      pages: [
-        { // 普段使い
-          '0,0': media('再生/停止', 'play-pause', 1),
-          '1,0': media('ミュート', 'mute', 4),
-          '2,0': pwaOrWeb('YouTube Music', 'youtube-music', 'YouTube Music', 'https://music.youtube.com/'),
-          '3,0': open('Obsidian', 'obsidian', `"${OBSIDIAN}"`),
-          '0,1': open('原神', 'genshin', TASK('Genshin')),
-          '1,1': open('崩壊：スターレイル', 'hsr', TASK('HSR')),
-          '2,1': desk('PC ⇄ Mac', 'switch-input'),
-          '3,1': open('ロック', 'lock', 'rundll32.exe user32.dll,LockWorkStation'),
-        },
-        aiPage(),
-        { // 会議中（Google Meet）
-          '0,0': hotkey('マイク', 'mic', { ctrl: true, key: 'D' }),
-          '1,0': hotkey('カメラ', 'camera', { ctrl: true, key: 'E' }),
-          '2,0': hotkey('挙手', 'hand', { ctrl: true, alt: true, key: 'H' }),
-          '3,0': hotkey('字幕', 'captions', { key: 'C' }),
-          '0,1': hotkey('チャット', 'chat', { ctrl: true, alt: true, key: 'C' }),
-          '1,1': hotkey('参加者', 'people', { ctrl: true, alt: true, key: 'P' }),
-          '2,1': open('会議メモ', 'meeting-note', `"${OBSIDIAN}"`),
-          '3,1': desk('経過時間', 'timer'),
-        },
-      ],
-    },
-    // Stream Deck はプロファイル 1 つに紐付けられるアプリが 1 つなので、同じ中身をアプリごとに作る。
-    // 最初に出すページを指定しても取り込みで 1 ページ目に戻るので、ページの並びで決める: ターミナルは AI が先、VS Code はリンクが先
-    { name: 'エンジニアリング（ターミナル）', app: TERMINAL, pages: [aiPage(), linkPage()] },
-    { name: 'エンジニアリング（VS Code）', app: VSCODE, pages: [linkPage(), aiPage()] },
-  ];
+  return profiles(() => [mainPage(), aiPage(), meetPage(), linkPage()], TERMINAL, VSCODE);
 }
 
 // ---- Mac -------------------------------------------------------------------
@@ -165,6 +160,18 @@ function macProfiles() {
     return existsSync(p) ? open(title, icon, p) : web(title, icon, url);
   };
 
+  // 普段使い。Mac は仕事で使うので、使っている時間の長い Slack・カレンダー・Notion・Google ドライブを上段に置く
+  const mainPage = () => ({
+    '0,0': app('Slack', 'slack', `${APPS}/Slack.app`, 'Slack'),
+    '1,0': web('Google カレンダー', 'google-calendar', 'https://calendar.google.com/'),
+    '2,0': web('Notion', 'notion', 'https://app.notion.com/'),
+    '3,0': pwaOrWeb('Google ドライブ', 'google-drive', 'Google ドライブ', 'https://drive.google.com/'),
+    '0,1': media('再生/停止', 'play-pause', 1),
+    '1,1': pwaOrWeb('YouTube Music', 'youtube-music', 'YouTube Music', 'https://music.youtube.com/'),
+    '2,1': desk('PC ⇄ Mac', 'switch-input'),
+    // Mac 標準の「画面をロック」。画面を消すだけ（pmset displaysleepnow）だとパスワードの猶予時間の間はロックされない
+    '3,1': macHotkey('ロック', 'lock', { cmd: true, ctrl: true, key: 'Q' }),
+  });
   const aiPage = () => ({
     '0,0': desk('herdr Space', 'space'),
     '1,0': desk('herdr Space', 'space'),
@@ -173,6 +180,17 @@ function macProfiles() {
     '0,1': desk('Claude 5 時間', 'claude-5h'),
     '1,1': desk('Claude 7 日', 'claude-7d'),
     '3,1': app('ChatGPT', 'chatgpt', `${APPS}/ChatGPT.app`),
+  });
+  // 会議中（Google Meet）。Mac の Meet は Ctrl の代わりに Command、Ctrl+Alt の代わりに Command+Control
+  const meetPage = () => ({
+    '0,0': macHotkey('マイク', 'mic', { cmd: true, key: 'D' }),
+    '1,0': macHotkey('カメラ', 'camera', { cmd: true, key: 'E' }),
+    '2,0': macHotkey('挙手', 'hand', { cmd: true, ctrl: true, key: 'H' }),
+    '3,0': macHotkey('字幕', 'captions', { key: 'C' }),
+    '0,1': macHotkey('チャット', 'chat', { cmd: true, ctrl: true, key: 'C' }),
+    '1,1': macHotkey('参加者', 'people', { cmd: true, ctrl: true, key: 'P' }),
+    '2,1': web('会議メモ', 'meeting-note', 'https://app.notion.com/'),
+    '3,1': desk('経過時間', 'timer'),
   });
   const linkPage = () => ({
     // 「開く」は起動済みなら前面に出すだけなので、Windows の focus-app.ps1 に当たる処理は要らない
@@ -186,38 +204,17 @@ function macProfiles() {
     '3,1': macHotkey('Meet カメラ', 'meet-camera', { cmd: true, key: 'E' }),
   });
 
-  return [
-    {
-      name: '通常',
-      pages: [
-        { // 普段使い。Mac は仕事で使うので、使っている時間の長い Slack・カレンダー・Notion・Google ドライブを上段に置く
-          '0,0': app('Slack', 'slack', `${APPS}/Slack.app`, 'Slack'),
-          '1,0': web('Google カレンダー', 'google-calendar', 'https://calendar.google.com/'),
-          '2,0': web('Notion', 'notion', 'https://app.notion.com/'),
-          '3,0': pwaOrWeb('Google ドライブ', 'google-drive', 'Google ドライブ', 'https://drive.google.com/'),
-          '0,1': media('再生/停止', 'play-pause', 1),
-          '1,1': pwaOrWeb('YouTube Music', 'youtube-music', 'YouTube Music', 'https://music.youtube.com/'),
-          '2,1': desk('PC ⇄ Mac', 'switch-input'),
-          // Mac 標準の「画面をロック」。画面を消すだけ（pmset displaysleepnow）だとパスワードの猶予時間の間はロックされない
-          '3,1': macHotkey('ロック', 'lock', { cmd: true, ctrl: true, key: 'Q' }),
-        },
-        aiPage(),
-        { // 会議中（Google Meet）。Mac の Meet は Ctrl の代わりに Command、Ctrl+Alt の代わりに Command+Control
-          '0,0': macHotkey('マイク', 'mic', { cmd: true, key: 'D' }),
-          '1,0': macHotkey('カメラ', 'camera', { cmd: true, key: 'E' }),
-          '2,0': macHotkey('挙手', 'hand', { cmd: true, ctrl: true, key: 'H' }),
-          '3,0': macHotkey('字幕', 'captions', { key: 'C' }),
-          '0,1': macHotkey('チャット', 'chat', { cmd: true, ctrl: true, key: 'C' }),
-          '1,1': macHotkey('参加者', 'people', { cmd: true, ctrl: true, key: 'P' }),
-          '2,1': web('会議メモ', 'meeting-note', 'https://app.notion.com/'),
-          '3,1': desk('経過時間', 'timer'),
-        },
-      ],
-    },
-    { name: 'エンジニアリング（ターミナル）', app: GHOSTTY, pages: [aiPage(), linkPage()] },
-    { name: 'エンジニアリング（VS Code）', app: VSCODE, pages: [linkPage(), aiPage()] },
-  ];
+  return profiles(() => [mainPage(), aiPage(), meetPage(), linkPage()], GHOSTTY, VSCODE);
 }
+
+// 3 つのプロファイルは同じ 4 ページ（普段使い / AI / 会議中 / リンク）を同じ順で持つ。どのアプリが前にいても同じようにページを開けるようにするため。
+// それでも分けるのは、Stream Deck がプロファイル 1 つにアプリ 1 つしか紐付けられず、開いていたページはプロファイルごとに覚えるから
+// （ターミナルでは AI、VS Code ではリンクを開いたままにしておける）
+const profiles = (pages, terminal, editor) => [
+  { name: '通常', pages: pages() },
+  { name: 'エンジニアリング（ターミナル）', app: terminal, pages: pages() },
+  { name: 'エンジニアリング（VS Code）', app: editor, pages: pages() },
+];
 
 const PROFILES = mac ? macProfiles() : windowsProfiles();
 

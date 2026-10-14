@@ -16,8 +16,8 @@ Stream Deck Neo のプロファイルとキー画像を生成する。Stream Dec
 | `make-icons-mac.sh` | Mac のプロファイルで使うアプリのキー画像を作る。Slack・ChatGPT・Ghostty・VS Code・Google ドライブは .app のアイコンから、カレンダーと Notion は公式サイトから。Slack は未読数のバッジを重ねた絵（`icons/badges/`）も作る。Claude Code・Codex CLI・GitHub・YouTube Music・Obsidian は Windows で作ったものを local-pc から持ってくる |
 | `start-agent.sh` | Mac の Claude Code / Codex キーから呼ぶ（引数 `claude` / `codex`）。`start-agent.ps1` と同じ動きで、ターミナルは Ghostty |
 | `switch-input.sh` | Mac の PC⇄Mac キーから呼ぶ。m1ddc で Dell を DP（PC、15）に切り替える |
-| `plugin/` | 自作プラグイン（`io.github.parin1213.desk`）。Infobar の使用率と時計（承認待ちの Space があればその表示）、herdr の Space キー、Claude 5h / 7d、経過時間、PC⇄Mac、アプリキー（Mac は Dock のバッジで Slack などの未読数を右上に出す）、コマンド実行キー（Mac の標準の「開く」は引数付きのコマンドを走らせられないため）。Space キーは置いた列で 1〜4 番目の Space を出し、押すとその Space に移ってターミナルを前に出す |
-| `gen-profiles.mjs` | YouTube Music はブラウザでインストールしたアプリ（PWA）があればそれを、無ければサイトを開くキーにする。プロファイル「通常」（普段使い / AI / 会議中）と「エンジニアリング（ターミナル）」「エンジニアリング（VS Code）」（中身は同じリンクと AI の 2 ページで、ターミナル用は AI が先。Stream Deck はプロファイル 1 つにアプリ 1 つしか紐付けられないため 2 つ作る）を `out/*.streamDeckProfile` に作る |
+| `plugin/` | 自作プラグイン（`io.github.parin1213.desk`）。Infobar の使用率と時計（承認待ちの Space があればその表示）、herdr の Space キー、Claude 5h / 7d、経過時間、PC⇄Mac（Dell の入力を切り替えたあと、こちらの画面もロックする）、アプリキー（Mac は Dock のバッジで Slack などの未読数を右上に出す）、コマンド実行キー（Mac の標準の「開く」は引数付きのコマンドを走らせられないため）。Space キーは置いた列で 1〜4 番目の Space を出し、押すとその Space に移ってターミナルを前に出す |
+| `gen-profiles.mjs` | YouTube Music はブラウザでインストールしたアプリ（PWA）があればそれを、無ければサイトを開くキーにする。プロファイル「通常」「エンジニアリング（ターミナル）」「エンジニアリング（VS Code）」を `out/*.streamDeckProfile` に作る。3 つとも同じ 4 ページ（普段使い / AI / 会議中 / リンク）を同じ順で持ち、どのアプリが前にいても同じようにページを開ける。分けるのは、Stream Deck がプロファイル 1 つにアプリ 1 つしか紐付けられず、開いていたページをプロファイルごとに覚えるため（ターミナルでは AI を開いたままにしておける） |
 
 公式プラグインが要るキー（Codex 送信）は空けてある。
 
@@ -29,10 +29,10 @@ Mac は仕事で使うので、普段使いのページには使っている時�
 
 | ページ | 上段 | 下段 |
 |---|---|---|
-| 普段使い | Slack（未読数）・Google カレンダー・Notion・Google ドライブ | 再生/停止・YouTube Music・PC に切替・ロック |
+| 普段使い | Slack（未読数）・Google カレンダー・Notion・Google ドライブ | 再生/停止・YouTube Music・PC に切替（切り替えたあとロックもする）・ロック |
 | AI | herdr Space 1〜4 | Claude 5h・Claude 7d・（Codex 送信の空き）・ChatGPT |
 | 会議中 | マイク・カメラ・挙手・字幕 | チャット・参加者・会議メモ（Notion）・経過時間 |
-| エンジニアリングのリンク | Ghostty・VS Code・Claude Code・Codex | GitHub PR・範囲スクショ・Meet ミュート・Meet カメラ |
+| リンク | Ghostty・VS Code・Claude Code・Codex | GitHub PR・範囲スクショ・Meet ミュート・Meet カメラ |
 
 ホットキーは Command を使う（Meet のマイクは ⌘D、ロックは ⌃⌘Q、範囲スクショは ⇧⌘4）。
 

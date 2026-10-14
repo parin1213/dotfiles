@@ -220,8 +220,13 @@ class Timer extends SingletonAction {
   tick() { for (const a of this.actions) if (this.timers.get(a.id)?.start) setImage(a, timerKey(this.timers.get(a.id))); }
 }
 
-// Dell を相手のマシンに切り替える。PC からは Mac（TB4 = 0x19）に、Mac からは PC（DP = 0x0F = 15）に
+// Dell を相手のマシンに切り替える。PC からは Mac（TB4 = 0x19）に、Mac からは PC（DP = 0x0F = 15）に。
+// 切り替えたらこちらの画面もロックする（相手のマシンを使っている間、こちらを開けたままにしないため）
 const SWITCH_TO = win ? 'Mac' : 'PC';
+// Mac は「画面をロック」（⌃⌘Q、key code 12 = Q）を System Events で押す。ホットキーのキーと同じく Stream Deck のアクセシビリティの許可で動く
+const lock = () => win
+  ? run('rundll32.exe', ['user32.dll,LockWorkStation'])
+  : run('osascript', ['-e', 'tell application "System Events" to key code 12 using {control down, command down}']);
 class SwitchInput extends SingletonAction {
   manifestId = `${ID}.switch-input`;
   async onWillAppear(ev) { lastImage.delete(ev.action.id); setImage(ev.action, switchKey(false, SWITCH_TO)); }
@@ -231,7 +236,10 @@ class SwitchInput extends SingletonAction {
       ? await ps('switch-input.ps1', ['-Model', 'U2725QE', '-Source', '0x19'], 30_000)
       : await run(join(STREAMDECK_DIR, 'switch-input.sh'), ['U2725QE', '15'], 30_000);
     setImage(ev.action, switchKey(false, SWITCH_TO));
-    if (!r.ok) { log.error(`switch-input 失敗: ${r.stderr}`); ev.action.showAlert(); }
+    // 切り替えに失敗したらロックしない（この画面を見たまま原因を確かめられるように）
+    if (!r.ok) { log.error(`switch-input 失敗: ${r.stderr}`); return ev.action.showAlert(); }
+    const l = await lock();
+    if (!l.ok) { log.error(`lock 失敗: ${l.error || ''} ${l.stderr}`); ev.action.showAlert(); }
   }
 }
 
