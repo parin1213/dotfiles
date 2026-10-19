@@ -172,7 +172,7 @@ function macProfiles() {
     '0,0': app('Slack', 'slack', `${APPS}/Slack.app`, 'Slack'),
     '1,0': web('Google カレンダー', 'google-calendar', 'https://calendar.google.com/'),
     '2,0': web('Notion', 'notion', 'https://app.notion.com/'),
-    '3,0': pwaOrWeb('Google ドライブ', 'google-drive', 'Google ドライブ', 'https://drive.google.com/'),
+    '3,0': web('Google ドライブ', 'google-drive', 'https://drive.google.com/'),
     '0,1': media('再生/停止', 'play-pause', 1),
     '1,1': pwaOrWeb('YouTube Music', 'youtube-music', 'YouTube Music', 'https://music.youtube.com/'),
     '2,1': desk('PC ⇄ Mac', 'switch-input'),
