@@ -45,10 +45,12 @@ win() {
   printf '%s' "$out"
 }
 
-# tool 名 + 5h/7d の pct と resets_at + 観測時刻 → "cc 5h4% 7d6%"
+# tool 名 + 5h/7d の pct と resets_at + 観測時刻 + 上限の種類 → "cc 5h4% 7d6%"
+# 上限に達したときは pct が無く、どの枠が尽きたかも分からないので "cdx 上限!!" とだけ出す
 render() {
-  local name=$1 p5=$2 r5=$3 p7=$4 r7=$5 observed=$6 v out
+  local name=$1 p5=$2 r5=$3 p7=$4 r7=$5 observed=$6 reached=${7:-} v out
   local parts=()
+  [ -n "$reached" ] && parts+=("上限!!")
   v=$(win 5h "$p5" "$r5"); [ -n "$v" ] && parts+=("$v")
   v=$(win 7d "$p7" "$r7"); [ -n "$v" ] && parts+=("$v")
   [ ${#parts[@]} -eq 0 ] && return
@@ -67,9 +69,9 @@ fi
 
 cdx=""
 if [ -x "$CODEX_READER" ]; then
-  cdx=$("$CODEX_READER" | jq -r '[.five_hour_pct, .five_hour_resets_at, .seven_day_pct, .seven_day_resets_at, .observed_at]
+  cdx=$("$CODEX_READER" | jq -r '[.five_hour_pct, .five_hour_resets_at, .seven_day_pct, .seven_day_resets_at, .observed_at, .limit_reached]
                   | map(. // "") | join("|")' 2>/dev/null \
-        | { IFS='|' read -r a b c d e && render cdx "$a" "$b" "$c" "$d" "$e"; })
+        | { IFS='|' read -r a b c d e f && render cdx "$a" "$b" "$c" "$d" "$e" "$f"; })
 fi
 
 if [ -n "$cc" ] && [ -n "$cdx" ]; then

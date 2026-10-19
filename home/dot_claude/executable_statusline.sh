@@ -49,6 +49,8 @@ CDXP5=$(cdx '.five_hour_pct' | cut -d. -f1)
 CDXP7=$(cdx '.seven_day_pct' | cut -d. -f1)
 CDX5_RESET=$(reset_short "$(cdx '.five_hour_resets_at')")
 CDX7_RESET=$(reset_short "$(cdx '.seven_day_resets_at')" always_date)
+# 上限に達すると pct が消えて種類（workspace_member_credits_depleted 等）だけが入る
+CDX_REACHED=$(cdx '.limit_reached')
 
 # HOME を ~ に短縮、長ければ末尾 39 文字に省略
 # NOTE: ${var/#$HOME/~} は bash が replacement の ~ を tilde expand するので no-op になる
@@ -87,6 +89,7 @@ add() { [ -n "$out" ] && out+="$sep"; out+="$1"; }
 [ -n "$CTX"      ] && add "$(pct_col "$CTX")ctx ${CTX}%${R}"
 [ -n "$RATE5"    ] && add "$(pct_col "$RATE5")cc 5h ${RATE5}%${R5_RESET:+→$R5_RESET}${R}"
 [ -n "$RATE7"    ] && add "$(pct_col "$RATE7")cc 7d ${RATE7}%${R7_RESET:+→$R7_RESET}${R}"
+[ -n "$CDX_REACHED" ] && add "${RED}cdx 上限${R}"
 [ -n "$CDXP5"    ] && add "$(pct_col "$CDXP5")cdx 5h ${CDXP5}%${CDX5_RESET:+→$CDX5_RESET}${R}"
 [ -n "$CDXP7"    ] && add "$(pct_col "$CDXP7")cdx 7d ${CDXP7}%${CDX7_RESET:+→$CDX7_RESET}${R}"
 [ -n "$COST"     ] && add "${DIM}\$${COST}${R}"

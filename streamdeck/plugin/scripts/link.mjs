@@ -29,8 +29,15 @@ if (win) {
   await new Promise((r) => setTimeout(r, 2000));
   spawn(join(process.env.ProgramFiles, 'Elgato', 'StreamDeck', 'StreamDeck.exe'), [], { detached: true, stdio: 'ignore' }).unref();
 } else {
-  try { execFileSync('osascript', ['-e', 'quit app "Elgato Stream Deck"']); } catch {}
-  await new Promise((r) => setTimeout(r, 2000));
+  // quit は終了を待たずに返る。終わる前に open すると既存のアプリが前に出るだけで、そのあと終了して起動し直さない。
+  // quit が -128 で断られることもあるので、10 秒で終わらなければ kill する
+  const running = () => { try { execFileSync('pgrep', ['-x', 'Stream Deck'], { stdio: 'ignore' }); return true; } catch { return false; } };
+  try { execFileSync('osascript', ['-e', 'quit app "Elgato Stream Deck"'], { stdio: 'ignore' }); } catch {}
+  for (let i = 0; i < 20 && running(); i++) await new Promise((r) => setTimeout(r, 500));
+  if (running()) {
+    try { execFileSync('pkill', ['-x', 'Stream Deck']); } catch {}
+    for (let i = 0; i < 10 && running(); i++) await new Promise((r) => setTimeout(r, 500));
+  }
   execFileSync('open', ['-a', 'Elgato Stream Deck']);
 }
 console.log('Stream Deck を再起動した');

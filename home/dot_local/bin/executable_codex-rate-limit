@@ -1,47 +1,58 @@
 #!/usr/bin/env bash
 # Codex CLI が最後に観測した rate limit を JSON 1 行で出す。
 # 出力: {"five_hour_pct":N|null,"five_hour_resets_at":N|null,
-#        "seven_day_pct":N|null,"seven_day_resets_at":N|null,"observed_at":N|null}
+#        "seven_day_pct":N|null,"seven_day_resets_at":N|null,
+#        "limit_reached":"<種類>"|null,"observed_at":N|null}
 # pct は「使用率」。Claude Code の statusline が書く rate-limit.json と軸を揃えてある。
 #
 # Codex は残量 API を持たないので ~/.codex/sessions/**/*.jsonl の最後の
 # token_count イベント（.payload.rate_limits）を読む。5h / 7d の判別は
 # window_minutes で行う。primary が weekly を返すことがあり、位置では決まらない。
+#
+# 上限に達すると primary / secondary は null になり、rate_limit_reached_type
+# （例: workspace_member_credits_depleted）だけが入る。どの枠が尽きたかは分からないので
+# pct は null のまま limit_reached に種類を入れる。
+# 起動直後のセッションはまだ rate_limits を書いていないので、新しい順に数ファイルさかのぼる。
 
 set -u
 
 SESSIONS="${CODEX_SESSIONS_DIR:-${HOME}/.codex/sessions}"
 TAIL_BYTES=524288   # 末尾だけ見る。rollout は数 MB になるので全走査しない
+MAX_FILES=20
 
-empty='{"five_hour_pct":null,"five_hour_resets_at":null,"seven_day_pct":null,"seven_day_resets_at":null,"observed_at":null}'
+empty='{"five_hour_pct":null,"five_hour_resets_at":null,"seven_day_pct":null,"seven_day_resets_at":null,"limit_reached":null,"observed_at":null}'
 
-latest=$(find "$SESSIONS" -type d -depth 3 2>/dev/null | sort | tail -2 | while read -r d; do
-  ls -t "$d"/*.jsonl 2>/dev/null | head -1
-done | tail -1)
+# sessions/YYYY/MM/DD の最新 2 日分（日付をまたいだ直後でも前日のログを拾うため）
+shopt -s nullglob
+days=("$SESSIONS"/*/*/*/)
+files=()
+for d in "${days[@]: -2}"; do files+=("$d"*.jsonl); done
 
-if [ -z "$latest" ] || [ ! -r "$latest" ]; then
-  printf '%s\n' "$empty"
-  exit 0
+line=""
+if [ ${#files[@]} -gt 0 ]; then
+  while IFS= read -r f; do
+    line=$(tail -c "$TAIL_BYTES" "$f" | grep '"rate_limits"' \
+      | jq -c 'select(.payload.rate_limits.primary != null or .payload.rate_limits.secondary != null or .payload.rate_limits.rate_limit_reached_type != null)' 2>/dev/null \
+      | tail -1)
+    [ -n "$line" ] && break
+  done < <(ls -t "${files[@]}" | head -"$MAX_FILES")
 fi
 
-line=$(tail -c "$TAIL_BYTES" "$latest" | grep 'rate_limits' | tail -1)
 if [ -z "$line" ]; then
   printf '%s\n' "$empty"
   exit 0
 fi
 
-printf '%s' "$line" | jq -c --argjson empty "$empty" '
-  (.payload.rate_limits // null) as $rl
-  | if $rl == null then $empty
-    else
-      ([$rl.primary, $rl.secondary] | map(select(. != null))) as $w
-      | ($w | map(select(.window_minutes == 300)) | first) as $h5
-      | ($w | map(select(.window_minutes == 10080)) | first) as $d7
-      | {
-          five_hour_pct: ($h5.used_percent // null),
-          five_hour_resets_at: ($h5.resets_at // null),
-          seven_day_pct: ($d7.used_percent // null),
-          seven_day_resets_at: ($d7.resets_at // null),
-          observed_at: (.timestamp // null | if . then (sub("\\.[0-9]+Z$";"Z") | fromdateiso8601) else null end)
-        }
-    end' 2>/dev/null || printf '%s\n' "$empty"
+printf '%s' "$line" | jq -c '
+  .payload.rate_limits as $rl
+  | ([$rl.primary, $rl.secondary] | map(select(. != null))) as $w
+  | ($w | map(select(.window_minutes == 300)) | first) as $h5
+  | ($w | map(select(.window_minutes == 10080)) | first) as $d7
+  | {
+      five_hour_pct: ($h5.used_percent // null),
+      five_hour_resets_at: ($h5.resets_at // null),
+      seven_day_pct: ($d7.used_percent // null),
+      seven_day_resets_at: ($d7.resets_at // null),
+      limit_reached: ($rl.rate_limit_reached_type // null),
+      observed_at: (.timestamp // null | if . then (sub("\\.[0-9]+Z$";"Z") | fromdateiso8601) else null end)
+    }' 2>/dev/null || printf '%s\n' "$empty"
