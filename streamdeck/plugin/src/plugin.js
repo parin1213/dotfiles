@@ -83,35 +83,43 @@ function readClaude() {
   return { h5: windowOf(j.five_hour_pct, j.five_hour_resets_at, updatedAt), d7: windowOf(j.seven_day_pct, j.seven_day_resets_at, updatedAt) };
 }
 
-// Codex は rate_limits を各セッションのログ（rollout-*.jsonl）に書く。一番新しいファイルの最後の値を使う
+// Codex は rate_limits を各セッションのログ（rollout-*.jsonl）に書く。新しいファイルから順に見て、最初に見つかった値を使う。
+// 起動直後のセッションはまだ rate_limits を書いていないことがあるので、1 ファイルで諦めない。
+// 上限に達すると primary / secondary が null になり rate_limit_reached_type だけが入る。そのときは reached を返す
 function readCodex() {
   const root = join(process.env.CODEX_HOME || join(homedir(), '.codex'), 'sessions');
-  const newest = (dir, depth) => {
+  const files = [];
+  const collect = (dir, depth) => {
     let names;
-    try { names = readdirSync(dir).sort().reverse(); } catch { return null; }
-    if (depth === 0) {
-      const f = names.find((n) => n.startsWith('rollout-') && n.endsWith('.jsonl'));
-      return f ? join(dir, f) : null;
+    try { names = readdirSync(dir).sort().reverse(); } catch { return; }
+    for (const n of names) {
+      if (files.length >= 20) return;
+      if (depth > 0) collect(join(dir, n), depth - 1);
+      else if (n.startsWith('rollout-') && n.endsWith('.jsonl')) files.push(join(dir, n));
     }
-    for (const n of names) { const f = newest(join(dir, n), depth - 1); if (f) return f; }
-    return null;
   };
-  const file = newest(root, 3);
-  if (!file) return null;
-  const fd = openSync(file, 'r');
-  const size = statSync(file).size, len = Math.min(size, 512 * 1024);
-  const buf = Buffer.alloc(len);
-  readSync(fd, buf, 0, len, size - len);
-  closeSync(fd);
-  const lines = buf.toString('utf8').split('\n');
-  for (let i = lines.length - 1; i >= 0; i--) {
-    if (!lines[i].includes('"rate_limits"')) continue;
-    let e;
-    try { e = JSON.parse(lines[i]); } catch { continue; }
-    const rl = findKey(e, 'rate_limits');
-    if (!rl?.primary) continue;
-    const updatedAt = Date.parse(e.timestamp) / 1000 || statSync(file).mtimeMs / 1000;
-    return { h5: windowOf(rl.primary.used_percent, rl.primary.resets_at, updatedAt), d7: windowOf(rl.secondary?.used_percent, rl.secondary?.resets_at, updatedAt) };
+  collect(root, 3);
+  files.sort((a, b) => statSync(b).mtimeMs - statSync(a).mtimeMs);
+  for (const file of files) {
+    const fd = openSync(file, 'r');
+    const size = statSync(file).size, len = Math.min(size, 512 * 1024);
+    const buf = Buffer.alloc(len);
+    readSync(fd, buf, 0, len, size - len);
+    closeSync(fd);
+    const lines = buf.toString('utf8').split('\n');
+    for (let i = lines.length - 1; i >= 0; i--) {
+      if (!lines[i].includes('"rate_limits"')) continue;
+      let e;
+      try { e = JSON.parse(lines[i]); } catch { continue; }
+      const rl = findKey(e, 'rate_limits');
+      if (!rl) continue;
+      const updatedAt = Date.parse(e.timestamp) / 1000 || statSync(file).mtimeMs / 1000;
+      if (!rl.primary) {
+        if (rl.rate_limit_reached_type) return { reached: rl.rate_limit_reached_type, updatedAt };
+        continue;
+      }
+      return { h5: windowOf(rl.primary.used_percent, rl.primary.resets_at, updatedAt), d7: windowOf(rl.secondary?.used_percent, rl.secondary?.resets_at, updatedAt), updatedAt };
+    }
   }
   return null;
 }

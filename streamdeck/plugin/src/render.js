@@ -135,6 +135,12 @@ export function infobar(claude, codex, spaces) {
   const row = (y, name, dot, d, stale) => {
     const o = stale ? 0.4 : 1;
     const parts = [`<circle cx="66" cy="${y + 11}" r="3.5" fill="${dot}" opacity="${o}"/>`, text(74, y + 15, name, { size: 11, color: '#e4e4e7', opacity: o })];
+    // 上限に達したときはどの枠が尽きたかが分からないので、5h / 7d の場所をまとめて「上限」にする
+    if (d?.reached) {
+      parts.push(text(228, y + 16, '上限', { size: 14, anchor: 'end', color: '#f87171', opacity: o }));
+      parts.push(`<rect x="122" y="${y + 19}" width="106" height="2.5" rx="1.25" fill="#f87171" opacity="${o}"/>`);
+      return parts.join('');
+    }
     [['5h', d?.h5], ['7d', d?.d7]].forEach(([k, w], i) => {
       const x = 122 + i * 56;
       parts.push(text(x, y + 15, k, { size: 9, color: '#a1a1aa', weight: 400, opacity: o, font: NUM }));
@@ -145,7 +151,7 @@ export function infobar(claude, codex, spaces) {
     return parts.join('');
   };
   // Codex を使っていない間は値が古いままなので薄く出す（6 時間以上更新が無いとき）
-  const stale = (d) => !d || Date.now() / 1000 - (d.h5?.updatedAt || 0) > 6 * 3600;
+  const stale = (d) => !d || Date.now() / 1000 - (d.updatedAt || 0) > 6 * 3600;
   const [id, grad] = linear(...PAL.ai);
   return svgUrl([
     bg(PAL.app, W, H), grad, `<rect width="54" height="${H}" fill="url(#${id})"/>`, shine(54, H),
