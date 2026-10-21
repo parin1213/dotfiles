@@ -20,7 +20,8 @@ deno = "latest"
 rust = "latest"
 terraform = "latest"
 "npm:@playwright/cli" = "latest"
-"npm:pnpm" = "latest"
+# pnpm は aqua backend で入れる。npm backend だと native binary に差し替わらず起動できない（Unix 側の同項）。
+pnpm = "latest"
 "npm:zundone-cli" = "latest"
 "npm:sentry" = "latest"
 # Claude Code の LSP プラグイン (typescript-lsp / pyright-lsp / ruby-lsp) が PATH から呼ぶ言語サーバー。
