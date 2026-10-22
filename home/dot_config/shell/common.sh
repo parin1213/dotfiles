@@ -230,6 +230,8 @@ y() {
 case "$(uname -s)" in
   Darwin)
     alias winmerge='wine ~/winapp/WinMerge/WinMergeU.exe'
+    # JTrim は Shift_JIS の ANSI アプリなので、日本語ロケールで起動しないとメニューが文字化けする
+    alias jtrim='LANG=ja_JP.UTF-8 LC_ALL=ja_JP.UTF-8 wine ~/winapp/JTrim/JTrim.exe'
     if [ -f "$HOME/scripts/launch_iterm2_new_window.scpt" ]; then
       alias iterm-new='osascript ~/scripts/launch_iterm2_new_window.scpt'
     fi
