@@ -7,6 +7,8 @@
 {{- /* 会話から今の話題のタイトルを作る hook。Haiku を裏で呼ぶので hook 自体はすぐ戻る。 */ -}}
 {{- $topic := printf "node %s/.local/bin/herdr-topic.mjs" (.chezmoi.homeDir | replace "\\" "/") }}
   "model": "opus",
+{{- /* 会話ログを日数で消さず、過去のセッションをいつでも読み返せるようにする。 */}}
+  "cleanupPeriodDays": 36500,
   "hooks": {
     "SessionStart": [
       { "hooks": [{ "type": "command", "command": "{{ $tabTitle }} working", "async": true }] },
@@ -76,6 +78,7 @@
   "skipDangerousModePermissionPrompt": true,
   "theme": "dark",
   "tui": "fullscreen",
+  "remoteControlAtStartup": true,
   "agentPushNotifEnabled": false,
   "skipAutoPermissionPrompt": true,
   "skipWorkflowUsageWarning": true
