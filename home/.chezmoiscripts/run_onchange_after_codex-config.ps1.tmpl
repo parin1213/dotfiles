@@ -4,13 +4,18 @@
   tomlkit で「標準グローバルキーだけ」上書きし runtime 状態は温存（mise-install と同思想）。
   run_onchange はスクリプト内容が変わった時だけ再実行 → 標準値を変えた apply のときだけ走る。
   codex 未導入なら何もしない。Windows は [windows] sandbox=elevated も設定する。
+  check_for_update_on_startup=false: 更新は日次の pkg-update（mise up）が担うので、起動のたびに聞かれると作業が止まる。
+  projects.<home> を信頼済みにする: Stream Deck から herdr の Space をホームで開くたびに「このフォルダを信頼するか」で止まらないため。
+  hooks.json: Codex の会話にも herdr のタブ名・Spaces の topic を付ける（herdr-topic.mjs）。cmux や herdr もそれぞれ項目を
+  書き足すので、丸ごと管理せず自分の項目が無いときだけ足す。
+  本文は ASCII のみ。PowerShell 5.1 が非 ASCII を python の stdin へ渡す途中で化けさせ、コメントの改行ごと壊すため。
 */ -}}
 {{ if eq .chezmoi.os "windows" -}}
 # codex standard v4
 $env:Path = "$env:LOCALAPPDATA\mise\shims;$env:Path"
 if (-not (Get-Command codex -ErrorAction SilentlyContinue)) { exit 0 }
 $py = (Get-Command python -ErrorAction SilentlyContinue).Source
-if (-not $py) { Write-Host "python 無し → codex 標準化 skip"; exit 0 }
+if (-not $py) { Write-Host "python not found, skip codex standardization"; exit 0 }
 & $py -m pip install --user --quiet tomlkit *> $null
 $code = @'
 import tomlkit, pathlib
@@ -19,7 +24,6 @@ doc = tomlkit.parse(p.read_text(encoding="utf-8")) if p.exists() else tomlkit.do
 doc["model"] = "gpt-5.5"
 doc["model_reasoning_effort"] = "high"
 doc["personality"] = "pragmatic"
-# 起動時の自己更新確認を止める。更新は日次の mise up（mac は pkg-update）が担うので、起動のたびに聞かれると作業が止まる
 doc["check_for_update_on_startup"] = False
 tui = doc.get("tui")
 if tui is None:
@@ -37,8 +41,6 @@ win = doc.get("windows")
 if win is None:
     win = tomlkit.table(); doc["windows"] = win
 win["sandbox"] = "elevated"
-# ホームディレクトリを信頼済みにする。Stream Deck から herdr の Space をホームで開くたびに
-# 「このフォルダを信頼するか」で止まらないようにするため
 projects = doc.get("projects")
 if projects is None:
     projects = tomlkit.table(); doc["projects"] = projects
@@ -47,8 +49,6 @@ proj = projects.get(home)
 if proj is None:
     proj = tomlkit.table(); projects[home] = proj
 proj["trust_level"] = "trusted"
-# Codex の会話にも herdr のタブ名・Spaces の topic を付ける（herdr-topic.mjs）。
-# hooks.json は cmux や herdr もそれぞれ項目を書き足すので、丸ごと管理せず自分の項目が無いときだけ足す
 features = doc.get("features")
 if features is None:
     features = tomlkit.table(); doc["features"] = features
