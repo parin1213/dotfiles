@@ -1,0 +1,28 @@
+{{- /*
+  mise 日次更新の Scheduled Task 登録ブリッジ（windows かつ weight lite 以上のみ。他は空レンダ→skip）。
+  実行ファイルの SSoT は dot_local/bin/pkg-update.ps1。下にそのハッシュを埋めてあるので、
+  スクリプトを変えた apply のときだけ再登録される（vault-sync と同じ思想）。
+  毎日 5:00（mac の launchd と同じ時刻）。-StartWhenAvailable でスリープ中に過ぎた分は起床後に走る。
+  作業時間帯を避けるのは、mise が install ディレクトリを差し替える間に実行中のツールが掴む時間を減らすため。
+  起動は conhost --headless で窓を出さない（vault-sync と同じ理由）。
+  本文は ASCII のみ（render した .ps1 を PowerShell 5.1 が BOM 無しで正しく読めるように）。
+*/ -}}
+{{- $p := includeTemplate "profile" . | fromJson -}}
+{{ if and (eq .chezmoi.os "windows") (ne $p.weight "slim") -}}
+# script hash: {{ include "dot_local/bin/pkg-update.ps1" | sha256sum }}
+$TaskName = "pkg-update"
+$ScriptPath = Join-Path $HOME ".local\bin\pkg-update.ps1"
+
+$Existing = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
+if ($Existing) {
+    Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false
+}
+
+$Action = New-ScheduledTaskAction -Execute "conhost.exe" -Argument "--headless powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$ScriptPath`""
+$Trigger = New-ScheduledTaskTrigger -Daily -At 5:00
+$Principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType Interactive -RunLevel Limited
+$Settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -DontStopIfGoingOnBatteries -AllowStartIfOnBatteries -MultipleInstances IgnoreNew -ExecutionTimeLimit (New-TimeSpan -Hours 2)
+
+Register-ScheduledTask -TaskName $TaskName -Action $Action -Trigger $Trigger -Principal $Principal -Settings $Settings | Out-Null
+Write-Host "==> Scheduled Task registered: $TaskName"
+{{ end -}}

@@ -61,6 +61,15 @@ function open {
     foreach ($t in $targets) { Start-Process $t }
 }
 
+# 日次の pkg-update（mise）が失敗していたら 1 回だけ出す。夜中に落ちてもログを見に行かずに気付けるように。
+# 一時的なダウンロード失敗も多く、見た後も毎回出ると邪魔なので、出したら消す（詳細はログに残っている）。
+$pkgUpdateFailed = Join-Path $HOME '.local\state\pkg-update.failed'
+if ((Test-Path $pkgUpdateFailed) -and (Get-Item $pkgUpdateFailed).Length -gt 0) {
+    Write-Host "pkg-update 失敗: $((Get-Content $pkgUpdateFailed -Raw).TrimEnd())" -ForegroundColor Yellow
+    Write-Host "  → pkg-update を流し直す（詳細: ~/.local/state/pkg-update.log）" -ForegroundColor Yellow
+    Remove-Item -Force $pkgUpdateFailed
+}
+
 # eza
 if (Get-Command eza -ErrorAction SilentlyContinue) {
     Set-Alias -Name ls -Value eza -Option AllScope
