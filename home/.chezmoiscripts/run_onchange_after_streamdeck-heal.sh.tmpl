@@ -1,0 +1,16 @@
+{{- /*
+  Stream Deck 自動復旧の launchd 登録ブリッジ（mac のみ。他は空レンダ→skip）。
+  plist のハッシュを埋めてあるので、plist の内容を変えた apply のときだけ再実行される。
+  bootout は初回登録時に何も無くて失敗するのが正常なので許容する（冪等登録）。
+*/ -}}
+{{- if eq .chezmoi.os "darwin" -}}
+#!/bin/sh
+# plist hash: {{ include "Library/LaunchAgents/com.parin1213.streamdeck-heal.plist.tmpl" | sha256sum }}
+set -eu
+LABEL="com.parin1213.streamdeck-heal"
+PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
+UID_NUM=$(id -u)
+launchctl bootout "gui/$UID_NUM/$LABEL" >/dev/null 2>&1 || true
+launchctl bootstrap "gui/$UID_NUM" "$PLIST"
+echo "==> launchd registered: $LABEL"
+{{- end }}

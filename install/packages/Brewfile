@@ -49,6 +49,7 @@ cask "obsidian"               # vault は別の private git repo を obsidian-gi
 # --- Stream Deck ---
 cask "elgato-stream-deck"     # 設定は streamdeck/（README の手順で取り込む）
 brew "m1ddc"                  # Stream Deck の PC⇄Mac キーが DDC/CI で Dell の入力を切り替える
+brew "uhubctl"                # streamdeck-heal が Stream Deck のポート電源を切り直す（ソフト抜き差し）
 
 # --- Secrets ---
 # 1password-cli は仕事 Mac (envs.mac) では Keychain 運用のため入れない。必要時のみ `brew install 1password-cli`。

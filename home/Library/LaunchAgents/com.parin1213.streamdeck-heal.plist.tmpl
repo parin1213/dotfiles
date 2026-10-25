@@ -1,0 +1,28 @@
+{{- /*
+  Stream Deck の通信が固まったときの自動復旧を launchd に登録する plist（mac のみ）。
+  60 秒ごと + ログイン時に起動する。判定と復旧の中身は home/dot_local/bin/executable_streamdeck-heal。
+  Stream Deck アプリや uhubctl が無いマシンではスクリプトが何もせず終わる。
+  plist の ProgramArguments は launchd が環境変数展開しないため .chezmoi.homeDir で絶対パス化する。
+*/ -}}
+{{- if eq .chezmoi.os "darwin" }}
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.parin1213.streamdeck-heal</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>{{ .chezmoi.homeDir }}/.local/bin/streamdeck-heal</string>
+    </array>
+    <key>StartInterval</key>
+    <integer>60</integer>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>{{ .chezmoi.homeDir }}/.local/state/streamdeck-heal.launchd.log</string>
+    <key>StandardErrorPath</key>
+    <string>{{ .chezmoi.homeDir }}/.local/state/streamdeck-heal.launchd.log</string>
+</dict>
+</plist>
+{{- end -}}

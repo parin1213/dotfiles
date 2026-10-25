@@ -1,0 +1,95 @@
+#!/bin/sh
+# Stream Deck 本体との通信が固まったら自動で復旧する（launchd から 60 秒ごとに起動）。
+# 症状: アプリのログに `DeviceComm err ... FAILED` が 5 秒おきに出続け、ボタンの反応が数秒遅れる。
+# アプリの再起動だけでは本体を開けず（`Read FW version: FAILED`）、ケーブルの抜き差しで直る。
+# そこで抜き差しを uhubctl によるハブのポート電源の切り直しで代行する。
+#   1. 直近 120 秒の最後の出来事がエラーで、次のどちらかなら異常とみなす
+#      （手で抜いた直後は最後が disconnected になるので対象外）
+#      - 本体を開けなかった（`Problem with connecting HID device`。アプリは再試行しない）
+#      - 送信エラーが 3 件以上
+#   2. ポート電源を切り直す → 20 秒後もエラーならアプリを再起動して、もう一度切り直す
+#   3. それでも直らなければ「手で抜き差しして」と通知する
+# 復旧は 5 分に 1 回まで（失敗し続ける本体に切り直しを連打しない）。
+
+APP="/Applications/Elgato Stream Deck.app"
+SDLOG="$HOME/Library/Logs/ElgatoStreamDeck/StreamDeck.log"
+STATE="$HOME/.local/state"
+LOG="$STATE/streamdeck-heal.log"
+STAMP="$STATE/streamdeck-heal.last"
+MATCH="Stream Deck"
+PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+
+[ -d "$APP" ] && [ -f "$SDLOG" ] || exit 0
+command -v uhubctl >/dev/null 2>&1 || exit 0
+mkdir -p "$STATE" 2>/dev/null
+
+log() {
+    printf '%s %s\n' "$(date +%Y-%m-%dT%H:%M:%S)" "$1" >>"$LOG"
+}
+
+if [ -f "$LOG" ] && [ "$(wc -l <"$LOG" | tr -d ' ')" -gt 1000 ]; then
+    tail -n 500 "$LOG" >"$LOG.rot" && mv "$LOG.rot" "$LOG"
+fi
+
+# 直近 120 秒のデバイス関連行（ログの時刻は ISO 形式の現地時刻なので文字列比較で足りる）
+recent_events() {
+    since=$(date -v-120S +%Y-%m-%dT%H:%M:%S)
+    tail -n 3000 "$SDLOG" | awk -v s="$since" '$1 >= s' |
+        grep -E 'DeviceComm .*FAILED|Problem with connecting HID device|device status changed'
+}
+
+broken() {
+    ev=$(recent_events)
+    [ -n "$ev" ] || return 1
+    last=$(printf '%s\n' "$ev" | tail -n 1)
+    case "$last" in
+        *'Problem with connecting'*) return 0 ;;
+        *FAILED*) [ "$(printf '%s\n' "$ev" | grep -c FAILED)" -ge 3 ] ;;
+        *) return 1 ;;
+    esac
+}
+
+# 本体が USB 上に見えていなければ抜かれている。切り直す対象が無い
+present() {
+    uhubctl -s "$MATCH" 2>/dev/null | grep -q "$MATCH"
+}
+
+cycle_port() {
+    if uhubctl -s "$MATCH" -a cycle -d 2 >/dev/null 2>&1; then
+        log "ポート電源を切り直した"
+    else
+        log "ERROR: uhubctl でポート電源を切り直せなかった"
+    fi
+}
+
+restart_app() {
+    osascript -e 'quit app "Elgato Stream Deck"' >/dev/null 2>&1
+    sleep 5
+    pkill -f "$APP" 2>/dev/null
+    sleep 1
+    open -a "$APP"
+    log "アプリを再起動した"
+}
+
+broken || exit 0
+present || exit 0
+
+now=$(date +%s)
+last=$(cat "$STAMP" 2>/dev/null || echo 0)
+[ $((now - last)) -ge 300 ] || exit 0
+echo "$now" >"$STAMP"
+
+log "通信エラーを検知: $(recent_events | grep -c -E 'FAILED|Problem with connecting') 件 / 120 秒"
+cycle_port
+sleep 20
+broken || { log "復旧した（ポート電源の切り直し）"; exit 0; }
+
+restart_app
+sleep 15
+cycle_port
+sleep 20
+broken || { log "復旧した（アプリ再起動 + ポート電源の切り直し）"; exit 0; }
+
+log "復旧できなかった。手で抜き差しが必要"
+osascript -e 'display notification "自動復旧できませんでした。USB ケーブルを抜き差ししてください" with title "Stream Deck"' >/dev/null 2>&1
+exit 1
