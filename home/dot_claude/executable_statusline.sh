@@ -3,54 +3,81 @@
 # stdin で session JSON を受け取り、1 行のステータスを ANSI カラーで出力する。
 # 表示内容: model | cwd | branch | ctx% | cc 5h/7d limit(→リセット時刻) | cdx limit | cost
 # rate_limits は Pro/Max で初回 API 呼び出し後に有効。欠落時は silent に skip。
+#
+# Claude Code は作業中ずっとこのスクリプトを呼び直す。macOS では外部コマンドを 1 つ起動するたびに
+# syspolicyd・ESET・trustd が検査するので、起動するプロセスを jq / git / mv の 3 つに抑えている。
+# 値の取り出しと時刻の整形は jq 1 回にまとめ、残りは bash の組み込みで済ませる。
 
-input=$(cat)
-j() { echo "$input" | jq -r "$1 // empty" 2>/dev/null; }
+IFS= read -r -d '' input || true
 
-MODEL=$(j '.model.display_name')
-CWD=$(j '.workspace.current_dir')
-CTX=$(j '.context_window.used_percentage' | cut -d. -f1)
-COST=$(j '.cost.total_cost_usd')
-RATE5=$(j '.rate_limits.five_hour.used_percentage' | cut -d. -f1)
-RATE7=$(j '.rate_limits.seven_day.used_percentage' | cut -d. -f1)
-R5AT=$(j '.rate_limits.five_hour.resets_at' | cut -d. -f1)
-R7AT=$(j '.rate_limits.seven_day.resets_at' | cut -d. -f1)
+DUMP_DIR="${HOME}/.claude/cache"
+DUMP_FILE="${DUMP_DIR}/rate-limit.json"
+# Codex の値は codex CLI が最後に観測したもので、ライブではない。
+# codex-rate-limit は rollout ログを読んで 5 個前後のプロセスを起動するので、60 秒キャッシュする。
+CDX_CACHE="${DUMP_DIR}/codex-rate-limit.json"
+CDX_TTL=60
+[ -d "$DUMP_DIR" ] || mkdir -p "$DUMP_DIR"
+cdx_cache=""
+[ -f "$CDX_CACHE" ] && IFS= read -r -d '' cdx_cache < "$CDX_CACHE"
 
-# epoch 秒 → ローカル時刻。GNU date (-d @epoch) / BSD date (-r epoch) 両対応。
-epoch_fmt() {
-  [ -z "$1" ] && return
-  date -d "@$1" +"$2" 2>/dev/null || date -r "$1" +"$2" 2>/dev/null
-}
+# 時刻の表示形式:
+# - 今日中なら HH:MM、日を跨ぐなら M/D HH:MM（「20:00」だけだと今日か明日か紛らわしいため）
+# - 7d は数日先が普通なので常に日付付き
+# - BSD strftime は %-m 非対応なので %m/%d で出して leading zero を落とす
+eval "$(printf '%s' "$input" | jq -rn --arg cdx "$cdx_cache" --argjson ttl "$CDX_TTL" '
+  def int: if . == null or . == "" then null else tostring | split(".")[0] end;
+  def ep: int | if . == null then null else tonumber end;
+  def short($always):
+    if . == null then ""
+    elif ($always | not) and (strflocaltime("%Y%m%d") == (now | strflocaltime("%Y%m%d")))
+      then strflocaltime("%H:%M")
+    else strflocaltime("%m/%d %H:%M") | sub("^0"; "") | sub("/0"; "/")
+    end;
+  def iso: if . == null then null else strflocaltime("%Y-%m-%dT%H:%M:%S%z") end;
+  def sh($k; $v): "\($k)=\($v // "" | tostring | @sh)";
 
-# 表示用の短い形式: 今日中なら HH:MM、日を跨ぐなら M/D HH:MM
-# （「20:00」だけだと今日か明日か紛らわしいため日付基準で切り替える）。
-# 第 2 引数に非空を渡すと常に日付付き（7d は数日先が普通なので日付必須）。
-# BSD strftime は %-m 非対応なので %m/%d で出して leading zero を落とす。
-reset_short() {
-  local epoch=$1 always_date=$2 s
-  [ -z "$epoch" ] && return
-  if [ -z "$always_date" ] && [ "$(epoch_fmt "$epoch" '%Y%m%d')" = "$(date +%Y%m%d)" ]; then
-    epoch_fmt "$epoch" '%H:%M'
-  else
-    s=$(epoch_fmt "$epoch" '%m/%d %H:%M')
-    s=${s#0}; s=${s/\/0/\/}
-    printf '%s' "$s"
-  fi
-}
+  (try input catch null) // {} | (now | floor) as $now
+  | ($cdx | try fromjson catch null) as $c
+  | ($c.v // {}) as $x
+  | (.rate_limits.five_hour.resets_at | ep) as $r5
+  | (.rate_limits.seven_day.resets_at | ep) as $r7
+  | {
+      ctx_pct: (.context_window.used_percentage | int | if . then tonumber else null end),
+      five_hour_pct: (.rate_limits.five_hour.used_percentage | int | if . then tonumber else null end),
+      five_hour_resets_at: $r5,
+      five_hour_resets_at_local: ($r5 | iso),
+      seven_day_pct: (.rate_limits.seven_day.used_percentage | int | if . then tonumber else null end),
+      seven_day_resets_at: $r7,
+      seven_day_resets_at_local: ($r7 | iso),
+      cost_usd: (.cost.total_cost_usd // null),
+      updated_at: (now | strftime("%Y-%m-%dT%H:%M:%SZ"))
+    } as $dump
+  | sh("MODEL"; .model.display_name),
+    sh("CWD"; .workspace.current_dir),
+    sh("CTX"; .context_window.used_percentage | int),
+    sh("COST"; .cost.total_cost_usd),
+    sh("RATE5"; .rate_limits.five_hour.used_percentage | int),
+    sh("RATE7"; .rate_limits.seven_day.used_percentage | int),
+    sh("R5_RESET"; $r5 | short(false)),
+    sh("R7_RESET"; $r7 | short(true)),
+    sh("CDXP5"; $x.five_hour_pct | int),
+    sh("CDXP7"; $x.seven_day_pct | int),
+    sh("CDX5_RESET"; $x.five_hour_resets_at | ep | short(false)),
+    sh("CDX7_RESET"; $x.seven_day_resets_at | ep | short(true)),
+    sh("CDX_REACHED"; $x.limit_reached),
+    sh("NOW"; $now),
+    sh("CDX_STALE"; if ($c.fetched_at // 0) + $ttl <= $now then "1" else "" end),
+    sh("DUMP"; $dump | tojson)
+' 2>/dev/null)"
 
-R5_RESET=$(reset_short "$R5AT")
-R7_RESET=$(reset_short "$R7AT" always_date)
-
-# Codex も同じ行に出す。値は codex CLI が最後に観測したもので、ライブではない。
-# 使用率（増えていく側）で Claude Code と軸を揃えてある。
-CDX_JSON=$("${HOME}/.local/bin/codex-rate-limit" 2>/dev/null)
-cdx() { printf '%s' "$CDX_JSON" | jq -r "$1 // empty" 2>/dev/null; }
-CDXP5=$(cdx '.five_hour_pct' | cut -d. -f1)
-CDXP7=$(cdx '.seven_day_pct' | cut -d. -f1)
-CDX5_RESET=$(reset_short "$(cdx '.five_hour_resets_at')")
-CDX7_RESET=$(reset_short "$(cdx '.seven_day_resets_at')" always_date)
-# 上限に達すると pct が消えて種類（workspace_member_credits_depleted 等）だけが入る
-CDX_REACHED=$(cdx '.limit_reached')
+# キャッシュが古ければ裏で取り直す。表示は待たせず、次の呼び出しから新しい値を使う。
+if [ -n "$CDX_STALE" ]; then
+  (
+    v=$("${HOME}/.local/bin/codex-rate-limit" 2>/dev/null)
+    [ -n "$v" ] || exit 0
+    printf '{"fetched_at":%s,"v":%s}\n' "$NOW" "$v" > "$CDX_CACHE.$$" && mv "$CDX_CACHE.$$" "$CDX_CACHE"
+  ) >/dev/null 2>&1 &
+fi
 
 # HOME を ~ に短縮、長ければ末尾 39 文字に省略
 # NOTE: ${var/#$HOME/~} は bash が replacement の ~ を tilde expand するので no-op になる
@@ -102,23 +129,4 @@ printf '%s' "$out"
 # `.five_hour_resets_at` / `.seven_day_resets_at`（epoch 秒。`*_local` は
 # ローカル ISO 8601）で次回リミット明けを把握する。詳細は
 # `~/.claude/CLAUDE.md`「Rate limit 自走停止」節。
-DUMP_DIR="${HOME}/.claude/cache"
-DUMP_FILE="${DUMP_DIR}/rate-limit.json"
-mkdir -p "$DUMP_DIR"
-nz()  { if [ -z "$1" ]; then printf null; else printf '%s' "$1"; fi; }
-nzs() { if [ -z "$1" ]; then printf null; else printf '"%s"' "$1"; fi; }
-R5AT_LOCAL=$(epoch_fmt "$R5AT" '%Y-%m-%dT%H:%M:%S%z')
-R7AT_LOCAL=$(epoch_fmt "$R7AT" '%Y-%m-%dT%H:%M:%S%z')
-{
-  printf '{'
-  printf '"ctx_pct":%s,' "$(nz "$CTX")"
-  printf '"five_hour_pct":%s,' "$(nz "$RATE5")"
-  printf '"five_hour_resets_at":%s,' "$(nz "$R5AT")"
-  printf '"five_hour_resets_at_local":%s,' "$(nzs "$R5AT_LOCAL")"
-  printf '"seven_day_pct":%s,' "$(nz "$RATE7")"
-  printf '"seven_day_resets_at":%s,' "$(nz "$R7AT")"
-  printf '"seven_day_resets_at_local":%s,' "$(nzs "$R7AT_LOCAL")"
-  printf '"cost_usd":%s,' "$(nz "$COST")"
-  printf '"updated_at":"%s"' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-  printf '}\n'
-} > "$DUMP_FILE.tmp" && mv "$DUMP_FILE.tmp" "$DUMP_FILE" 2>/dev/null || true
+[ -n "$DUMP" ] && { printf '%s\n' "$DUMP" > "$DUMP_FILE.tmp" && mv "$DUMP_FILE.tmp" "$DUMP_FILE"; } 2>/dev/null || true
