@@ -16,7 +16,8 @@ SDLOG="$HOME/Library/Logs/ElgatoStreamDeck/StreamDeck.log"
 STATE="$HOME/.local/state"
 LOG="$STATE/streamdeck-heal.log"
 STAMP="$STATE/streamdeck-heal.last"
-MATCH="Stream Deck"
+# Elgato の USB ベンダー ID。本体が固まると製品名を返さなくなり `[0fd9:009a]` としか見えないので、名前では探さない
+MATCH="0fd9:"
 PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
 
 [ -d "$APP" ] && [ -f "$SDLOG" ] || exit 0
