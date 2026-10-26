@@ -27,8 +27,20 @@ const PLUGIN_DIR = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 // Stream Deck から起動されたプロセスは PATH が素の状態なので、Mac では mise と Homebrew の置き場所を足す
 const env = win ? process.env : { ...process.env, PATH: [join(homedir(), '.local', 'share', 'mise', 'shims'), '/opt/homebrew/bin', process.env.PATH].join(delimiter) };
+// Mac の Node はコマンド名を渡すと PATH の先頭から 1 つずつ起動を試し、外れるたびにプロセスが生まれる。
+// /usr/bin は PATH の 50 番目前後にあり、lsappinfo を 3 秒ごとに呼ぶだけで毎秒 30 個ほど作って
+// syspolicyd の CPU を張り付かせるので、初回に絶対パスを引いて使い回す
+const resolved = new Map();
+function resolveCmd(cmd) {
+  if (win || cmd.includes('/')) return cmd;
+  if (!resolved.has(cmd)) {
+    const dir = env.PATH.split(delimiter).find((d) => d && existsSync(join(d, cmd)));
+    resolved.set(cmd, dir ? join(dir, cmd) : cmd);
+  }
+  return resolved.get(cmd);
+}
 const run = (cmd, args, timeout = 10_000) => new Promise((resolve) => {
-  execFile(cmd, args, { windowsHide: true, timeout, encoding: 'utf8', env }, (err, stdout, stderr) => resolve({ ok: !err, stdout, stderr, error: err?.message }));
+  execFile(resolveCmd(cmd), args, { windowsHide: true, timeout, encoding: 'utf8', env }, (err, stdout, stderr) => resolve({ ok: !err, stdout, stderr, error: err?.message }));
 });
 
 // Stream Deck から起動されたプロセスは PATH が素の状態のことがあるので、mise の置き場所も探す
