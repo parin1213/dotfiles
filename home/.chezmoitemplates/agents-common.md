@@ -221,3 +221,6 @@ Notion API は 2025〜2026 で大きく動いている。**操作する前に必
 - ALWAYS: コミットメッセージは日本語で「**なぜ**」を必ず 1-2 行入れる
 - ALWAYS: 既知の制約・将来改善余地は「既知の制約」セクションに残す
 - 過剰装飾は不要。読み手の認知コストを下げる方向で簡潔に。テストプランは bullet で
+- NEVER: PR・Issue・コメントに貼る画像や録画のために、リポジトリへ画像置き場のブランチ（`pr-images` 等）やコミットを作らない。永続的に禁止（指摘 2026-10-26「絶対にだ」）。
+  GitHub の添付として `gh` で上げる: `gh pr edit <番号> --body-file body.md --attach ./demo.gif --attach ./fig.png`（`gh pr comment` / `gh issue create|edit|comment` も同じ）。
+  本文に `![alt](./demo.gif)` と書いておけば、上げた画像の URL に書き換わる。`--body-file` 内の相対パスはそのファイルのディレクトリ基準
