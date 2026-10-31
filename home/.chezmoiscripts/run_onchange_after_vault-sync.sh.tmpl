@@ -1,8 +1,9 @@
 {{- /*
-  Obsidian vault 自動同期の launchd 登録ブリッジ（mac かつ vault_sync のときのみ。他は空レンダ→skip）。
-  正本は Library/LaunchAgents/com.parin1213.obsidian-vault-sync.plist.tmpl。下にそのハッシュを
-  埋めてあるので、plist の内容を変えた apply のときだけ再実行される（mise-install run_onchange と
-  同じ思想）。bootout は初回登録時に何も無くて失敗するのが正常なので許容する（冪等登録）。
+  Obsidian vault 自動同期の launchd / systemd 登録ブリッジ。
+  mac または linux かつ vault_sync のときのみ。他は空レンダ→skip。
+  各定義ファイルのハッシュを埋めてあるので、定義を変えた apply のときだけ再実行される。
+  macの定義は Library/LaunchAgents/com.parin1213.obsidian-vault-sync.plist.tmpl。
+  linuxの定義は dot_config/systemd/user/obsidian-vault-sync.{service,timer}.tmpl。
 */ -}}
 {{- $p := includeTemplate "profile" . | fromJson -}}
 {{- if and (eq .chezmoi.os "darwin") $p.vault_sync -}}
@@ -15,4 +16,13 @@ UID_NUM=$(id -u)
 launchctl bootout "gui/$UID_NUM/$LABEL" >/dev/null 2>&1 || true
 launchctl bootstrap "gui/$UID_NUM" "$PLIST"
 echo "==> launchd registered: $LABEL"
+{{- else if and (eq .chezmoi.os "linux") $p.vault_sync -}}
+#!/bin/sh
+# service hash: {{ include "dot_config/systemd/user/obsidian-vault-sync.service.tmpl" | sha256sum }}
+# timer hash: {{ include "dot_config/systemd/user/obsidian-vault-sync.timer.tmpl" | sha256sum }}
+set -eu
+systemctl --user daemon-reload
+systemctl --user enable --now obsidian-vault-sync.timer
+systemctl --user is-active --quiet obsidian-vault-sync.timer
+echo "==> Obsidian vault: 5分間隔の同期タイマーを登録しました"
 {{- end }}

@@ -18,8 +18,9 @@ systemctl --user status obsidian-mcp.service
 配置先は `~/obsidian-vault` です。
 そのディレクトリが存在しなければ、空のvaultを作らず登録を保留します。
 別のvaultを指定する場合は `OBSIDIAN_VAULT=/absolute/path` を付けて実行します。
-ラズパイの定期Git同期は有効にしていません。
-実vaultを配置する前に、個人ノートをprivate GitHubリポジトリへ送信する同期設定を本人が確認します。
+ラズパイでは、systemdユーザータイマーが5分ごとに `~/.local/bin/obsidian-vault-sync` を起動します。
+同期先はprivateの `parin1213/obsidian-vault` です。
+`vault_sync` が有効なLinuxでは、`chezmoi apply` で同期タイマーを登録します。
 アプリの導入対象は `.chezmoidata.toml` の `envs.raspi.apps` で管理します。
 既存のHome Assistantは独立して稼働します。
 
@@ -53,9 +54,9 @@ cd ~/src/dotfiles/install/apps/obsidian-mcp
 `verify.py` はstdioで検索、保存、取得、入力制限を確認します。
 `verify_http.py` はサーバーを起動してHTTPから同じ操作を確認します。
 
-## 本人の操作が必要な箇所
+## 接続に使う認証
 
-- ラズパイへの実vault配置と同期認証。private GitHubリポジトリへの認証を設定し、clone後にvault側のAGENTS.mdを確認して同期する。
+- ラズパイのGit同期には、このリポジトリだけに書き込めるdeploy keyを使います。秘密鍵はラズパイ内の `~/.local/share/obsidian-vault/id_ed25519` に置き、他端末へコピーしません。GitHubのホスト鍵は公式APIの公開鍵で照合します。
 - OpenAIのトンネル作成、認証、Web版ChatGPTへの登録。
 - OpenCode Goの接続。右側OpenCodeで `/connect` からGoを接続し、`/models` でGoのモデルを選ぶ。[Goの公式手順](https://opencode.ai/v2/docs/console/go)
 
@@ -67,5 +68,5 @@ miseで選択中の公式Windows実行ファイルを起動し、パッケージ
 - 検索は名前と本文の部分一致です。意味による検索と添付ファイルの解析は行いません。
 - `.md` のみを扱い、隠しファイルとシンボリックリンクを拒否します。1ノートの上限は256KiBです。
 - 保存先は既存フォルダです。同名ノートを上書きしません。
-- 実vaultとの同期およびWeb版ChatGPTからの最終疎通は、本人の認証後に確認する必要があります。
-- ラズパイの自動Git同期は未登録です。送信先と対象データの承認を得てから設定します。
+- Web版ChatGPTからの最終疎通は、OpenAIのトンネル認証とChatGPTへの登録後に確認する必要があります。
+- Gitの競合は自動解決せず、`~/.local/state/obsidian-vault-sync.log` に記録します。

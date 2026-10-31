@@ -15,7 +15,7 @@
 #   これまで bootstrap 各節に散らばっていた「誰に何を入れるか」（WSL 判定×5 / raspi 判定×4 /
 #   GUI 検出）を env ごとの1行に集約する。各 bootstrap 節はこのフラグを読むだけにする。
 #   vault_sync    : Obsidian vault (~/obsidian-vault) の git 自動同期を OS スケジューラに
-#                   登録するか（Obsidian アプリ未起動でも走る。launchd/Scheduled Task）
+#                   登録するか（Obsidian アプリ未起動でも走る。launchd/systemd/Scheduled Task）
 #   op            : 1Password CLI を native 導入（apt）するか
 #   op_interop    : op を Windows op.exe interop に寄せるか（WSL のみ true。common.sh も同じ列を読む）
 #   gui_apps      : GUI デスクトップアプリ（1Password app / Obsidian）を入れるか
@@ -71,7 +71,7 @@ ghostty_font_size = 16          # 220PPI/10.5"・150% → 24pt は大きすぎ�
 starship_icon = ""        # nf ubuntu
 starship_label = "surface"
 starship_color = "#e95420"
-vault_sync = false              # 現状 Obsidian vault は windows/mac のみで運用
+vault_sync = false              # 汎用Linuxではvault同期を登録しない
 op = true
 op_interop = false
 gui_apps = true                 # 本物のグラフィカルデスクトップ
@@ -87,7 +87,7 @@ ghostty_font_size = 24
 starship_icon = ""        # nf raspberry pi
 starship_label = "raspi"
 starship_color = "#c51a4a"
-vault_sync = false              # headless・slim。Obsidian vault は windows/mac のみで運用
+vault_sync = true               # systemd ユーザータイマーで vault を 5 分ごとに自動同期
 op = false                      # slim＝素のシェル用途。秘密バックエンドは対象外
 op_interop = false
 gui_apps = false                # headless

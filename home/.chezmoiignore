@@ -1,4 +1,9 @@
 {{- /* OS ごとに無視対象を切り替える（パスは $HOME 相対のターゲット） */ -}}
+{{- $p := includeTemplate "profile" . | fromJson -}}
+{{ if not (and (eq .chezmoi.os "linux") $p.vault_sync) -}}
+.config/systemd/user/obsidian-vault-sync.service
+.config/systemd/user/obsidian-vault-sync.timer
+{{ end -}}
 {{ if ne .chezmoi.os "windows" -}}
 Documents
 AppData

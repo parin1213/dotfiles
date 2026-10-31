@@ -1,0 +1,18 @@
+{{- /*
+  Obsidian vault (~/obsidian-vault) の git 自動同期を systemd ユーザー単位で実行する oneshot サービス（Linux かつ vault_sync のときのみ）。
+  既存の ~/.local/bin/obsidian-vault-sync を起動する。ConditionPathIsDirectory で vault がまだ clone されていない場合は何もしない。
+  実行間隔は obsidian-vault-sync.timer が制御する。
+*/ -}}
+{{- $p := includeTemplate "profile" . | fromJson -}}
+{{- if and (eq .chezmoi.os "linux") $p.vault_sync }}
+[Unit]
+Description=Obsidian vault git sync
+ConditionPathIsDirectory=%h/obsidian-vault/.git
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/obsidian-vault-sync
+Environment=GIT_TERMINAL_PROMPT=0
+TimeoutStartSec=120
+UMask=0077
+{{- end -}}

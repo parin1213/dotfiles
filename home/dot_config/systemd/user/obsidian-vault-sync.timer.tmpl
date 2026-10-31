@@ -1,0 +1,17 @@
+{{- /*
+  Obsidian vault (~/obsidian-vault) の git 自動同期を 5 分ごとに起動する systemd ユーザータイマー（Linux かつ vault_sync のときのみ）。
+  起動 2 分後に初回実行し、その後 5 分ごとに obsidian-vault-sync.service を起動する。
+*/ -}}
+{{- $p := includeTemplate "profile" . | fromJson -}}
+{{- if and (eq .chezmoi.os "linux") $p.vault_sync }}
+[Unit]
+Description=Obsidian vault git sync timer
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+Unit=obsidian-vault-sync.service
+
+[Install]
+WantedBy=timers.target
+{{- end -}}
