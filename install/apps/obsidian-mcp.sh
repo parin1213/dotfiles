@@ -33,7 +33,7 @@ echo "==> Obsidian MCP: lockfileで固定した依存を導入"
 UNIT_DIR="$HOME/.config/systemd/user"
 UNIT="$UNIT_DIR/obsidian-mcp.service"
 mkdir -p "$UNIT_DIR"
-unit_temp="$(mktemp)"
+unit_temp="$(mktemp --suffix=.service)"
 trap 'rm -f "$unit_temp"' EXIT
 cat > "$unit_temp" <<EOF
 [Unit]
@@ -42,7 +42,7 @@ After=network.target
 
 [Service]
 Type=simple
-WorkingDirectory="$APP_DIR"
+WorkingDirectory=$APP_DIR
 ExecStart="$APP_DIR/.venv/bin/python" "$APP_DIR/server.py" --vault "$VAULT" --transport streamable-http
 Restart=on-failure
 RestartSec=5
@@ -52,6 +52,7 @@ UMask=0077
 [Install]
 WantedBy=default.target
 EOF
+systemd-analyze --user verify "$unit_temp"
 changed=0
 if ! cmp -s "$unit_temp" "$UNIT"; then
   install -m 600 "$unit_temp" "$UNIT"
