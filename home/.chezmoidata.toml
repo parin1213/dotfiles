@@ -95,7 +95,7 @@ tailscale = true                # headless ほどリモート到達の価値が�
 docker = true                   # apps の Home Assistant が docker 必須のため有効
 sshd = true                     # ssh 受け側として必要
 tauri_build = false                  # Tauri ビルド依存は重い → 必要なのは local-pc/WSL のみ
-apps = ["homeassistant"]        # Home Assistant を install/apps/homeassistant.sh で導入
+apps = ["homeassistant", "obsidian-mcp"] # MCPはvault配置後に常駐登録する
 
 [envs.mac]                      # macOS（仕事用・現在未接続）
 weight = "full"

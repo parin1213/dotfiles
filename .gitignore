@@ -6,6 +6,9 @@
 # dotfiles の mise 設定は home/dot_config/mise/config.toml.tmpl が正本なので追跡しない。
 /mise.toml
 
+# 自走作業の再開メモは各マシンの実行状態を含むため共有しない。
+/STATE.md
+
 # 野良スキルの検収用 staging（採用したものだけ skills/ に移して追跡する）。
 /skills-staging/
 

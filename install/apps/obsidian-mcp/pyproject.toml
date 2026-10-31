@@ -1,0 +1,16 @@
+[project]
+name = "obsidian-vault-mcp"
+version = "0.1.0"
+description = "個人のObsidianノートを検索・取得・新規保存するMCP"
+requires-python = ">=3.13,<3.14"
+dependencies = ["mcp>=1.28,<2"]
+
+[tool.uv]
+package = false
+exclude-newer = "7 days"
+no-build = true
+
+[[tool.uv.index]]
+name = "takumi"
+url = "https://pypi.flatt.tech/simple/"
+default = true
