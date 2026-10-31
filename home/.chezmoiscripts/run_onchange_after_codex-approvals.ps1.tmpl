@@ -1,17 +1,17 @@
 {{- /*
   Windows の個人環境では承認要求を自動審査へ渡す。
   モデルや sandbox を変更せず、この設定だけを既存 config.toml へマージする。
-  PowerShell 5.1 から Python へ渡す本文は ASCII にする。
+  PowerShell 5.1 用のBOMを付け、Pythonへ渡す本文はASCIIにする。
 */ -}}
 {{ if eq .chezmoi.os "windows" -}}
-$ErrorActionPreference = 'Stop'
+{{ "\uFEFF" }}$ErrorActionPreference = 'Stop'
 $env:Path = "$env:LOCALAPPDATA\mise\shims;$env:Path"
 if (-not (Get-Command codex -ErrorAction SilentlyContinue)) { exit 0 }
 $py = (Get-Command python -ErrorAction Stop).Source
 & $py -c "import importlib.util, sys; sys.exit(0 if importlib.util.find_spec('tomlkit') else 1)"
 if ($LASTEXITCODE -ne 0) {
-    & $py -m pip install --user --quiet tomlkit
-    if ($LASTEXITCODE -ne 0) { throw 'tomlkit install failed' }
+    & $py -m pip install --user --quiet --only-binary=:all: --index-url https://pypi.flatt.tech/simple/ tomlkit==0.15.2
+    if ($LASTEXITCODE -ne 0) { throw 'tomlkitの導入に失敗しました' }
 }
 $code = @'
 import pathlib, tomlkit
@@ -28,5 +28,5 @@ assert saved['approvals_reviewer'] == 'auto_review'
 print('Codex: \u81ea\u52d5\u627f\u8a8d\u3092\u4fdd\u5b58\u3057\u307e\u3057\u305f')
 '@
 $code | & $py -
-if ($LASTEXITCODE -ne 0) { throw 'Codex approval configuration failed' }
+if ($LASTEXITCODE -ne 0) { throw 'Codexの承認設定を保存できませんでした' }
 {{ end -}}

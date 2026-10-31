@@ -8,6 +8,7 @@ AppData
 .local/bin/herdr-rate-limit.cmd
 .local/bin/herdr-tab-title.ps1
 .local/bin/obsidian-vault-sync.ps1
+.local/bin/opencode-personal.ps1
 .local/bin/pkg-update.ps1
 {{ end -}}
 {{ if eq .chezmoi.os "windows" -}}
