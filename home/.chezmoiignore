@@ -1,5 +1,8 @@
 {{- /* OS ごとに無視対象を切り替える（パスは $HOME 相対のターゲット） */ -}}
 {{- $p := includeTemplate "profile" . | fromJson -}}
+{{ if not (and (eq .chezmoi.os "linux") (has "obsidian-mcp" $p.apps)) -}}
+.config/obsidian-mcp/gateway.toml
+{{ end -}}
 {{ if not (and (eq .chezmoi.os "linux") $p.vault_sync) -}}
 .config/systemd/user/obsidian-vault-sync.service
 .config/systemd/user/obsidian-vault-sync.timer
@@ -13,6 +16,7 @@ AppData
 .local/bin/herdr-rate-limit.cmd
 .local/bin/herdr-tab-title.ps1
 .local/bin/obsidian-vault-sync.ps1
+.local/bin/obsidian-mcp-oauth.ps1
 .local/bin/opencode-personal.ps1
 .local/bin/pkg-update.ps1
 {{ end -}}

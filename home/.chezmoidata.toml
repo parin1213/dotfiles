@@ -33,6 +33,11 @@
 #          ※現状 runner は linux.sh のみ（mac/win は未消費・将来用に列だけ持つ）。
 #          ※アプリが要求する infra（HA なら docker）は、その env のフラグを true にしておく。
 
+[obsidian_mcp]
+base_url = "https://raspi4.tailee8e63.ts.net"
+github_client_id = "Ov23liTL3o4efmwSfUHg"
+github_user_id = 1243997
+
 [envs.win]                      # Windows ネイティブ（machine=local-pc）
 weight = "full"
 ghostty_font_size = 24          # ※Windows は ghostty を .chezmoiignore で除外（値は参考）
