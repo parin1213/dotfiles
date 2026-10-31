@@ -49,6 +49,23 @@ systemdのユーザーサービスが起動時にユーザー専用の実行時�
 OAuthの登録情報とトークンは暗号化した永続ストアへ保存します。
 暗号化鍵を削除・再生成すると保存済みの認証情報を使えなくなるため、既存の鍵は維持します。
 
+### チャット側の登録
+
+共通の入力値は、名前「個人Obsidian」、URL `https://raspi4.tailee8e63.ts.net/mcp`、認証「OAuth」です。
+OAuthクライアントの方式を選べる場合は「自動登録（DCR）」を使います。
+GitHub OAuth AppのClient IDとClient SecretはラズパイがGitHubと接続するためのもので、チャット側の入力欄には設定しません。
+
+- [ChatGPT](https://developers.openai.com/api/docs/guides/custom-mcp-server): [Plugins](https://chatgpt.com/plugins) の＋から「Add custom MCP server」で登録し、作成したプラグインをインストールします。新しいチャットで `@個人Obsidian` を選びます。
+- [Claude](https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp): 「Customize → Connectors → ＋ Add → Add custom connector」で登録します。GitHubに接続し、チャットの＋からコネクターを有効にします。
+
+前提: ラズパイのMCP・認証入口・同期タイマー・Funnelが稼働し、GitHubの `parin1213` でログインできること。
+
+1. 各チャットで「ノートを『Obsidian』で検索して」と依頼する → 個人vaultの検索結果が返る。
+2. 「Notes/チャット接続確認-YYYY-MM-DD.md に、この接続確認の要点を新規保存して」と依頼する → 作成した相対パスが返る。同名があれば別名にする。
+3. ラズパイとObsidian端末の定期同期後、Obsidianで保存先を開く → 会話で保存した内容が表示される。ラズパイ側は5分間隔で、端末側の同期待ち時間も加わる。
+
+検索や保存が失敗した場合は、どのチャットのどの操作で止まったかと、画面のエラー文で切り分けます。
+
 ## 検証
 
 ```sh
