@@ -1,0 +1,32 @@
+{{- /*
+  Windows の個人環境では承認要求を自動審査へ渡す。
+  モデルや sandbox を変更せず、この設定だけを既存 config.toml へマージする。
+  PowerShell 5.1 から Python へ渡す本文は ASCII にする。
+*/ -}}
+{{ if eq .chezmoi.os "windows" -}}
+$ErrorActionPreference = 'Stop'
+$env:Path = "$env:LOCALAPPDATA\mise\shims;$env:Path"
+if (-not (Get-Command codex -ErrorAction SilentlyContinue)) { exit 0 }
+$py = (Get-Command python -ErrorAction Stop).Source
+& $py -c "import importlib.util, sys; sys.exit(0 if importlib.util.find_spec('tomlkit') else 1)"
+if ($LASTEXITCODE -ne 0) {
+    & $py -m pip install --user --quiet tomlkit
+    if ($LASTEXITCODE -ne 0) { throw 'tomlkit install failed' }
+}
+$code = @'
+import pathlib, tomlkit
+
+p = pathlib.Path.home() / '.codex' / 'config.toml'
+doc = tomlkit.parse(p.read_text(encoding='utf-8')) if p.exists() else tomlkit.document()
+doc['approval_policy'] = 'on-request'
+doc['approvals_reviewer'] = 'auto_review'
+p.parent.mkdir(parents=True, exist_ok=True)
+p.write_text(tomlkit.dumps(doc), encoding='utf-8')
+saved = tomlkit.parse(p.read_text(encoding='utf-8'))
+assert saved['approval_policy'] == 'on-request'
+assert saved['approvals_reviewer'] == 'auto_review'
+print('Codex: \u81ea\u52d5\u627f\u8a8d\u3092\u4fdd\u5b58\u3057\u307e\u3057\u305f')
+'@
+$code | & $py -
+if ($LASTEXITCODE -ne 0) { throw 'Codex approval configuration failed' }
+{{ end -}}
