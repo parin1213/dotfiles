@@ -88,7 +88,8 @@ def build_gateway(
     )
 
     # 固定 upstream への proxy のみをマウント
-    backend = create_proxy(UPSTREAM_URL)
+    # バックエンドは初期化ハンドシェイク方式のSDKなので、前段の方式を転送しない。
+    backend = create_proxy(UPSTREAM_URL, mode="legacy")
     gateway.mount(backend)
 
     return gateway

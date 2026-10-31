@@ -15,7 +15,7 @@ sys.path.insert(0, str(Path(__file__).parent / "gateway"))
 from gateway.gateway import build_gateway
 
 
-def main():
+def main(protocol_version=None):
     # GitHub公式API users/parin1213 と users/octocat の公開値を2026-10-31に確認。
     profiles = {
         "dummy-owner": {"id": 1243997, "login": "parin1213"},
@@ -52,6 +52,15 @@ def main():
             with TestClient(gateway.http_app(stateless_http=True, json_response=True), base_url="https://example.test") as client:
                 def request(token, method, params=None):
                     headers = {"Accept": "application/json, text/event-stream"}
+                    if protocol_version:
+                        headers["MCP-Protocol-Version"] = protocol_version
+                        headers["mcp-method"] = method
+                        if params and "name" in params:
+                            headers["mcp-name"] = params["name"]
+                        params = dict(params or {}, _meta={
+                            "io.modelcontextprotocol/protocolVersion": protocol_version,
+                            "io.modelcontextprotocol/clientCapabilities": {},
+                        })
                     if token:
                         headers["Authorization"] = "Bearer " + token
                     return client.post("/mcp", headers=headers, json={
@@ -79,3 +88,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    main("2026-07-28")
