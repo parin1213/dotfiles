@@ -67,3 +67,4 @@ else
 fi
 systemctl --user is-active --quiet obsidian-mcp.service
 echo "==> Obsidian MCP: 常駐登録済み。接続先はこのホスト内の http://127.0.0.1:8765/mcp"
+bash "$APP_DIR/install-gateway.sh"
