@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from fastmcp.exceptions import AuthorizationError
 from fastmcp.server.auth import AuthContext
+from .diagnostics import logger
 
 
 def require_github_user(github_user_id: int):
@@ -16,6 +17,7 @@ def require_github_user(github_user_id: int):
     expected = str(github_user_id)
 
     def check(ctx: AuthContext) -> bool:
+        logger.info("authorization token_present=%s subject_present=%s owner_match=%s", ctx.token is not None, bool(ctx.token and ctx.token.subject), bool(ctx.token and str(ctx.token.subject) == expected))
         if ctx.token is None:
             return False
         if str(ctx.token.subject) != expected:

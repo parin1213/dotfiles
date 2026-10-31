@@ -12,7 +12,6 @@ from pathlib import Path
 from cryptography.fernet import Fernet
 from fastmcp import FastMCP
 from fastmcp.server import create_proxy
-from fastmcp.server.auth.providers.github import GitHubProvider
 from fastmcp.server.middleware import AuthMiddleware
 from key_value.aio.stores.filetree import (
     FileTreeStore,
@@ -22,6 +21,7 @@ from key_value.aio.stores.filetree import (
 from key_value.aio.wrappers.encryption import FernetEncryptionWrapper
 
 from .authz import require_github_user
+from .diagnostics import ToolDiagnostics, configure, DiagnosticGitHubProvider as GitHubProvider
 from .config import load_config, read_credential
 
 # 現行 MCP サーバーへの接続先は固定。外部からの変更を受け付けない。
@@ -82,6 +82,7 @@ def build_gateway(
     )
 
     gateway = FastMCP("obsidian-mcp-gateway", auth=auth)
+    gateway.add_middleware(ToolDiagnostics())
     gateway.add_middleware(
         AuthMiddleware(auth=require_github_user(github_user_id))
     )
@@ -114,6 +115,7 @@ def main() -> None:
         help="gateway の待ち受けアドレス（デフォルト: 127.0.0.1）",
     )
     args = parser.parse_args()
+    configure()
 
     gateway = build_gateway(args.config)
     # OAuth callback の code を journal に残さないためアクセスログを無効化
