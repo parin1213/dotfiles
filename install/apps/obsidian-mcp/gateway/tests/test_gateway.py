@@ -5,7 +5,10 @@ from __future__ import annotations
 import asyncio
 import os
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import MagicMock
+
+from authlib.oauth2.auth import encode_client_secret_basic
 
 import pytest
 from cryptography.fernet import Fernet
@@ -14,6 +17,7 @@ from fastmcp.server.auth import AccessToken, AuthContext
 from starlette.testclient import TestClient
 
 from gateway.authz import require_github_user
+from gateway.config import read_credential
 from gateway.gateway import UPSTREAM_URL, build_encrypted_storage, build_gateway
 
 
@@ -158,6 +162,55 @@ def test_http_oauth_metadata_endpoints(dummy_env: dict):
         assert protected_resource_meta.status_code == 200
         resource_data = protected_resource_meta.json()
         assert "resource" in resource_data
+
+
+def test_read_credential_strips_bom(tmp_path: Path):
+    """BOM 付き/なしの資格情報ファイルから同じ値を読み出せる。"""
+    cred_dir = tmp_path / "credentials"
+    cred_dir.mkdir()
+    name = "jwt-signing-key"
+    value = "dummy-jwt-signing-key-32bytes-long"
+
+    (cred_dir / f"{name}-nobom").write_text(value, encoding="utf-8")
+    (cred_dir / f"{name}-bom").write_bytes(
+        b"\xef\xbb\xbf" + value.encode("utf-8")
+    )
+
+    old_cred_dir = os.environ.get("CREDENTIALS_DIRECTORY")
+    os.environ["CREDENTIALS_DIRECTORY"] = str(cred_dir)
+    try:
+        assert read_credential(f"{name}-nobom") == value
+        assert read_credential(f"{name}-bom") == value
+    finally:
+        if old_cred_dir is None:
+            os.environ.pop("CREDENTIALS_DIRECTORY", None)
+        else:
+            os.environ["CREDENTIALS_DIRECTORY"] = old_cred_dir
+
+
+def test_client_secret_basic_with_bom_credential(tmp_path: Path):
+    """BOM 付き資格情報でも authlib の client_secret_basic が例外を出さない。"""
+    cred_dir = tmp_path / "credentials"
+    cred_dir.mkdir()
+    (cred_dir / "github-client-secret").write_bytes(
+        b"\xef\xbb\xbf" + "dummy-secret".encode("utf-8")
+    )
+
+    old_cred_dir = os.environ.get("CREDENTIALS_DIRECTORY")
+    os.environ["CREDENTIALS_DIRECTORY"] = str(cred_dir)
+    try:
+        secret = read_credential("github-client-secret")
+        client = SimpleNamespace(client_id="dummy-client", client_secret=secret)
+        uri, headers, body = encode_client_secret_basic(
+            client, "POST", "https://github.com/login/oauth/access_token", {}, ""
+        )
+        assert "Authorization" in headers
+        assert headers["Authorization"].startswith("Basic ")
+    finally:
+        if old_cred_dir is None:
+            os.environ.pop("CREDENTIALS_DIRECTORY", None)
+        else:
+            os.environ["CREDENTIALS_DIRECTORY"] = old_cred_dir
 
 
 def test_upstream_url_is_fixed():

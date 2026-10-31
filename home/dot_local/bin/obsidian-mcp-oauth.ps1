@@ -12,8 +12,11 @@ $process.StartInfo.RedirectStandardInput = $true
 $process.StartInfo.RedirectStandardOutput = $true
 $process.StartInfo.RedirectStandardError = $true
 $pointer = [IntPtr]::Zero
+$originalInputEncoding = [Console]::InputEncoding
 try {
     $pointer = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secret)
+    # PowerShell 5.1の子プロセス入力がBOMを付けないよう、起動中だけ明示する。
+    [Console]::InputEncoding = New-Object Text.UTF8Encoding($false)
     if (-not $process.Start()) { throw 'SSHを起動できませんでした。' }
     $process.StandardInput.Write([Runtime.InteropServices.Marshal]::PtrToStringBSTR($pointer))
     $process.StandardInput.Close()
@@ -28,6 +31,7 @@ try {
     if ($process.ExitCode -ne 0) { throw '暗号化保存に失敗しました。SSH接続とsystemd-credsを確認してください。' }
     Write-Host 'Client Secretをラズパイへ暗号化保存しました。'
 } finally {
+    [Console]::InputEncoding = $originalInputEncoding
     if ($pointer -ne [IntPtr]::Zero) { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($pointer) }
     $secret.Dispose()
     $process.Dispose()

@@ -42,7 +42,7 @@ def read_credential(name: str) -> str:
     path = Path(cred_dir) / name
     if not path.is_file():
         raise ConfigError(f"資格情報が見つかりません: {path}")
-    value = path.read_text(encoding="utf-8").strip()
+    value = path.read_text(encoding="utf-8-sig").strip()
     if not value:
         raise ConfigError(f"資格情報が空です: {name}")
     return value
