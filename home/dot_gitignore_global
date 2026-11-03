@@ -26,5 +26,6 @@ mise.toml
 report/
 reports/
 .mise.local.toml
+mise.lock
 .envrc
 .env
