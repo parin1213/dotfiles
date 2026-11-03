@@ -13,6 +13,9 @@ if ($isInteractiveSsh -and (Get-Command herdr -ErrorAction SilentlyContinue)) {
     [Environment]::Exit($LASTEXITCODE)
 }
 
+# postinstall を許可せず、同梱の公式実行ファイルを使う。
+Set-Alias -Name opencode -Value (Join-Path $HOME '.local/bin/opencode-personal.ps1')
+
 # 文字化け対策（UTF-8）。5.1 はこれが無いと日本語出力が崩れる。
 $Utf8NoBom = [System.Text.UTF8Encoding]::new($false)
 [Console]::InputEncoding = $Utf8NoBom

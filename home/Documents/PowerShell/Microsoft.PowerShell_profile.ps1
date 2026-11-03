@@ -16,6 +16,9 @@ if ($isInteractiveSsh -and (Get-Command herdr -ErrorAction SilentlyContinue)) {
 
 Set-Alias -Name sudo -Value gsudo
 
+# postinstall を許可せず、同梱の公式実行ファイルを使う。
+Set-Alias -Name opencode -Value (Join-Path $HOME '.local/bin/opencode-personal.ps1')
+
 # 文字エンコーディング（pwsh は UTF-8 既定だが明示して統一）。
 $script:Utf8NoBom = [System.Text.UTF8Encoding]::new($false)
 [Console]::InputEncoding = $script:Utf8NoBom
