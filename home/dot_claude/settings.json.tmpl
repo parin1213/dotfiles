@@ -6,11 +6,16 @@
 {{- end }}
 {{- /* 会話から今の話題のタイトルを作る hook。Haiku を裏で呼ぶので hook 自体はすぐ戻る。 */ -}}
 {{- $topic := printf "node %s/.local/bin/herdr-topic.mjs" (.chezmoi.homeDir | replace "\\" "/") }}
+{{- /* herdr の公式 Claude 連携 hook。SessionStart で session_id を herdr に報告し、サーバ再起動後に `claude --resume <id>` で会話を戻せるようにする。本体は `herdr integration install claude` が置く herdr 管理ファイルなので、無いマシンでは何もしない。 */ -}}
+{{- $agentState := printf "sh -c 'f=%s/.claude/hooks/herdr-agent-state.sh; [ -f $f ] && sh $f session || true'" .chezmoi.homeDir }}
   "model": "opus",
 {{- /* 会話ログを日数で消さず、過去のセッションをいつでも読み返せるようにする。 */}}
   "cleanupPeriodDays": 36500,
   "hooks": {
     "SessionStart": [
+{{- if ne .chezmoi.os "windows" }}
+      { "hooks": [{ "type": "command", "command": "{{ $agentState }}", "timeout": 10 }] },
+{{- end }}
       { "hooks": [{ "type": "command", "command": "{{ $tabTitle }} working", "async": true }] },
       { "hooks": [{ "type": "command", "command": "{{ $topic }}" }] }
     ],
