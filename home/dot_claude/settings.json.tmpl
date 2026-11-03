@@ -8,14 +8,17 @@
 {{- $topic := printf "node %s/.local/bin/herdr-topic.mjs" (.chezmoi.homeDir | replace "\\" "/") }}
 {{- /* herdr の公式 Claude 連携 hook。SessionStart で session_id を herdr に報告し、サーバ再起動後に `claude --resume <id>` で会話を戻せるようにする。本体は `herdr integration install claude` が置く herdr 管理ファイルなので、無いマシンでは何もしない。 */ -}}
 {{- $agentState := printf "sh -c 'f=%s/.claude/hooks/herdr-agent-state.sh; [ -f $f ] && sh $f session || true'" .chezmoi.homeDir }}
+{{- if eq .chezmoi.os "windows" }}
+{{-   $ps1 := printf "%s/.claude/hooks/herdr-agent-state.ps1" (.chezmoi.homeDir | replace "\\" "/") }}
+{{- /* hook は Git Bash 経由で走るので、bash に展開される $ を使わず固定パスで書く。 */ -}}
+{{-   $agentState = printf "powershell -NoProfile -ExecutionPolicy Bypass -Command \\\"if (Test-Path '%s') { & '%s' session }\\\"" $ps1 $ps1 }}
+{{- end }}
   "model": "opus",
 {{- /* 会話ログを日数で消さず、過去のセッションをいつでも読み返せるようにする。 */}}
   "cleanupPeriodDays": 36500,
   "hooks": {
     "SessionStart": [
-{{- if ne .chezmoi.os "windows" }}
       { "hooks": [{ "type": "command", "command": "{{ $agentState }}", "timeout": 10 }] },
-{{- end }}
       { "hooks": [{ "type": "command", "command": "{{ $tabTitle }} working", "async": true }] },
       { "hooks": [{ "type": "command", "command": "{{ $topic }}" }] }
     ],
