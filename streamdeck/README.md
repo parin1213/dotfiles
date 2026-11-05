@@ -53,3 +53,16 @@ Mac では 1 の代わりに次を行う（Stream Deck と m1ddc は Brewfile �
 3. `node gen-profiles.mjs` のあと、`plugin/` で `pnpm run restart`
 4. プラグインが起動時に 3 つを 1 つずつ入れようとするので、「プロファイルをインストールしますか」を 3 回許可する。中身が前回と同じなら何も聞かない
 5. アプリの紐付けはプロファイルに入っているので、入れれば終わり。「通常」を既定のプロファイルにするのだけは環境設定で行う
+
+## Lacia の移動表示
+
+AI ページの上段4キー（herdr Space）に、元の表示と合成した Lacia を出す。キーの操作と下段の空き・予約枠は変更しない。
+
+- herdr の既存 snapshot が `working` を返す間だけ横に移動する。待機時はその場で止まり、承認待ち（`blocked`）が1件でもあれば通知を優先して非表示になる。取得失敗・Spaceなし・最終取得から5秒以上の場合も非表示。herdr 外のAI実行は検出しない。
+- CPU使用率が高いほど移動速度が上がる。CPU 65%以上またはメモリ使用率85%以上で走り、CPU 45%未満かつメモリ使用率75%未満で歩きに戻る。Node のCPU時間と空きメモリを毎秒読み、同じ画像は送り直さない。
+- `plugin/src/lacia-frames.json` は動作名ごとの素材。`idle.frames` は待機、任意の `move.frames` は移動用で、各コマは `{ms, png}`（PNGのbase64）。`walk-right` / `walk-left` と `run-right` / `run-left` は方向ごとの歩行・走行素材（各8コマ）。対応する素材が無いときは `move`、さらに無ければ待機素材を使う。
+- 描画は `src/lacia.js`、既存機能との接続は `src/plugin.js`。`node --test src/lacia.test.js` を `plugin/` で実行できる。`laciaEnabled: false` をプラグインのglobal settingsに保持すると無効になる。設定を保存する処理は既存どおり全項目を引き継ぐ。
+- AI以外のページでは右下のページキーに表示する。30〜90秒ごとに短いしぐさや移動を行い、通知や注記がある間は表示しない。
+- キー間の物理的な隙間には描画できない。標準アクションや別プラグインのキーへの合成は行わない。
+
+変更の反映は既存どおり `plugin/` で `pnpm build` → `pnpm run restart`。プロファイルの再生成・削除・再インストールは不要。

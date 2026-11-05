@@ -10,7 +10,9 @@ import streamDeck, { SingletonAction } from '@elgato/streamdeck';
 import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, readdirSync, realpathSync, statSync, openSync, readSync, closeSync } from 'node:fs';
-import { homedir } from 'node:os';
+import { homedir, cpus, freemem, totalmem } from 'node:os';
+import { LaciaMotion, overlayLacia, PageLacia, overlayPageLacia, frameAt } from './lacia.js';
+import laciaFrames from './lacia-frames.json' with { type: 'json' };
 import { delimiter, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { appKey, infobar, limitKey, pageKey, spaceKey, switchKey, timerKey } from './render.js';
@@ -62,6 +64,7 @@ function findHerdr() {
   return null;
 }
 let herdrBin = findHerdr();
+let spacesObservedAt = 0;
 
 // herdr の Space 一覧。サーバーが動いていなければ空（herdr はここから起動されない）
 async function readSpaces() {
@@ -71,6 +74,8 @@ async function readSpaces() {
   if (!r.ok) return [];
   try {
     const s = JSON.parse(r.stdout).result.snapshot;
+    if (!Array.isArray(s.workspaces)) return [];
+    spacesObservedAt = Date.now();
     return s.workspaces.map((w) => ({
       id: w.workspace_id, number: w.number, status: w.agent_status || 'idle', focused: w.focused,
       topic: w.tokens?.topic || '', label: w.label || '',
@@ -186,7 +191,30 @@ class Space extends SingletonAction {
   slot(a, settings) { return Number(settings?.slot) || (a.coordinates?.column ?? 0) + 1; }
   spaceAt(a) { return recentSpaces()[this.slot(a, this.settings.get(a.id)) - 1]; }
   settings = new Map();
-  render(a) { setImage(a, spaceKey(this.slot(a, this.settings.get(a.id)), this.spaceAt(a))); }
+  motions = new Map();
+  poses = new Map();
+  render(a) {
+    const base = spaceKey(this.slot(a, this.settings.get(a.id)), this.spaceAt(a));
+    const top = a.coordinates?.row === 0 && a.coordinates.column >= 0 && a.coordinates.column < 4;
+    const pose = top && this.poses.get(a.device.id);
+    setImage(a, pose ? overlayLacia(base, a.coordinates.column, pose, laciaFrames) : base);
+  }
+  animate(dt, load) {
+    const actions = [...this.actions];
+    const devices = new Set(actions.map((a) => a.device.id));
+    for (const id of this.motions.keys()) if (!devices.has(id)) { this.motions.delete(id); this.poses.delete(id); }
+    for (const id of devices) {
+      if (!this.motions.has(id)) this.motions.set(id, new LaciaMotion());
+      const completeRow = new Set(actions.filter((a) => a.device.id === id && a.coordinates?.row === 0).map((a) => a.coordinates.column)).size === 4;
+      this.poses.set(id, this.motions.get(id).advance(dt, {
+        enabled: globals.laciaEnabled !== false && completeRow,
+        fresh: spaces.length > 0 && Date.now() - spacesObservedAt < 5000,
+        working: spaces.some((s) => s.status === 'working'),
+        blocked: spaces.some((s) => s.status === 'blocked'), ...load,
+      }));
+    }
+    this.refresh();
+  }
   async onWillAppear(ev) { this.settings.set(ev.action.id, ev.payload.settings); lastImage.delete(ev.action.id); this.render(ev.action); }
   async onDidReceiveSettings(ev) { this.settings.set(ev.action.id, ev.payload.settings); this.render(ev.action); }
   async onKeyDown(ev) {
@@ -353,10 +381,21 @@ class Page extends SingletonAction {
     if (slackBadge && !slackMentions() && page !== MAIN_PAGE) list.push({ kind: 'slack', label: 'Slack 未読' });
     return list;
   }
+  pets = new Map();
   render(a) {
     const { page = 1, pages = 4 } = this.settings.get(a.id) || {};
-    setImage(a, pageKey(page, pages, this.target(a), this.notes(a)));
+    const target = this.target(a), notes = this.notes(a);
+    let image = pageKey(page, pages, target, notes);
+    if (page !== AI_PAGE && !target && !notes.length && globals.laciaEnabled !== false) {
+      if (!this.pets.has(a.id)) this.pets.set(a.id, new PageLacia(Date.now()));
+      const pose = this.pets.get(a.id).frame(Date.now());
+      const frames = (laciaFrames[pose.name] || laciaFrames.idle).frames;
+      image = overlayPageLacia(image, frameAt(frames, pose.elapsed).png, pose.x);
+    }
+    setImage(a, image);
   }
+  onWillDisappear(ev) { this.pets.delete(ev.action.id); this.settings.delete(ev.action.id); lastImage.delete(ev.action.id); }
+  tick() { for (const a of this.actions) this.render(a); }
   // デバイスごとに今出ているプロファイル。別のプロファイルからページキーが出たら「切り替わった」とみなす
   current = new Map();
   async onWillAppear(ev) {
@@ -422,6 +461,33 @@ function refreshLimits() {
 }
 
 // 承認待ちに変わったのをすぐ出したいので herdr は 1.5 秒ごと。使用率のファイルは 10 秒ごと
+// CPU の累積時間の差とメモリ使用率を毎秒読む。外部プロセスは起動しない。
+let previousCpu;
+let sampledAt = 0, load = { cpu: 0, memory: 0 };
+let animatedAt = Date.now();
+function sampleLoad() {
+  const now = Date.now();
+  if (now - sampledAt < 1000) return load;
+  sampledAt = now;
+  try {
+    const current = cpus().reduce((sum, c) => {
+      sum.idle += c.times.idle;
+      sum.total += Object.values(c.times).reduce((a, b) => a + b, 0);
+      return sum;
+    }, { idle: 0, total: 0 });
+    const delta = previousCpu && current.total - previousCpu.total;
+    load = { cpu: delta > 0 ? Math.max(0, Math.min(1, 1 - (current.idle - previousCpu.idle) / delta)) : 0,
+      memory: Math.max(0, Math.min(1, 1 - freemem() / totalmem())) };
+    previousCpu = current;
+  } catch { load = { cpu: 0, memory: 0 }; }
+  return load;
+}
+setInterval(() => {
+  const now = Date.now(), dt = (now - animatedAt) / 1000;
+  animatedAt = now;
+  if ([...space.actions].length) space.animate(dt, sampleLoad());
+}, 40);
+setInterval(() => page.tick(), 100);
 setInterval(refreshSpaces, 1500);
 setInterval(refreshLimits, 10_000);
 // 未読数は 3 秒ごと
