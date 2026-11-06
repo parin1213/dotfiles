@@ -15,7 +15,7 @@ from mcp.client.streamable_http import streamablehttp_client
 
 
 SERVER = Path(__file__).with_name("server.py")
-TOOL_NAMES = {"search", "fetch", "create_note"}
+TOOL_NAMES = {"search", "fetch", "create_note", "health_status", "health_day", "health_record"}
 MAX_BYTES = 256 * 1024
 
 

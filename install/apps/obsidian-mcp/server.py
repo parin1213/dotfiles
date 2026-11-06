@@ -5,6 +5,7 @@ from pathlib import Path
 
 from mcp.server.fastmcp import FastMCP
 from mcp.types import ToolAnnotations
+import health
 
 
 MAX_BYTES = 256 * 1024
@@ -95,6 +96,22 @@ def build_server(root: Path, port: int = 8765) -> FastMCP:
     def create_note(path: str, content: str) -> dict:
         """会話の要点を新しい.mdノートとして保存する。pathは既存フォルダ内の相対パス。"""
         return vault.create(path, content)
+
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False))
+    def health_status() -> dict:
+        """健康記録の保存範囲、同期の前回成否とタイマー稼働を確認する。健康値や資格情報は返さない。"""
+        return health.status()
+
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False))
+    def health_day(date: str) -> dict:
+        """YYYY-MM-DDのアプリ形式の健康記録を取得。欠測はnull、歩数は足さない。既存台帳はsearch/fetchで読む。"""
+        return health.day(vault, date)
+
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False,
+                                        idempotentHint=True, openWorldHint=False))
+    def health_record(record_id: str, kind: str, occurred_at: str, text: str = "", value: float | None = None) -> dict:
+        """食事meal・体重weight(kg)・歩数stepsを新規保存。record_idは送信ごとのUUIDで再試行は同じID。occurred_atは秒とUTCオフセット付き。不明なvalueはnull。元ノートの訂正・削除はしない。"""
+        return health.record(vault.root, record_id, kind, occurred_at, text, value)
 
     return mcp
 

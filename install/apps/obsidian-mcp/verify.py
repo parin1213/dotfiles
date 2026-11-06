@@ -22,7 +22,7 @@ async def verify():
             async with ClientSession(reader, writer) as session:
                 await session.initialize()
                 tools = (await session.list_tools()).tools
-                assert {tool.name for tool in tools} == {"search", "fetch", "create_note"}
+                assert {tool.name for tool in tools} == {"search", "fetch", "create_note", "health_status", "health_day", "health_record"}
                 assert next(t for t in tools if t.name == "search").annotations.readOnlyHint
                 assert not next(t for t in tools if t.name == "create_note").annotations.readOnlyHint
                 result = await session.call_tool("search", {"query": "39GB"})

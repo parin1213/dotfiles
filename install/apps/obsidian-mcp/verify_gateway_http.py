@@ -72,7 +72,7 @@ def main(protocol_version=None):
                 owner = request("dummy-owner", "tools/list")
                 assert owner.status_code == 200, owner.text
                 names = {tool["name"] for tool in owner.json()["result"]["tools"]}
-                assert {"search", "fetch", "create_note"} <= names, names
+                assert {"search", "fetch", "create_note", "health_status", "health_day", "health_record"} <= names, names
                 other = request("dummy-other", "tools/list")
                 assert other.json()["result"]["tools"] == [], other.text
                 denied = request("dummy-other", "tools/call", {
@@ -83,7 +83,15 @@ def main(protocol_version=None):
                     "name": "search", "arguments": {"query": "gateway-verification-no-match-20261031"},
                 }).json()
                 assert "error" not in allowed and not allowed.get("result", {}).get("isError"), allowed
-    print("HTTP本人: 検索成功 / 別人: 一覧非表示・実行拒否 / 未認証と無効トークン: 401")
+                denied_health = request("dummy-other", "tools/call", {
+                    "name": "health_status", "arguments": {},
+                }).json()
+                assert "error" in denied_health or denied_health.get("result", {}).get("isError"), denied_health
+                allowed_health = request("dummy-owner", "tools/call", {
+                    "name": "health_status", "arguments": {},
+                }).json()
+                assert "error" not in allowed_health and not allowed_health.get("result", {}).get("isError"), allowed_health
+    print("HTTP本人: 検索・健康状態取得成功 / 別人: 一覧非表示・健康ツール実行拒否 / 未認証と無効トークン: 401")
 
 
 if __name__ == "__main__":
