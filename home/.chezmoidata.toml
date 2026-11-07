@@ -38,6 +38,15 @@ base_url = "https://raspi4.tailee8e63.ts.net"
 github_client_id = "Ov23liTL3o4efmwSfUHg"
 github_user_id = 1243997
 
+[health_steps_sync]
+# 本人承認済み: 当日・前日だけを毎時取得。秘密情報はPiの暗号化ストアへ分離する。
+account = "parin1213@gmail.com"
+project_id = "lacia-health-check-261106-a7d4"
+ssh_target = "raspi4"
+timezone = "Asia/Tokyo"
+interval_minutes = 60
+recent_days = 2
+
 [envs.win]                      # Windows ネイティブ（machine=local-pc）
 weight = "full"
 ghostty_font_size = 24          # ※Windows は ghostty を .chezmoiignore で除外（値は参考）
@@ -100,7 +109,7 @@ tailscale = true                # headless ほどリモート到達の価値が�
 docker = true                   # apps の Home Assistant が docker 必須のため有効
 sshd = true                     # ssh 受け側として必要
 tauri_build = false                  # Tauri ビルド依存は重い → 必要なのは local-pc/WSL のみ
-apps = ["homeassistant", "obsidian-mcp"] # MCPはvault配置後に常駐登録する
+apps = ["homeassistant", "obsidian-mcp", "health-steps-sync"] # MCPはvault配置後に常駐登録する
 
 [envs.mac]                      # macOS（仕事用・現在未接続）
 weight = "full"
