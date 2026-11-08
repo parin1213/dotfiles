@@ -50,3 +50,37 @@ class HealthStatusTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+
+
+class MigratedRecordTests(unittest.TestCase):
+    def test_old_new_and_duplicate_id_reads(self):
+        from uuid import uuid4
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            (root / "ログ").mkdir()
+            store = health.storage_module().Store(root)
+            base = {"id": str(uuid4()), "kind": "steps", "occurred_at": "2026-11-07T10:00:00+09:00", "text": "", "value": 0}
+            saved = store.save(base)
+            path = root / saved["path"]
+            legacy = root / "ログ" / path.name
+            path.rename(legacy)
+            newer = store.save(base | {"id": str(uuid4()), "occurred_at": "2026-11-07T11:00:00+09:00", "value": None, "text": "missing"})
+            vault = SimpleNamespace(root=root, read=lambda relative: (root / relative).read_text(encoding="utf-8"))
+            result = health.day(vault, "2026-11-07")
+            self.assertEqual(len(result["records"]), 2)
+            self.assertIsNone(result["latest_observations"]["steps"][0]["value"])
+            # Same source record copied during migration is counted once.
+            path.write_bytes(legacy.read_bytes())
+            self.assertEqual(len(health.day(vault, "2026-11-07")["records"]), 2)
+
+
+class DashboardStatusTests(unittest.TestCase):
+    def test_dashboard_status_is_distinct_and_allowlisted(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "status.json"
+            state = health.app_module("sync_state")
+            for value in ("success", "error", "untrusted-data"):
+                state.write_status(path, {"status": "success", "dashboard_status": value}, datetime(2026,11,8,tzinfo=timezone.utc))
+                result = state.read_status(path)
+                self.assertEqual(result["status"], "success")
+                self.assertEqual(result.get("dashboard_status"), value if value != "untrusted-data" else None)

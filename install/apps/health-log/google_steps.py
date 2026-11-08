@@ -162,7 +162,7 @@ def save_snapshot(store, snapshot):
               "text": f"Google Healthの日別歩数。対象日: {snapshot.date}。取得元がGoogle Fitかは未確認。未記録は0に置換しない。"}
     with store.lock, store.exclude_sync():
         previous = []
-        for path in store.folder.glob(f"{snapshot.date}_健康記録_*_*.md"):
+        for path in store.record_paths(f"{snapshot.date}_健康記録_*_*.md"):
             if path.is_symlink() or path.stat().st_size > 256 * 1024:
                 continue
             try:

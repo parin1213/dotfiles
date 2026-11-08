@@ -31,7 +31,7 @@ SCOPE_TEXT = "health_dayはアプリ形式の記録だけを取得。既存台�
 
 def status(state_path=None):
     result = {"steps_connection": "未接続", "automatic_steps": False,
-            "storage": "既存Vaultのログ/に新規Markdownとして保存",
+            "storage": "機械原記録はAttachments/health/records、既存のログ/も読取対応",
             "sync": "端末間のGit同期完了は未確認",
             "scope": SCOPE_TEXT}
     result.update(app_module("sync_state").describe(state_path))
@@ -48,13 +48,9 @@ def day(vault, day):
     if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", day):
         raise ValueError("日付はYYYY-MM-DDで指定してください")
     date.fromisoformat(day)
-    folder = vault.root / "ログ"
-    if not folder.is_dir():
-        return {"date": day, "records": [], "complete_day": False, "scope": SCOPE_TEXT}
-    if folder.is_symlink() or folder.resolve().parent != vault.root:
-        raise ValueError("ログはVault内の実ディレクトリである必要があります")
+    folders = storage_module().record_folders(vault.root)
     records, skipped = [], 0
-    paths = sorted(folder.glob(f"{day}_健康記録_*_*.md"))
+    paths = sorted(path for folder in folders for path in folder.glob(f"{day}_健康記録_*_*.md"))
     if len(paths) > 200:
         raise ValueError("対象日の記録が200件を超えています。search/fetchで確認してください")
     for path in paths:
@@ -106,6 +102,17 @@ def day(vault, day):
                             "occurred_at": stamp.isoformat(), "value": value, "unit": unit, "source": source, **provenance})
         except (ValueError, KeyError, TypeError, OverflowError, OSError, UnicodeError):
             skipped += 1
+    by_id = {}
+    conflicts = set()
+    for record in records:
+        key = record["record_id"]
+        comparable = {k: v for k, v in record.items() if k != "id"}
+        if key in by_id and comparable != {k: v for k, v in by_id[key].items() if k != "id"}:
+            conflicts.add(key)
+        else:
+            by_id[key] = record
+    skipped += len(conflicts)
+    records = [record for key, record in by_id.items() if key not in conflicts]
     records.sort(key=lambda item: (datetime.fromisoformat(item["occurred_at"]), item["record_id"]))
     # 同日の累計歩数を足さない。複数の同時刻観測は優劣を決められないため全て返す。
     latest = {}

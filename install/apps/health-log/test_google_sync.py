@@ -61,7 +61,7 @@ class SyncTests(unittest.TestCase):
         self.assertEqual(result["completed_day_count"], 2)
         self.assertEqual(result["status"], "success")
         self.run_sync()
-        notes = list((self.root / "ログ").iterdir())
+        notes = list((self.root / "Attachments/health/records").iterdir())
         self.assertEqual(len(notes), 2)
         for note in notes:
             text = note.read_text(encoding="utf-8")
@@ -77,7 +77,7 @@ class SyncTests(unittest.TestCase):
     def test_wrong_identity_writes_nothing(self):
         self.api = lambda *_: {"healthUserId":"other-user"}
         with self.assertRaises(SyncFailure): self.run_sync()
-        self.assertEqual(list((self.root / "ログ").iterdir()), [])
+        self.assertEqual(list((self.root / "Attachments/health/records").iterdir()), [])
 
     def test_wrong_configured_account_never_calls_google(self):
         self.bundle = replace(self.bundle, account="other@example.invalid")
@@ -92,7 +92,7 @@ class SyncTests(unittest.TestCase):
             return original(method, url, body, token)
         self.api = failing
         with self.assertRaises(SyncFailure): self.run_sync()
-        self.assertEqual(list((self.root / "ログ").iterdir()), [])
+        self.assertEqual(list((self.root / "Attachments/health/records").iterdir()), [])
 
     def test_authentication_failure_does_not_retry(self):
         def denied(*_):
@@ -126,7 +126,7 @@ class SyncTests(unittest.TestCase):
         with patch("google_sync.save_snapshot", side_effect=partial):
             with self.assertRaises(SyncFailure) as failure: self.run_sync()
         self.assertEqual(failure.exception.completed, 1)
-        self.assertEqual(len(list((self.root / "ログ").iterdir())), 1)
+        self.assertEqual(len(list((self.root / "Attachments/health/records").iterdir())), 1)
 
     def test_status_contains_no_values_or_credentials(self):
         path = self.root / "state/status.json"

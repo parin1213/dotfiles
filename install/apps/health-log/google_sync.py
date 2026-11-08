@@ -9,7 +9,7 @@ import tomllib
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from google_once import AuthError, TOKEN_URL, post_form
 from google_steps import GoogleSteps, StepsError, SCOPE, request_json, save_snapshot
-from server import Store
+from server import Store, refresh_dashboard
 from sync_credentials import CredentialError, encrypt_bundle, load_runtime, rotated
 from sync_state import write_status
 
@@ -64,7 +64,10 @@ def run_sync(bundle, store, *, zone_name, expected_account, expected_project, da
         for snapshot in snapshots:
             save_snapshot(store, snapshot)
             completed += 1
-        return {"status": "success", "completed_day_count": completed, "requested_day_count": len(days)}
+        with store.lock, store.exclude_sync():
+            dashboard_status = refresh_dashboard(store.root)
+        return {"status": "success", "completed_day_count": completed, "requested_day_count": len(days),
+                "dashboard_status": dashboard_status}
     except AuthError:
         raise SyncFailure("authentication_failed", completed) from None
     except StepsError:

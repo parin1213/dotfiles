@@ -37,6 +37,8 @@ def read_status(path):
             value = data.get(key)
             if type(value) is int and 0 <= value <= 2:
                 result[key] = value
+        if data.get("dashboard_status") in {"success", "error"}:
+            result["dashboard_status"] = data["dashboard_status"]
         return result
     except (OSError, ValueError, TypeError):
         return None
@@ -54,6 +56,8 @@ def write_status(path, result, now):
             allowed[key] = value
     if result.get("error_code") in ERROR_CODES:
         allowed["error_code"] = result["error_code"]
+    if result.get("dashboard_status") in {"success", "error"}:
+        allowed["dashboard_status"] = result["dashboard_status"]
     payload = {"kind": "health_steps_sync_status", "schema": 1, **allowed,
                "last_attempt_at": now.isoformat(),
                "last_success_at": now.isoformat() if allowed["status"] == "success" else previous.get("last_success_at") if previous else None}

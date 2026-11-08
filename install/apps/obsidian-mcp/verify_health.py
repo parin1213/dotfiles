@@ -59,7 +59,7 @@ async def verify(transport):
             saved = await call("health_record", base)
             assert (root / saved["id"]).is_file()
             assert (await call("health_record", base))["id"] == saved["id"]
-            assert len(list((root / "ログ").glob("*_健康記録_*"))) == 1
+            assert len(list((root / "Attachments/health/records").glob("*_健康記録_*"))) == 1
             await call("health_record", base | {"text": "別の内容"}, error=True)
             fetched = await call("fetch", {"id": saved["id"]})
             assert "value: null" in fetched["text"]

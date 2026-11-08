@@ -72,6 +72,20 @@ if [ "$pull_status" -ne 0 ]; then
     exit 1
 fi
 
+# Rebuild the derived health view after merging canonical records.
+# The source checkout is the same conventional path used by the existing app services.
+health_generator="$HOME/src/dotfiles/install/apps/health-log/dashboard.py"
+if [ -f "$health_generator" ]; then
+    if ! python3 "$health_generator" --vault "$VAULT" >/dev/null 2>&1; then
+        log "ERROR: health dashboard generation failed"
+        exit 1
+    fi
+    git add -- "ログ/健康ダッシュボード.md" "Attachments/health/weight.svg" "Attachments/health/calories.svg" "Attachments/health/steps.svg" 2>/dev/null
+    if ! git diff --cached --quiet; then
+        git commit -m "docs: 健康グラフを記録から更新" >/dev/null 2>&1 || exit 1
+    fi
+fi
+
 ahead=$(git rev-list --count origin/main..HEAD 2>/dev/null)
 case "$ahead" in
     '' | *[!0-9]*) ahead=0 ;;

@@ -1,6 +1,8 @@
 """健康記録を新規Markdownとして保存するローカル専用サーバー。"""
 import argparse
 import hashlib
+import importlib.util
+import sys
 import html
 import json
 import math
@@ -47,12 +49,52 @@ def validate(data):
     return {"id": record_id, "kind": kind, "occurred_at": stamp.isoformat(), "text": text.strip(), "value": value}
 
 
+def record_folders(root, *, create=False):
+    """既存ログと機械原記録だけを扱い、リンクやVault外への解決を拒否する。"""
+    root = Path(root).resolve(strict=True)
+    legacy = root / "ログ"
+    paths = [legacy]
+    current = root
+    for part in ("Attachments", "health", "records"):
+        current = current / part
+        if current.is_symlink() or (hasattr(current, "is_junction") and current.is_junction()):
+            raise ValueError("健康記録のディレクトリにリンクは使えません")
+        if create:
+            current.mkdir(exist_ok=True)
+        if current.exists() and (not current.is_dir() or not current.resolve().is_relative_to(root)):
+            raise ValueError("健康記録の保存先が不正です")
+    paths.append(current)
+    for path in paths:
+        if path.is_symlink() or (hasattr(path, "is_junction") and path.is_junction()):
+            raise ValueError("健康記録のディレクトリにリンクは使えません")
+        if path.exists() and (not path.is_dir() or not path.resolve().is_relative_to(root)):
+            raise ValueError("健康記録の保存先が不正です")
+    return [path for path in paths if path.is_dir()]
+
+
+def refresh_dashboard(root):
+    """保存成功と表示生成の成否を分離。例外や入力値は外へ出さない。"""
+    try:
+        path = Path(__file__).resolve().with_name("dashboard.py")
+        name = "health_dashboard_generator"
+        spec = importlib.util.spec_from_file_location(name, path)
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[name] = module
+        spec.loader.exec_module(module)
+        module.generate(Path(root))
+        return "success"
+    except Exception:
+        return "error"
+
+
 class Store:
     def __init__(self, vault):
         self.root = Path(vault).resolve(strict=True)
-        self.folder = self.root / "ログ"
+        self.legacy_folder = self.root / "ログ"
+        self.folder = self.legacy_folder
         if not self.folder.is_dir() or self.folder.is_symlink() or self.folder.resolve().parent != self.root:
             raise ValueError("既存Vault内の実ディレクトリ「ログ」が必要です")
+        self.folder = record_folders(self.root, create=True)[-1]
         self.lock = Lock()
         git_dir = self.root / ".git"
         if git_dir.exists() and (not git_dir.is_dir() or git_dir.is_symlink()):
@@ -73,13 +115,17 @@ class Store:
 
     def save(self, data):
         with self.lock, self.exclude_sync():
-            return self._save(data)
+            saved = self._save(data)
+            return {**saved, "dashboard_status": refresh_dashboard(self.root)}
+
+    def record_paths(self, pattern):
+        return sorted(path for folder in record_folders(self.root) for path in folder.glob(pattern))
 
     def _save(self, data, *, record_day=None, provenance=None):
         record = validate(data)
         stamp = datetime.fromisoformat(record["occurred_at"])
         note_day = record_day or str(stamp.date())
-        matches = list(self.folder.glob(f"*_健康記録_*_{record['id']}.md"))
+        matches = self.record_paths(f"*_健康記録_*_{record['id']}.md")
         if len(matches) > 1:
             raise ValueError("同じIDの記録が複数あります")
         target = matches[0] if matches else self.folder / f"{note_day}_健康記録_{stamp:%H%M}_{record['id']}.md"

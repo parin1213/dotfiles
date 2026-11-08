@@ -88,7 +88,7 @@ class GoogleStepsTests(unittest.TestCase):
             store = Store(root)
             first = self.client.fetch_day("2026-11-06")
             saved = save_snapshot(store, first)
-            self.assertTrue(saved["path"].startswith("ログ/2026-11-06_"))
+            self.assertTrue(saved["path"].startswith("Attachments/health/records/2026-11-06_"))
             content = (root / saved["path"]).read_text(encoding="utf-8")
             self.assertIn("source: google_health", content)
             self.assertIn("fit_sync_verified: false", content)
@@ -96,12 +96,27 @@ class GoogleStepsTests(unittest.TestCase):
             self.assertNotIn("test-user", content)
             again = replace(first, observed_at="2026-11-07T02:00:00+00:00")
             self.assertEqual(save_snapshot(store, again)["path"], saved["path"])
-            self.assertEqual(len(list((root / "ログ").iterdir())), 1)
+            self.assertEqual(len(list((root / "Attachments/health/records").iterdir())), 1)
             changed = replace(first, steps=2000, observed_at="2026-11-07T03:00:00+00:00")
             save_snapshot(store, changed)
             reversed_value = replace(first, observed_at="2026-11-07T04:00:00+00:00")
             self.assertNotEqual(save_snapshot(store, reversed_value)["path"], saved["path"])
-            self.assertEqual(len(list((root / "ログ").iterdir())), 3)
+            self.assertEqual(len(list((root / "Attachments/health/records").iterdir())), 3)
+
+    def test_unchanged_snapshot_in_legacy_folder_is_not_duplicated(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            (root / "ログ").mkdir()
+            store = Store(root)
+            snapshot = self.client.fetch_day("2026-11-06")
+            saved = save_snapshot(store, snapshot)
+            old = root / saved["path"]
+            legacy = root / "ログ" / old.name
+            old.rename(legacy)
+            result = save_snapshot(store, replace(snapshot, observed_at="2026-11-07T02:00:00+00:00"))
+            self.assertTrue(result["unchanged"])
+            self.assertEqual(result["path"], legacy.relative_to(root).as_posix())
+            self.assertEqual(list(store.folder.iterdir()), [])
 
     def test_unverified_snapshot_cannot_be_saved(self):
         snapshot = self.client.fetch_day("2026-11-06")
