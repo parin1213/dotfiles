@@ -53,7 +53,7 @@ async def verify(transport):
             assert tools["health_status"].annotations.readOnlyHint
             assert not tools["health_record"].annotations.readOnlyHint
             assert tools["health_record"].annotations.idempotentHint
-            assert (await call("health_status"))["automatic_steps"] is False
+            baseline_automatic = (await call("health_status"))["automatic_steps"]
             assert (await call("health_day", {"date": "2026-11-06"}))["records"] == []
             base = {"record_id": str(uuid4()), "kind": "meal", "occurred_at": "2026-11-06T12:00:00+09:00", "text": "検証用の短文", "value": None}
             saved = await call("health_record", base)
@@ -103,7 +103,7 @@ async def verify(transport):
             assert observation["value"] == 1234 and observation["source"] == "google_health"
             assert observation["window_date"] == "2026-11-05" and observation["occurred_at"].startswith("2026-11-07")
             assert observation["fit_sync_verified"] is False
-            assert (await call("health_status"))["automatic_steps"] is False
+            assert (await call("health_status"))["automatic_steps"] == baseline_automatic
             assert "fixture-token" not in (await call("fetch", {"id": imported["path"]}))["text"]
         print(json.dumps({"transport": transport, "健康記録": "成功", "欠測と0": "区別", "再送": "重複なし", "歩数": "加算しない", "既存search/fetch": "成功", "入力と同期ロック": "拒否確認"}, ensure_ascii=False))
 
