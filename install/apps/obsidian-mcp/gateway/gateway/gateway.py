@@ -21,6 +21,7 @@ from key_value.aio.stores.filetree import (
 from key_value.aio.wrappers.encryption import FernetEncryptionWrapper
 
 from .authz import require_github_user
+from .public_pages import register_public_pages
 from .diagnostics import ToolDiagnostics, configure, DiagnosticGitHubProvider as GitHubProvider
 from .config import load_config, read_credential
 
@@ -91,6 +92,7 @@ def build_gateway(
     # バックエンドは初期化ハンドシェイク方式のSDKなので、前段の方式を転送しない。
     backend = create_proxy(UPSTREAM_URL, mode="legacy")
     gateway.mount(backend)
+    register_public_pages(gateway)
 
     return gateway
 

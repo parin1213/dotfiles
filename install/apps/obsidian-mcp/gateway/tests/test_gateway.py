@@ -216,3 +216,26 @@ def test_client_secret_basic_with_bom_credential(tmp_path: Path):
 def test_upstream_url_is_fixed():
     """proxy 接続先は固定値である。"""
     assert UPSTREAM_URL == "http://127.0.0.1:8765/mcp"
+
+def test_public_health_pages_do_not_expose_mcp(dummy_env):
+    gateway = build_gateway(dummy_env["config_path"], storage_dir=dummy_env["store_dir"])
+    with TestClient(gateway.http_app()) as client:
+        for path in ("/lacia-health/", "/lacia-health/privacy"):
+            response = client.get(path)
+            assert response.status_code == 200
+            assert "Lacia" in response.text
+            assert "default-src 'none'" in response.headers["content-security-policy"]
+            assert "set-cookie" not in response.headers
+            assert "<script" not in response.text
+            assert "@" not in response.text
+            assert "dummy-github-secret" not in response.text
+            assert "Ov23liDummy" not in response.text
+            assert str(dummy_env["cred_dir"]) not in response.text
+            assert client.head(path).content == b""
+            assert client.post(path).status_code == 405
+        assert "/lacia-health/privacy" in client.get("/lacia-health/").text
+        assert "/lacia-health/" in client.get("/lacia-health/privacy").text
+        assert client.get("/mcp").status_code == 401
+        assert client.post("/mcp", json={"jsonrpc":"2.0","method":"tools/list","id":1}).status_code == 401
+        for path in ("/lacia-health/credentials", "/lacia-health/privacy/extra", "/lacia-health/%2e%2e/secret"):
+            assert client.get(path).status_code == 404
