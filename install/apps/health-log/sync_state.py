@@ -9,7 +9,26 @@ import subprocess
 ERROR_CODES = {"configuration_required", "credential_expired_or_invalid", "invalid_grant_response",
     "credential_account_mismatch",
     "credential_rotation_not_saved", "authentication_failed", "data_request_failed", "vault_save_failed",
-    "missing_runtime_credentials", "missing_or_invalid_credentials", "configuration_or_storage_error", "status_save_failed"}
+    "missing_runtime_credentials", "missing_or_invalid_credentials", "configuration_or_storage_error", "status_save_failed",
+    "sleep_data_request_failed", "sleep_vault_save_failed"}
+
+
+def safe_details(data):
+    result = {}
+    if data.get("error_code") in ERROR_CODES:
+        result["error_code"] = data["error_code"]
+    if data.get("sleep_error_code") in {"sleep_data_request_failed", "sleep_vault_save_failed"}:
+        result["sleep_error_code"] = data["sleep_error_code"]
+    for key in ("completed_day_count", "requested_day_count", "sleep_completed_day_count"):
+        value = data.get(key)
+        if type(value) is int and 0 <= value <= 2:
+            result[key] = value
+    for key in ("dashboard_status", "steps_status"):
+        if data.get(key) in {"success", "error"}:
+            result[key] = data[key]
+    if data.get("sleep_status") in {"success", "error", "not_authorized"}:
+        result["sleep_status"] = data["sleep_status"]
+    return result
 
 
 def safe_time(value):
@@ -31,15 +50,7 @@ def read_status(path):
             return None
         result = {"status": data["status"], "last_attempt_at": safe_time(data["last_attempt_at"]),
                   "last_success_at": safe_time(data.get("last_success_at"))}
-        if data.get("error_code") in ERROR_CODES:
-            result["error_code"] = data["error_code"]
-        for key in ("completed_day_count", "requested_day_count"):
-            value = data.get(key)
-            if type(value) is int and 0 <= value <= 2:
-                result[key] = value
-        if data.get("dashboard_status") in {"success", "error"}:
-            result["dashboard_status"] = data["dashboard_status"]
-        return result
+        return result | safe_details(data)
     except (OSError, ValueError, TypeError):
         return None
 
@@ -50,14 +61,7 @@ def write_status(path, result, now):
         raise OSError("状態ファイルが不正です")
     previous = read_status(path)
     allowed = {"status": "success" if result.get("status") == "success" else "error"}
-    for key in ("completed_day_count", "requested_day_count"):
-        value = result.get(key)
-        if type(value) is int and 0 <= value <= 2:
-            allowed[key] = value
-    if result.get("error_code") in ERROR_CODES:
-        allowed["error_code"] = result["error_code"]
-    if result.get("dashboard_status") in {"success", "error"}:
-        allowed["dashboard_status"] = result["dashboard_status"]
+    allowed.update(safe_details(result))
     payload = {"kind": "health_steps_sync_status", "schema": 1, **allowed,
                "last_attempt_at": now.isoformat(),
                "last_success_at": now.isoformat() if allowed["status"] == "success" else previous.get("last_success_at") if previous else None}
@@ -73,7 +77,8 @@ def write_status(path, result, now):
 
 
 def describe(path=None):
-    result = {"steps_connection": "未接続", "automatic_steps": False}
+    result = {"steps_connection": "未接続", "automatic_steps": False,
+              "sleep_connection": "未接続", "automatic_sleep": False}
     state = read_status(path or Path.home() / ".local/state/health-steps-sync/status.json")
     if not state:
         return result
@@ -82,7 +87,12 @@ def describe(path=None):
                                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=2).returncode == 0
     except (OSError, subprocess.TimeoutExpired):
         active = None
+    steps_status = state.get("steps_status", state["status"])
+    sleep_status = state.get("sleep_status", "not_authorized")
     result.update(automatic_steps=active, last_run=state,
-                  steps_connection="前回の取得は成功" if state["status"] == "success" else "前回の取得は失敗",
+                  steps_connection="前回の取得は成功" if steps_status == "success" else "前回の取得は失敗",
                   scheduler="稼働中" if active is True else "停止中" if active is False else "未確認")
+    if sleep_status in {"success", "error"}:
+        result.update(automatic_sleep=active,
+                      sleep_connection="前回の取得は成功" if sleep_status == "success" else "前回の取得は失敗")
     return result

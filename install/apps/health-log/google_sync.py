@@ -8,9 +8,11 @@ import tempfile
 import tomllib
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from google_once import AuthError, TOKEN_URL, post_form
-from google_steps import GoogleSteps, StepsError, SCOPE, request_json, save_snapshot
+from google_steps import GoogleSteps, StepsError, request_json, save_snapshot
+from google_sleep import GoogleSleep, save_snapshot as save_sleep_snapshot
+from health_scopes import SLEEP_SCOPE, scope_set
 from server import Store, refresh_dashboard
-from sync_credentials import CredentialError, encrypt_bundle, load_runtime, rotated
+from sync_credentials import CredentialError, encrypt_bundle, load_runtime, refreshed
 from sync_state import write_status
 
 
@@ -32,7 +34,7 @@ def target_days(now, zone_name, day_count=2):
 
 
 def run_sync(bundle, store, *, zone_name, expected_account, expected_project, day_count=2, now=None, grant=post_form,
-             api=request_json, credential_writer=None):
+             api=request_json, sleep_api=None, credential_writer=None):
     now = now or datetime.now(timezone.utc)
     days = target_days(now, zone_name, day_count)
     try:
@@ -41,21 +43,31 @@ def run_sync(bundle, store, *, zone_name, expected_account, expected_project, da
         raise SyncFailure("credential_expired_or_invalid") from None
     if bundle.account != expected_account or bundle.project_id != expected_project:
         raise SyncFailure("credential_account_mismatch")
+    authorized_scopes = scope_set(bundle.scope)
     response, token, completed = None, None, 0
     try:
         response = grant(TOKEN_URL, {"grant_type": "refresh_token", "client_id": bundle.client_id,
                           "client_secret": bundle.client_secret, "refresh_token": bundle.refresh_token})
-        if (not isinstance(response, dict) or str(response.get("token_type", "")).lower() != "bearer"
-                or ("scope" in response and set(str(response["scope"]).split()) != {SCOPE})):
+        if not isinstance(response, dict) or str(response.get("token_type", "")).lower() != "bearer":
             raise SyncFailure("invalid_grant_response")
+        if "scope" in response:
+            try:
+                if scope_set(response["scope"]) != authorized_scopes:
+                    raise ValueError()
+            except ValueError:
+                raise SyncFailure("invalid_grant_response") from None
         token = response.get("access_token")
         if not isinstance(token, str) or not token or any(c.isspace() for c in token):
             raise SyncFailure("invalid_grant_response")
-        if "refresh_token" in response and response["refresh_token"] != bundle.refresh_token:
+        try:
+            updated_bundle = refreshed(bundle, response, now)
+        except CredentialError:
+            raise SyncFailure("invalid_grant_response") from None
+        if updated_bundle != bundle:
             if credential_writer is None:
                 raise SyncFailure("credential_rotation_not_saved")
             try:
-                credential_writer(rotated(bundle, response["refresh_token"]))
+                credential_writer(updated_bundle)
             except Exception:
                 raise SyncFailure("credential_rotation_not_saved") from None
         client = GoogleSteps(token, bundle.health_user_id, transport=api, now=lambda: now)
@@ -64,10 +76,29 @@ def run_sync(bundle, store, *, zone_name, expected_account, expected_project, da
         for snapshot in snapshots:
             save_snapshot(store, snapshot)
             completed += 1
+        result = {"status": "success", "steps_status": "success", "completed_day_count": completed,
+                  "requested_day_count": len(days), "sleep_status": "not_authorized", "sleep_completed_day_count": 0}
+        if SLEEP_SCOPE in authorized_scopes:
+            result["sleep_status"] = "error"
+            try:
+                options = {} if sleep_api is None else {"transport": sleep_api}
+                sleep = GoogleSleep(token, bundle.health_user_id, now=lambda: now, **options)
+                sleep_snapshots = [sleep.fetch_day(day, zone_name) for day in days]
+            except Exception:
+                result.update(status="error", error_code="sleep_data_request_failed",
+                              sleep_error_code="sleep_data_request_failed")
+            else:
+                try:
+                    for snapshot in sleep_snapshots:
+                        save_sleep_snapshot(store, snapshot)
+                        result["sleep_completed_day_count"] += 1
+                    result["sleep_status"] = "success"
+                except Exception:
+                    result.update(status="error", error_code="sleep_vault_save_failed",
+                                  sleep_error_code="sleep_vault_save_failed")
         with store.lock, store.exclude_sync():
             dashboard_status = refresh_dashboard(store.root)
-        return {"status": "success", "completed_day_count": completed, "requested_day_count": len(days),
-                "dashboard_status": dashboard_status}
+        return result | {"dashboard_status": dashboard_status}
     except AuthError:
         raise SyncFailure("authentication_failed", completed) from None
     except StepsError:
@@ -99,7 +130,7 @@ def main():
                           expected_account=settings["account"], expected_project=settings["project_id"],
                           day_count=settings["recent_days"], now=now,
                           credential_writer=lambda bundle: encrypt_bundle(bundle, encrypted))
-        code = 0
+        code = 0 if result["status"] == "success" else 1
     except SyncFailure as error:
         result = {"status": "error", "error_code": error.reason, "completed_day_count": error.completed}
     except CredentialError:

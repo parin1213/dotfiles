@@ -9,6 +9,7 @@ import subprocess
 import tempfile
 from google_once import OneTimeRead
 from google_steps import SCOPE
+from health_scopes import SLEEP_SCOPE, requested_scope, scope_set
 
 
 class CredentialError(Exception):
@@ -32,31 +33,40 @@ class Bundle:
     refresh_token: str
     health_user_id: str
     authorized_at: str
-    expires_at: str
+    expires_at: str | None
     account: str
     project_id: str
     scope: str = SCOPE
+    authorization_mode: str = "testing"
 
     def validate(self):
         try:
             OneTimeRead.validate_client(self.client_id, self.client_secret)
+            scope_set(self.scope)
         except Exception:
-            raise CredentialError("クライアント資格情報が不正です") from None
+            raise CredentialError("クライアント資格情報または許可スコープが不正です") from None
         if (not isinstance(self.account, str) or not re.fullmatch(r"[^\s@]+@[^\s@]+", self.account) or not self.account.isascii()
                 or not isinstance(self.project_id, str) or not re.fullmatch(r"[a-z][a-z0-9-]{4,28}[a-z0-9]", self.project_id)
-                or self.scope != SCOPE
                 or not isinstance(self.refresh_token, str) or not 8 <= len(self.refresh_token) <= 4096
                 or not self.refresh_token.isascii() or any(c.isspace() for c in self.refresh_token)
                 or not isinstance(self.health_user_id, str) or not re.fullmatch(r"[A-Za-z0-9-]{1,63}", self.health_user_id)):
             raise CredentialError("本人・許可スコープ・資格情報を確認できません")
-        start, end = timestamp(self.authorized_at), timestamp(self.expires_at)
-        if not start < end <= start + timedelta(days=7):
-            raise CredentialError("テスト中の7日以内の資格情報だけを使用します")
+        if self.authorization_mode not in ("testing", "production"):
+            raise CredentialError("同意取得時の公開モードが不正です")
+        start = timestamp(self.authorized_at)
+        if self.expires_at is None:
+            if self.authorization_mode != "production":
+                raise CredentialError("テスト中の資格情報には有効期限が必要です")
+        else:
+            end = timestamp(self.expires_at)
+            if end <= start or (self.authorization_mode == "testing" and end - start > timedelta(days=7)):
+                raise CredentialError("資格情報の有効期間が不正です")
         return self
 
     def live(self, now):
         self.validate()
-        if now.utcoffset() is None or not timestamp(self.authorized_at) <= now < timestamp(self.expires_at):
+        if (now.utcoffset() is None or now < timestamp(self.authorized_at)
+                or (self.expires_at is not None and now >= timestamp(self.expires_at))):
             raise CredentialError("資格情報は未有効または期限切れです")
         return self
 
@@ -65,21 +75,34 @@ class Bundle:
         return json.dumps({"client_id": self.client_id, "client_secret": self.client_secret,
             "refresh_token": self.refresh_token, "health_user_id": self.health_user_id,
             "authorized_at": self.authorized_at, "expires_at": self.expires_at,
-            "account": self.account, "project_id": self.project_id, "scope": self.scope}, ensure_ascii=True).encode()
+            "account": self.account, "project_id": self.project_id, "scope": self.scope,
+            "authorization_mode": self.authorization_mode}, ensure_ascii=True).encode()
 
 
-def from_grant(client_id, client_secret, payload, health_user_id, *, authorized_at, account, project_id):
+def refresh_deadline(start, duration):
+    if type(duration) is not int or duration <= 0:
+        raise CredentialError("継続資格情報の残存期間が不正です")
+    try:
+        return start + timedelta(seconds=duration)
+    except (OverflowError, TypeError):
+        raise CredentialError("継続資格情報の残存期間が不正です") from None
+
+
+def from_grant(client_id, client_secret, payload, health_user_id, *, authorized_at, account, project_id,
+               expected_scope=SCOPE, authorization_mode="testing"):
     """承認後の接続処理が使う変換。ここではOAuthも保存も行わない。"""
     try:
-        if set(payload["scope"].split()) != {SCOPE} or str(payload["token_type"]).lower() != "bearer":
+        expected = scope_set(expected_scope)
+        if scope_set(payload["scope"]) != expected or str(payload["token_type"]).lower() != "bearer":
             raise CredentialError("許可スコープが一致しません")
-        duration = payload.get("refresh_token_expires_in", 7 * 24 * 60 * 60)
-        if type(duration) is not int or not 0 < duration <= 7 * 24 * 60 * 60:
-            raise CredentialError("継続資格情報の有効期間が不正です")
-        end = authorized_at + timedelta(seconds=duration)
+        if "refresh_token_expires_in" in payload:
+            end = refresh_deadline(authorized_at, payload["refresh_token_expires_in"])
+        else:
+            end = authorized_at + timedelta(days=7) if authorization_mode == "testing" else None
         return Bundle(client_id, client_secret, payload["refresh_token"], health_user_id,
-                      authorized_at.isoformat(), end.isoformat(), account, project_id).validate()
-    except (KeyError, ValueError, TypeError, AttributeError):
+                      authorized_at.isoformat(), end.isoformat() if end is not None else None, account, project_id,
+                      scope=requested_scope(SLEEP_SCOPE in expected), authorization_mode=authorization_mode).validate()
+    except (KeyError, ValueError, TypeError, AttributeError, OverflowError):
         raise CredentialError("継続資格情報を受け取れませんでした") from None
 
 
@@ -124,3 +147,14 @@ def encrypt_bundle(bundle, destination):
 def rotated(bundle, refresh_token):
     # 更新があっても本人の当初の同意期限を延ばさない。
     return replace(bundle, refresh_token=refresh_token).validate()
+
+
+def refreshed(bundle, payload, now):
+    """更新応答の残存期間を反映する。保存済みの期限は延ばさない。"""
+    bundle.live(now)
+    updated = rotated(bundle, payload.get("refresh_token", bundle.refresh_token))
+    if "refresh_token_expires_in" in payload:
+        deadline = refresh_deadline(now, payload["refresh_token_expires_in"])
+        if bundle.expires_at is None or deadline < timestamp(bundle.expires_at):
+            updated = replace(updated, expires_at=deadline.isoformat()).validate()
+    return updated

@@ -9,6 +9,7 @@ import unittest
 from urllib.parse import parse_qs, urlencode, urlsplit
 from google_once import CALLBACK, SCOPE, TOKEN_URL, REVOKE_URL, AuthError, OneTimeRead, make_server
 from google_steps import civil
+from health_scopes import SLEEP_SCOPE
 from datetime import date
 
 CLIENT_ID = "123-fixture.apps.googleusercontent.com"
@@ -88,6 +89,14 @@ class OneTimeTests(unittest.TestCase):
 
     def test_extra_scope_stops_before_health_data(self):
         self.token_extra["scope"] = SCOPE + " unwanted-scope"
+        self.flow.begin(CLIENT_ID, SECRET)
+        result = self.flow.complete(self.flow.state, "fixture-code")
+        self.assertFalse(result["success"])
+        self.assertTrue(result["revoked"])
+        self.assertEqual(len(self.calls), 2)
+
+    def test_sleep_scope_is_not_accepted_for_one_time_steps(self):
+        self.token_extra["scope"] = SCOPE + " " + SLEEP_SCOPE
         self.flow.begin(CLIENT_ID, SECRET)
         result = self.flow.complete(self.flow.state, "fixture-code")
         self.assertFalse(result["success"])

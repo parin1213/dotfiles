@@ -103,6 +103,19 @@ async def verify(transport):
             assert observation["value"] == 1234 and observation["source"] == "google_health"
             assert observation["window_date"] == "2026-11-05" and observation["occurred_at"].startswith("2026-11-07")
             assert observation["fit_sync_verified"] is False
+            from google_sleep import GoogleSleep, save_snapshot
+            def sleep_fixture(method, url, payload, token):
+                if url.endswith("identity"): return {"healthUserId": "test-user"}
+                return {"dataPoints": [{"name": "users/test-user/dataTypes/sleep/dataPoints/night",
+                    "sleep": {"interval": {"startTime": "2026-11-04T22:00:00+00:00", "endTime": "2026-11-05T06:00:00+00:00"},
+                              "summary": {"minutesAsleep": "450"}}}]}
+            sleep_client = GoogleSleep("fixture-token", "test-user", transport=sleep_fixture,
+                                      now=lambda: datetime(2026, 11, 7, 1, tzinfo=timezone.utc))
+            save_snapshot(health.storage_module().Store(root), sleep_client.fetch_day("2026-11-05", "UTC"))
+            slept = await call("health_day", {"date": "2026-11-05"})
+            assert slept["latest_observations"]["sleep"][0]["value"] == 450
+            assert slept["latest_observations"]["sleep"][0]["unit"] == "minutes"
+            assert slept["latest_observations"]["steps"][0]["value"] == 1234
             assert (await call("health_status"))["automatic_steps"] == baseline_automatic
             assert "fixture-token" not in (await call("fetch", {"id": imported["path"]}))["text"]
         print(json.dumps({"transport": transport, "健康記録": "成功", "欠測と0": "区別", "再送": "重複なし", "歩数": "加算しない", "既存search/fetch": "成功", "入力と同期ロック": "拒否確認"}, ensure_ascii=False))

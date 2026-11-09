@@ -55,6 +55,7 @@ def post_form(url, fields):
 class OneTimeRead:
     mode = "once"
     access_type = "online"
+    requested_scope = SCOPE
     def __init__(self, day, *, account, project_id, post=post_form, api=request_json, client_factory=GoogleSteps):
         parse_day(day)
         if not isinstance(account, str) or not re.fullmatch(r"[^\s@]+@[^\s@]+", account) or not account.isascii():
@@ -116,7 +117,7 @@ class OneTimeRead:
         self.phase = "authorizing"
         self.result = {"phase": self.phase, "date": self.day}
         return "https://accounts.google.com/o/oauth2/v2/auth?" + urlencode({
-            "client_id": client_id, "redirect_uri": CALLBACK, "response_type": "code", "scope": SCOPE,
+            "client_id": client_id, "redirect_uri": CALLBACK, "response_type": "code", "scope": self.requested_scope,
             "access_type": self.access_type, "include_granted_scopes": "false", "state": self.state,
             "code_challenge": challenge, "code_challenge_method": "S256",
             "login_hint": self.account, "prompt": "select_account consent"})

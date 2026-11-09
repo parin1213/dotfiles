@@ -7,10 +7,12 @@ import tempfile
 from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
+from urllib.parse import parse_qs, urlsplit
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from google_once import AuthError
 from google_steps import SCOPE, StepsError, civil, save_snapshot
 from google_sync import SyncFailure, run_sync, target_days, write_status
+from health_scopes import SLEEP_SCOPE, requested_scope
 from sync_credentials import Bundle, CredentialError, encrypt_bundle, from_grant, load_runtime
 from server import Store
 
@@ -68,6 +70,109 @@ class SyncTests(unittest.TestCase):
             for secret in ("fixture-secret", "fixture-refresh", "fixture-access", "fixture-user"):
                 self.assertNotIn(secret, text)
 
+    def test_steps_only_grant_never_initializes_sleep(self):
+        with patch("google_sync.GoogleSleep") as sleep:
+            result = self.run_sync()
+        sleep.assert_not_called()
+        self.assertEqual(result["sleep_status"], "not_authorized")
+        self.assertEqual(result["steps_status"], "success")
+        self.assertEqual(result["sleep_completed_day_count"], 0)
+
+    def enable_sleep(self):
+        self.bundle = replace(self.bundle, scope=requested_scope(True))
+        self.grant = lambda *_: {"access_token": "fixture-access", "token_type": "Bearer", "scope": self.bundle.scope}
+
+    def test_sleep_uses_persisted_scope_and_own_transport(self):
+        self.enable_sleep()
+        with patch("google_sync.GoogleSleep") as sleep, patch("google_sync.save_sleep_snapshot") as save:
+            sleep.return_value.fetch_day.side_effect = ["fixture-yesterday", "fixture-today"]
+            result = self.run_sync()
+        self.assertNotIn("transport", sleep.call_args.kwargs)
+        self.assertEqual(sleep.call_args.args, ("fixture-access", "fixture-user"))
+        self.assertEqual(sleep.return_value.fetch_day.call_args_list[0].args, ("2026-11-05", "UTC"))
+        self.assertEqual(sleep.return_value.fetch_day.call_args_list[1].args, ("2026-11-06", "UTC"))
+        self.assertEqual(save.call_count, 2)
+        self.assertEqual(result["status"], "success")
+        self.assertEqual(result["sleep_status"], "success")
+        self.assertEqual(result["sleep_completed_day_count"], 2)
+
+    def test_injected_sleep_transport_does_not_replace_steps_transport(self):
+        self.enable_sleep()
+        fake_sleep_api = lambda *_: None
+        with patch("google_sync.GoogleSleep") as sleep, patch("google_sync.save_sleep_snapshot"):
+            self.run_sync(sleep_api=fake_sleep_api)
+        self.assertIs(sleep.call_args.kwargs["transport"], fake_sleep_api)
+        self.assertEqual(self.calls.count("POST"), 2)
+
+    def test_sleep_client_saves_real_snapshots_with_fake_api(self):
+        try: ZoneInfo("UTC")
+        except ZoneInfoNotFoundError: self.skipTest("この実行環境にはIANAタイムゾーンデータがありません")
+        self.enable_sleep()
+        sleep_calls = []
+        def sleep_api(method, url, body, token):
+            sleep_calls.append(url)
+            self.assertEqual(method, "GET")
+            self.assertIsNone(body)
+            self.assertEqual(token, "fixture-access")
+            if url.endswith("/identity"):
+                return {"healthUserId": "fixture-user"}
+            query = parse_qs(urlsplit(url).query)
+            day = query["filter"][0].split('"')[1][:10]
+            return {"dataPoints": [{"name": f"users/fixture-user/dataTypes/sleep/dataPoints/fixture-{day}",
+                "sleep": {"interval": {"startTime": day + "T00:00:00+00:00", "endTime": day + "T07:00:00+00:00"},
+                          "summary": {"minutesAsleep": "420"}}}]}
+        result = self.run_sync(sleep_api=sleep_api)
+        self.assertEqual(result["status"], "success")
+        self.assertEqual(result["sleep_completed_day_count"], 2)
+        self.assertEqual(len(sleep_calls), 4)
+        notes = list((self.root / "Attachments/health/records").iterdir())
+        self.assertEqual(len(notes), 4)
+        self.assertEqual(sum("kind: sleep" in note.read_text(encoding="utf-8") for note in notes), 2)
+
+    def test_sleep_fetch_failure_keeps_successful_steps(self):
+        self.enable_sleep()
+        with patch("google_sync.GoogleSleep") as sleep, patch("google_sync.save_sleep_snapshot") as save:
+            sleep.return_value.fetch_day.side_effect = ["fixture-day", RuntimeError("fixture-private-error")]
+            result = self.run_sync()
+        save.assert_not_called()
+        self.assertEqual(result["status"], "error")
+        self.assertEqual(result["error_code"], "sleep_data_request_failed")
+        self.assertEqual(result["steps_status"], "success")
+        self.assertEqual(result["completed_day_count"], 2)
+        self.assertEqual(result["sleep_status"], "error")
+        self.assertEqual(result["sleep_completed_day_count"], 0)
+        self.assertEqual(len(list((self.root / "Attachments/health/records").iterdir())), 2)
+        self.assertNotIn("fixture-private-error", json.dumps(result))
+
+    def test_sleep_partial_save_reports_error_and_counts(self):
+        self.enable_sleep()
+        with patch("google_sync.GoogleSleep"), \
+             patch("google_sync.save_sleep_snapshot", side_effect=[None, OSError("fixture-private-error")]):
+            result = self.run_sync()
+        self.assertEqual(result["status"], "error")
+        self.assertEqual(result["sleep_error_code"], "sleep_vault_save_failed")
+        self.assertEqual(result["completed_day_count"], 2)
+        self.assertEqual(result["sleep_completed_day_count"], 1)
+
+    def test_refresh_scope_must_match_stored_bundle(self):
+        for bundle_scope, granted in ((SCOPE, requested_scope(True)), (requested_scope(True), SCOPE),
+                                      (requested_scope(True), SLEEP_SCOPE), (SCOPE, SCOPE + " unexpected"),
+                                      (SCOPE, [SCOPE]), (SCOPE, SCOPE + " " + SCOPE)):
+            with self.subTest(bundle_scope=bundle_scope, granted=granted):
+                self.bundle = replace(self.bundle, scope=bundle_scope)
+                self.grant = lambda *_: {"access_token": "fixture-access", "token_type": "Bearer", "scope": granted}
+                with self.assertRaises(SyncFailure) as failure:
+                    self.run_sync()
+                self.assertEqual(failure.exception.reason, "invalid_grant_response")
+                self.assertEqual(self.calls, [])
+
+    def test_omitted_refresh_scope_keeps_saved_sleep_permission(self):
+        self.enable_sleep()
+        self.grant = lambda *_: {"access_token": "fixture-access", "token_type": "Bearer"}
+        with patch("google_sync.GoogleSleep") as sleep, patch("google_sync.save_sleep_snapshot"):
+            self.assertEqual(self.run_sync()["sleep_status"], "success")
+        sleep.assert_called_once()
+
     def test_expired_credentials_never_call_google(self):
         self.bundle = replace(self.bundle, authorized_at=(NOW-timedelta(days=8)).isoformat(), expires_at=(NOW-timedelta(days=1)).isoformat())
         with self.assertRaises(SyncFailure) as failure: self.run_sync()
@@ -116,6 +221,32 @@ class SyncTests(unittest.TestCase):
         self.assertEqual(stored[0].refresh_token, "new-fixture-refresh")
         self.assertEqual(stored[0].expires_at, self.bundle.expires_at)
 
+    def test_refresh_expiration_saved_before_data_read(self):
+        self.bundle = replace(self.bundle, authorization_mode="production", expires_at=None)
+        self.grant = lambda *_: {"access_token": "fixture-access", "token_type": "Bearer",
+                                 "refresh_token_expires_in": 3600}
+        with self.assertRaises(SyncFailure) as failure:
+            self.run_sync()
+        self.assertEqual(failure.exception.reason, "credential_rotation_not_saved")
+        self.assertEqual(self.calls, [])
+        saved = []
+        def persist(bundle):
+            self.assertEqual(self.calls, [])
+            saved.append(bundle)
+        self.assertEqual(self.run_sync(credential_writer=persist)["status"], "success")
+        self.assertEqual(saved[0].authorization_mode, "production")
+        self.assertEqual(saved[0].expires_at, (NOW + timedelta(hours=1)).isoformat())
+
+    def test_invalid_refresh_expiration_stops_before_data_read(self):
+        for duration in (0, -1, None, True, "3600", 10**100):
+            with self.subTest(duration=duration):
+                self.grant = lambda *_: {"access_token": "fixture-access", "token_type": "Bearer",
+                                         "refresh_token_expires_in": duration}
+                with self.assertRaises(SyncFailure) as failure:
+                    self.run_sync()
+                self.assertEqual(failure.exception.reason, "invalid_grant_response")
+                self.assertEqual(self.calls, [])
+
     def test_partial_save_is_reported(self):
         saved = 0
         def partial(store, snapshot):
@@ -154,6 +285,26 @@ class SyncTests(unittest.TestCase):
         bundle = from_grant(self.bundle.client_id, self.bundle.client_secret, payload, "fixture-user", authorized_at=NOW, account=self.bundle.account, project_id=self.bundle.project_id)
         self.assertEqual(bundle.expires_at, self.bundle.expires_at)
         with self.assertRaises(CredentialError): from_grant(self.bundle.client_id, self.bundle.client_secret, payload | {"refresh_token_expires_in": 9999999}, "fixture-user", authorized_at=NOW, account=self.bundle.account, project_id=self.bundle.project_id)
+
+    def test_bundle_accepts_only_supported_scope_combinations(self):
+        for scope in (SCOPE, requested_scope(True), SLEEP_SCOPE + " " + SCOPE):
+            with self.subTest(scope=scope):
+                self.assertEqual(replace(self.bundle, scope=scope).validate().scope, scope)
+        for scope in (SLEEP_SCOPE, "", None, [], "unexpected", SCOPE + " unexpected", SCOPE + " " + SCOPE):
+            with self.subTest(scope=scope):
+                with self.assertRaises(CredentialError):
+                    replace(self.bundle, scope=scope).validate()
+
+    def test_sleep_grant_requires_explicit_expected_scope(self):
+        payload = {"scope": requested_scope(True), "token_type": "Bearer", "refresh_token": "fixture-refresh"}
+        args = (self.bundle.client_id, self.bundle.client_secret, payload, "fixture-user")
+        kwargs = {"authorized_at": NOW, "account": self.bundle.account, "project_id": self.bundle.project_id}
+        with self.assertRaises(CredentialError):
+            from_grant(*args, **kwargs)
+        authorized = from_grant(*args, expected_scope=requested_scope(True), **kwargs)
+        self.assertEqual(authorized.scope, requested_scope(True))
+        with self.assertRaises(CredentialError):
+            from_grant(*args, expected_scope=SLEEP_SCOPE, **kwargs)
 
     def test_encryption_uses_stdin_and_atomic_ciphertext(self):
         target = self.root / "private/google-health.cred"

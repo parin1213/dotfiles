@@ -74,18 +74,42 @@ def day(vault, day):
             if (path.name != expected or fields["type"] != "log" or fields["date"] != day
                     or stamp.utcoffset() is None or source not in {"manual", "google_health"}
                     or (source == "manual" and str(stamp.date()) != day)
-                    or kind not in {"meal", "weight", "steps"}):
+                    or kind not in {"meal", "weight", "steps", "sleep"}):
                 raise ValueError("記録の形式が一致しません")
             unit = json.loads(fields["unit"])
-            if unit != {"meal": "", "weight": "kg", "steps": "steps"}[kind]:
+            if unit != {"meal": "", "weight": "kg", "steps": "steps", "sleep": "minutes"}[kind]:
                 raise ValueError("単位が一致しません")
             if value is not None:
                 if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
                     raise ValueError("数値が不正です")
-                if kind == "meal" or (kind == "weight" and not 0 < value <= 500) or (kind == "steps" and (not 0 <= value <= 200000 or int(value) != value)):
+                if (kind == "sleep" and not 0 <= value <= 2880) or kind == "meal" or (kind == "weight" and not 0 < value <= 500) or (kind == "steps" and (not 0 <= value <= 200000 or int(value) != value)):
                     raise ValueError("数値が範囲外です")
             provenance = {}
-            if source == "google_health":
+            if source == "google_health" and kind == "sleep":
+                missing = json.loads(fields["missing_state"])
+                sessions = json.loads(fields["sleep_sessions"])
+                if (json.loads(fields["window_date"]) != day
+                        or json.loads(fields["identity_verified"]) is not True
+                        or json.loads(fields["fit_sync_verified"]) is not False
+                        or not re.fullmatch(r"[a-f0-9]{64}", json.loads(fields["account_hash"]))
+                        or missing not in {"present", "no_sessions", "summary_missing", "overlapping_sessions"}
+                        or (value is None) != (missing != "present")
+                        or not isinstance(sessions, list) or len(sessions) > 500):
+                    raise ValueError("睡眠取得元の情報が不正です")
+                seen = set()
+                for item in sessions:
+                    if not isinstance(item, dict) or set(item) != {"id", "start", "end", "minutes_asleep"}:
+                        raise ValueError("睡眠セッションが不正です")
+                    start, end = datetime.fromisoformat(item["start"]), datetime.fromisoformat(item["end"])
+                    amount = item["minutes_asleep"]
+                    if (not isinstance(item["id"], str) or item["id"] in seen
+                            or start.utcoffset() is None or end.utcoffset() is None or not start < end
+                            or (amount is not None and (type(amount) is not int or not 0 <= amount <= 2880))):
+                        raise ValueError("睡眠セッションが不正です")
+                    seen.add(item["id"])
+                provenance = {"window_date": day, "missing_state": missing, "sleep_sessions": sessions,
+                              "fit_sync_verified": False, "identity_verified": True}
+            elif source == "google_health":
                 missing = json.loads(fields["missing_state"])
                 if (kind != "steps" or json.loads(fields["window_date"]) != day
                         or json.loads(fields["data_source_family"]) != "users/me/dataSourceFamilies/all-sources"
@@ -116,9 +140,9 @@ def day(vault, day):
     records.sort(key=lambda item: (datetime.fromisoformat(item["occurred_at"]), item["record_id"]))
     # 同日の累計歩数を足さない。複数の同時刻観測は優劣を決められないため全て返す。
     latest = {}
-    for kind in ("weight", "steps"):
+    for kind in ("weight", "steps", "sleep"):
         observations = [r for r in records if r["kind"] == kind]
         latest[kind] = [r for r in observations if datetime.fromisoformat(r["occurred_at"]) == datetime.fromisoformat(observations[-1]["occurred_at"])] if observations else []
     return {"date": day, "records": records, "latest_observations": latest,
             "skipped_invalid": skipped, "complete_day": False,
-            "scope": SCOPE_TEXT, "note": "欠測はnull。歩数は累計の観測値で、足し合わせません。訂正ノートは自動適用しません。"}
+            "scope": SCOPE_TEXT, "note": "欠測はnull。歩数・睡眠は同日の観測値を足し合わせません。睡眠の単位は分、日付は起床日です。訂正ノートは自動適用しません。"}

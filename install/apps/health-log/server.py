@@ -17,7 +17,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 from uuid import UUID
 
-KINDS = {"meal": "食事", "weight": "体重", "steps": "歩数"}
+KINDS = {"meal": "食事", "weight": "体重", "steps": "歩数", "sleep": "睡眠"}
 
 
 def validate(data):
@@ -28,7 +28,7 @@ def validate(data):
     record_id = str(UUID(data.get("id", "")))
     kind = data.get("kind")
     if kind not in KINDS:
-        raise ValueError("食事・体重・歩数を選んでください")
+        raise ValueError("食事・体重・歩数・睡眠を選んでください")
     raw_time = data.get("occurred_at", "")
     if not isinstance(raw_time, str) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}", raw_time):
         raise ValueError("記録日時には秒とタイムゾーンを指定してください")
@@ -42,7 +42,7 @@ def validate(data):
     if value is not None:
         if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
             raise ValueError("数値を確認してください")
-        if kind == "meal" or (kind == "weight" and not 0 < value <= 500) or (kind == "steps" and (not 0 <= value <= 200000 or int(value) != value)):
+        if (kind == "sleep" and not 0 <= value <= 2880) or kind == "meal" or (kind == "weight" and not 0 < value <= 500) or (kind == "steps" and (not 0 <= value <= 200000 or int(value) != value)):
             raise ValueError("数値の範囲を確認してください")
     if not text.strip() and value is None:
         raise ValueError("ひとこと、または数値を入力してください。不明な数値は空欄で大丈夫です")
@@ -132,7 +132,7 @@ class Store:
         hash_input = record if provenance is None else {"record": record, "date": note_day, "provenance": provenance}
         digest = hashlib.sha256(json.dumps(hash_input, ensure_ascii=False, sort_keys=True).encode()).hexdigest()
         value = "null" if record["value"] is None else str(record["value"])
-        unit = {"meal": "", "weight": "kg", "steps": "steps"}[record["kind"]]
+        unit = {"meal": "", "weight": "kg", "steps": "steps", "sleep": "minutes"}[record["kind"]]
         literal = re.sub(r"([\\!\[\]()`*_#|~])", r"\\\1", html.escape(record["text"], quote=False))
         quoted = "\n".join("> " + line for line in literal.splitlines()) or "> メモなし"
         source = "manual" if provenance is None else "google_health"

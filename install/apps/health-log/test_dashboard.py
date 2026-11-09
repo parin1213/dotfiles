@@ -1,10 +1,11 @@
 """実Vaultを変更せず、健康表示の集計・欠測・出力境界を確認。"""
+import json
 import tempfile
 import unittest
 from datetime import date, datetime, timezone
 from pathlib import Path
 from xml.etree import ElementTree
-from dashboard import generate, parse_meals, parse_weights, parse_snapshot, load_steps, safe_path
+from dashboard import generate, parse_meals, parse_weights, parse_snapshot, load_steps, load_sleep, safe_path
 
 MEAL = """# 食事ログ
 ## 最近の食事
@@ -25,6 +26,12 @@ WEIGHT = """| 日付 | タイミング | 体重 (kg) |
 
 def snapshot(value, hour="08", day="2026-11-07"):
     return f'---\nkind: steps\ndate: {day}\nwindow_date: "{day}"\noccurred_at: 2026-11-07T{hour}:19:03+00:00\nvalue: {value}\n---\n'
+
+
+def sleep_snapshot(value, stamp="2026-11-08T08:00:00+00:00", day="2026-11-08", state="present"):
+    return (f'---\nkind: sleep\ndate: {day}\nwindow_date: "{day}"\n'
+            f'occurred_at: {stamp}\nsource: google_health\nvalue: {json.dumps(value)}\n'
+            f'missing_state: {json.dumps(state)}\nsleep_sessions: []\n---\n')
 
 
 class DashboardTests(unittest.TestCase):
@@ -88,12 +95,98 @@ class DashboardTests(unittest.TestCase):
         self.assertIsNone(parse_snapshot(snapshot("NaN")))
         self.assertIsNone(parse_snapshot(snapshot(1).replace("+00:00", "")))
 
+    def test_sleep_and_steps_are_independent(self):
+        self.note("ログ/2026-11-08_健康記録_0800_steps.md", snapshot(7025, day="2026-11-08"))
+        self.note("Attachments/health/records/2026-11-08_健康記録_0800_sleep.md", sleep_snapshot(450))
+        self.assertEqual(load_steps(self.root)[0]["value"], 7025)
+        self.assertEqual(load_sleep(self.root)[0]["value"], 450)
+        self.assertIsNone(parse_snapshot(sleep_snapshot(450)))
+        self.assertIsNone(parse_snapshot(snapshot(7025), "sleep"))
+
+    def test_latest_sleep_replaces_not_sums_across_locations(self):
+        self.note("ログ/2026-11-08_健康記録_0700_sleep.md", sleep_snapshot(420, stamp="2026-11-08T07:00:00+00:00"))
+        self.note("Attachments/health/records/2026-11-08_健康記録_0800_sleep.md", sleep_snapshot(450))
+        records = load_sleep(self.root)
+        self.assertEqual(len(records), 1)
+        self.assertEqual(records[0]["value"], 450)
+
+    def test_sleep_uses_wake_date_not_observation_date(self):
+        body = sleep_snapshot(450, stamp="2026-11-09T08:00:00+00:00").replace("date: 2026-11-08", "date: 2026-11-09", 1)
+        self.assertEqual(parse_snapshot(body, "sleep")["date"], date(2026, 11, 8))
+
+    def test_sleep_missing_replaces_value_and_preserves_zero(self):
+        self.note("ログ/2026-11-08_健康記録_0700_sleep.md", sleep_snapshot(420, stamp="2026-11-08T07:00:00+00:00"))
+        self.note("ログ/2026-11-08_健康記録_0800_sleep.md", sleep_snapshot(None, state="no_sessions"))
+        record = load_sleep(self.root)[0]
+        self.assertIsNone(record["value"])
+        self.assertEqual(record["missing_state"], "no_sessions")
+        self.assertEqual(parse_snapshot(sleep_snapshot(0), "sleep")["value"], 0)
+        for state in ("no_sessions", "summary_missing", "overlapping_sessions"):
+            with self.subTest(state=state):
+                item = parse_snapshot(sleep_snapshot(450, state=state), "sleep")
+                self.assertIsNone(item["value"])
+                self.assertEqual(item["missing_state"], state)
+
+    def test_same_time_sleep_conflict_is_unknown(self):
+        self.note("ログ/2026-11-08_健康記録_0800_a.md", sleep_snapshot(420))
+        self.note("ログ/2026-11-08_健康記録_0800_b.md", sleep_snapshot(450))
+        self.note("Attachments/health/records/2026-11-08_健康記録_0800_c.md", sleep_snapshot(450))
+        record = load_sleep(self.root)[0]
+        self.assertIsNone(record["value"])
+        self.assertEqual(record["missing_state"], "conflict")
+
+    def test_invalid_sleep_ignored(self):
+        for value in (True, -1, float("nan"), float("inf"), "450"):
+            with self.subTest(value=value):
+                self.assertIsNone(parse_snapshot(sleep_snapshot(value), "sleep"))
+        self.assertIsNone(parse_snapshot(sleep_snapshot(450).replace("+00:00", ""), "sleep"))
+        self.assertIsNone(parse_snapshot(sleep_snapshot(None, state="unknown"), "sleep"))
+
+    def test_sleep_hours_chart_table_freshness_and_missing(self):
+        self.note("Attachments/health/records/2026-11-06_健康記録_0800_a.md", sleep_snapshot(450, day="2026-11-06"))
+        self.note("Attachments/health/records/2026-11-07_健康記録_0800_b.md", sleep_snapshot(0, day="2026-11-07"))
+        self.note("Attachments/health/records/2026-11-08_健康記録_0900_c.md", sleep_snapshot(None, stamp="2026-11-08T09:00:00+00:00", state="no_sessions"))
+        result = generate(self.root, today=date(2026, 11, 8))
+        self.assertEqual(result["sleep_days"], 3)
+        content = (self.root / "ログ/健康ダッシュボード.md").read_text(encoding="utf-8")
+        self.assertIn("**睡眠の最終取得日時**：2026-11-08 18:00:00 JST", content)
+        self.assertIn("日付（睡眠は起床日）", content)
+        self.assertIn("| 2026-11-06 | 未記録 | 未記録 | 7.5 |", content)
+        self.assertIn("| 2026-11-07 | 未記録 | 未記録 | 0 |", content)
+        self.assertIn("| 2026-11-08 | 未記録 | 未記録 | 欠測（睡眠記録なし） |", content)
+        self.assertIn("0時間ではありません", content)
+        self.assertIn("![[Attachments/health/sleep.svg]]", content)
+        svg = (self.root / "Attachments/health/sleep.svg").read_text(encoding="utf-8")
+        ElementTree.fromstring(svg)
+        self.assertIn(">7.5</text>", svg)
+        self.assertIn(">欠測</text>", svg)
+        self.assertNotIn(">450</text>", svg)
+        self.assertEqual(generate(self.root, today=date(2026, 11, 8))["changed"], [])
+
+    def test_sleep_chart_only_uses_recent_dates(self):
+        for day in ("2026-10-25", "2026-10-26", "2026-11-08", "2026-11-09"):
+            self.note(f"Attachments/health/records/{day}_健康記録_0800_a.md", sleep_snapshot(450, day=day))
+        generate(self.root, today=date(2026, 11, 8))
+        svg = (self.root / "Attachments/health/sleep.svg").read_text(encoding="utf-8")
+        self.assertIn(">10/26</text>", svg)
+        self.assertIn(">11/08</text>", svg)
+        self.assertNotIn(">10/25</text>", svg)
+        self.assertNotIn(">11/09</text>", svg)
+
+    def test_sleep_missing_reasons_are_visible(self):
+        for day, state in (("2026-11-06", "summary_missing"), ("2026-11-07", "overlapping_sessions")):
+            self.note(f"Attachments/health/records/{day}_健康記録_0800_a.md", sleep_snapshot(None, day=day, state=state))
+        generate(self.root, today=date(2026, 11, 8))
+        content = (self.root / "ログ/健康ダッシュボード.md").read_text(encoding="utf-8")
+        self.assertIn("欠測（時間不明）", content)
+        self.assertIn("欠測（記録の重複）", content)
+
     def test_generation_is_idempotent_valid_svg_and_stale(self):
         self.note("ログ/食事ログ.md", MEAL)
         self.note("ログ/体重記録.md", WEIGHT)
         self.note("ログ/2026-11-08_健康記録_0819_a.md", snapshot("null", day="2026-11-08"))
         result = generate(self.root, today=date(2026, 11, 8))
-        self.assertEqual(len(result["changed"]), 4)
+        self.assertEqual(len(result["changed"]), 5)
         content = (self.root / "ログ/健康ダッシュボード.md").read_text(encoding="utf-8")
         self.assertIn("現在の体重ではありません", content)
         self.assertIn("欠測（0歩ではありません）", content)
@@ -130,6 +223,7 @@ class DashboardTests(unittest.TestCase):
         self.assertEqual(result["meal_days"], 0)
         self.assertEqual(result["weight_measurements"], 0)
         self.assertEqual(result["step_days"], 0)
+        self.assertEqual(result["sleep_days"], 0)
 
     def test_traversal_and_absolute_denied(self):
         for path in ("../escape.md", str(self.root.parent / "escape.md")):

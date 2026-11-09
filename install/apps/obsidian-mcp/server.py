@@ -104,13 +104,13 @@ def build_server(root: Path, port: int = 8765) -> FastMCP:
 
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False))
     def health_day(date: str) -> dict:
-        """YYYY-MM-DDのアプリ形式の健康記録を取得。欠測はnull、歩数は足さない。既存台帳はsearch/fetchで読む。"""
+        """YYYY-MM-DDのアプリ形式の健康記録を取得。欠測はnull、同日の歩数・睡眠の観測値は足さない。既存台帳はsearch/fetchで読む。"""
         return health.day(vault, date)
 
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False,
                                         idempotentHint=True, openWorldHint=False))
     def health_record(record_id: str, kind: str, occurred_at: str, text: str = "", value: float | None = None) -> dict:
-        """食事meal・体重weight(kg)・歩数stepsを新規保存。record_idは送信ごとのUUIDで再試行は同じID。occurred_atは秒とUTCオフセット付き。不明なvalueはnull。元ノートの訂正・削除はしない。"""
+        """食事meal・体重weight(kg)・歩数steps・睡眠sleep(分)を新規保存。record_idは送信ごとのUUIDで再試行は同じID。occurred_atは秒とUTCオフセット付き。不明なvalueはnull。元ノートの訂正・削除はしない。"""
         return health.record(vault.root, record_id, kind, occurred_at, text, value)
 
     return mcp

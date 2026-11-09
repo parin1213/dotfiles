@@ -167,7 +167,7 @@ def save_snapshot(store, snapshot):
                 continue
             try:
                 header = dict(line.split(": ", 1) for line in path.read_text(encoding="utf-8").split("\n---\n", 1)[0][4:].splitlines())
-                if (header.get("source") != "google_health"
+                if (header.get("kind") != "steps" or header.get("source") != "google_health"
                         or json.loads(header["account_hash"]) != snapshot.account_hash
                         or json.loads(header["window_date"]) != snapshot.date):
                     continue
