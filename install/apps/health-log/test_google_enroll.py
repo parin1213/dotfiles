@@ -102,6 +102,17 @@ class EnrollmentTests(unittest.TestCase):
         self.assertEqual(self.saved[0].expires_at, "2026-11-07T00:00:00+00:00")
         self.assertIn("2026-11-07", flow.page_result())
 
+    def test_production_steps_failure_does_not_revoke_existing_permission(self):
+        flow = OfflineEnrollment(account=ACCOUNT, project_id=PROJECT, ssh_target="raspi4", production=True,
+            now=self.flow.now, post=self.flow.post, api=self.flow.api,
+            store=lambda *_: (_ for _ in ()).throw(RuntimeError(SECRET)))
+        flow.begin(CLIENT_ID, SECRET)
+        result = flow.complete(flow.state, "fixture-code")
+        self.assertFalse(result["success"])
+        self.assertTrue(result["revocation_skipped"])
+        self.assertNotIn(REVOKE_URL, self.calls)
+        self.assertNotIn(SECRET, json.dumps(result))
+
     def test_sleep_requires_explicit_selection_and_disclosure(self):
         self.assertNotIn("睡眠", self.flow.page_home())
         flow = self.sleep_flow()

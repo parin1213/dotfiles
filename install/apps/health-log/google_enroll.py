@@ -62,7 +62,7 @@ class OfflineEnrollment(OneTimeRead):
         result = {"phase": "finished", "mode": "offline_enrollment", "success": False,
                   "stored_encrypted": False, "revoked": False, "scheduler_enabled": False}
         token, response, stored = None, None, False
-        revoke_safe = not self.include_sleep
+        revoke_safe = not self.include_sleep and self.authorization_mode == "testing"
         try:
             if error or not code or len(code) > 4096:
                 raise AuthError("Googleの継続同意を完了できませんでした")
