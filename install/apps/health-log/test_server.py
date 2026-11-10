@@ -14,7 +14,7 @@ from server import Store, make_server
 class RecordingTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(dir=Path(__file__).parent)
-        self.root = Path(self.temp.name)
+        self.root = Path(self.temp.name).resolve()
         (self.root / "ログ").mkdir()
         (self.root / ".git").mkdir()
         self.store = Store(self.root)
@@ -49,6 +49,23 @@ class RecordingTests(unittest.TestCase):
                 with patch.object(Path, "is_symlink", lambda path: path == target or real(path)):
                     with self.assertRaises(ValueError):
                         Store(self.root)
+
+    def test_missing_ui_returns_service_unavailable(self):
+        http = make_server(self.store, 0)
+        worker = threading.Thread(target=http.serve_forever, daemon=True)
+        worker.start()
+        try:
+            with patch.object(Path, "read_bytes", side_effect=FileNotFoundError):
+                connection = HTTPConnection("127.0.0.1", http.server_port, timeout=3)
+                connection.request("GET", "/")
+                response = connection.getresponse()
+                self.assertEqual(response.status, 503)
+                self.assertEqual(json.loads(response.read())["error"], "画面の配備が完了していません")
+                connection.close()
+        finally:
+            http.shutdown()
+            worker.join()
+            http.server_close()
 
     def test_dashboard_failure_reports_saved_record(self):
         with patch("server.refresh_dashboard", return_value="error"):

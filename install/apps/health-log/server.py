@@ -215,7 +215,11 @@ def make_server(store, port=8787, *, public_origin=None, tailnet_user=None):
             if path not in assets:
                 return self.send(404, '{}')
             name, mime = assets[path]
-            self.send(200, (static / name).read_bytes(), mime)
+            try:
+                body = (static / name).read_bytes()
+            except OSError:
+                return self.send(503, json.dumps({"error": "画面の配備が完了していません"}, ensure_ascii=False))
+            self.send(200, body, mime)
 
         def do_POST(self):
             origin = public_origin or f"http://127.0.0.1:{self.server.server_port}"
