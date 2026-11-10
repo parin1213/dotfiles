@@ -80,7 +80,7 @@ if [ -f "$health_generator" ]; then
         log "ERROR: health dashboard generation failed"
         exit 1
     fi
-    git add -- "ログ/健康ダッシュボード.md" "Attachments/health/weight.svg" "Attachments/health/calories.svg" "Attachments/health/steps.svg" 2>/dev/null
+    git add -- "ログ/健康ダッシュボード.md" "Attachments/health/weight.svg" "Attachments/health/calories.svg" "Attachments/health/steps.svg" "Attachments/health/sleep.svg" 2>/dev/null
     if ! git diff --cached --quiet; then
         git commit -m "docs: 健康グラフを記録から更新" >/dev/null 2>&1 || exit 1
     fi

@@ -82,7 +82,7 @@ try {
             exit 1
         }
         # Stage generator outputs, not credentials or unrelated files.
-        git add -- "Attachments/health/weight.svg" "Attachments/health/calories.svg" "Attachments/health/steps.svg"
+        git add -- "Attachments/health/weight.svg" "Attachments/health/calories.svg" "Attachments/health/steps.svg" "Attachments/health/sleep.svg"
         # Unicode path is formed without a BOM dependency in PowerShell 5.1.
         $dash = ([char]0x30ed).ToString()+[char]0x30b0+"/"+[char]0x5065+[char]0x5eb7+[char]0x30c0+[char]0x30c3+[char]0x30b7+[char]0x30e5+[char]0x30dc+[char]0x30fc+[char]0x30c9+".md"
         git add -- $dash

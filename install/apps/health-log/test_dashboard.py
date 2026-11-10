@@ -241,5 +241,19 @@ class DashboardTests(unittest.TestCase):
             generate(self.root)
 
 
+
+
+class SyncOutputCoverageTests(unittest.TestCase):
+    def test_every_generated_file_is_staged_on_both_platforms(self):
+        repo = Path(__file__).resolve().parents[3]
+        with tempfile.TemporaryDirectory() as tmp:
+            result = generate(tmp)
+            for name in ("obsidian-vault-sync.ps1", "executable_obsidian-vault-sync"):
+                script = (repo / "home/dot_local/bin" / name).read_text(encoding="utf-8")
+                for output in result["changed"]:
+                    if output.endswith(".svg"):
+                        self.assertIn('"' + output + '"', script, (name, output))
+
+
 if __name__ == "__main__":
     unittest.main()
