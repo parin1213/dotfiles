@@ -81,6 +81,33 @@ class DashboardTests(unittest.TestCase):
         self.assertEqual(len({r["condition"] for r in records}), 2)
         self.assertEqual(records[-1]["value"], 93.05)
 
+    def test_weight_chart_recent_window_preserves_history(self):
+        original = WEIGHT + "| 2026-10-14 | 起床時 | 97.5 |\n| 2026-10-15 | 起床時 | 94.5 |\n| 2026-11-12 | 起床時 | 93.9 |\n| 2026-11-14 | 起床時 | 92.5 |\n"
+        self.note("ログ/体重記録.md", original)
+        result = generate(self.root, today=date(2026, 11, 13))
+        svg = (self.root / "Attachments/health/weight.svg").read_text(encoding="utf-8")
+        self.assertIn("直近30日", svg)
+        self.assertIn("2026-10-15", svg)
+        self.assertIn("2026-11-12", svg)
+        for old in ("2026-03-21", "2026-06-20", "2026-10-14", "2026-11-14"):
+            self.assertNotIn(old, svg)
+        self.assertEqual(result["weight_measurements"], 7)
+        self.assertEqual((self.root / "ログ/体重記録.md").read_text(encoding="utf-8"), original)
+        ElementTree.fromstring(svg)
+
+    def test_weight_chart_sparse_and_no_recent_measurement(self):
+        self.note("ログ/体重記録.md", WEIGHT)
+        generate(self.root, today=date(2026, 11, 13))
+        path = self.root / "Attachments/health/weight.svg"
+        self.assertIn("記録なし（0ではありません）", path.read_text(encoding="utf-8"))
+        self.note("ログ/体重記録.md", WEIGHT + "| 2026-11-12 | 起床時 | 93.9 |\n")
+        generate(self.root, today=date(2026, 11, 13))
+        svg = path.read_text(encoding="utf-8")
+        self.assertIn('cx="398"', svg)
+        self.assertIn("11/12", svg)
+        self.assertNotIn("03/21", svg)
+        ElementTree.fromstring(svg)
+
     def test_weight_correction(self):
         records = parse_weights(WEIGHT + '| 2026-06-20 | 就寝前 | 93.1 |\n')
         self.assertEqual(len(records), 3)

@@ -268,6 +268,7 @@ def generate(vault, *, today=None, now=None):
     weights = parse_weights(read_note(root, "ログ/体重記録.md"))
     steps = load_steps(root)
     sleep = load_sleep(root)
+    recent_weights = [r for r in weights if today - timedelta(days=29) <= r["date"] <= today]
     recent_meals = [r for r in meals if today - timedelta(days=29) <= r["date"] <= today]
     recent_steps = [r for r in steps if today - timedelta(days=13) <= r["date"] <= today]
     recent_sleep = [{**r, "value": r["value"] / 60 if r["value"] is not None else None}
@@ -287,7 +288,7 @@ def generate(vault, *, today=None, now=None):
     sleep_observation = max((r["stamp"] for r in sleep), default=None)
     sleep_acquisition = sleep_observation.astimezone(timezone(timedelta(hours=9))).strftime("%Y-%m-%d %H:%M:%S JST") if sleep_observation else "取得記録なし"
     outputs = {
-        "Attachments/health/weight.svg": chart("体重の実測推移", "kg / 過去の実測のみ。測定条件を区別", weights, "weight"),
+        "Attachments/health/weight.svg": chart("体重の実測推移", "kg / 直近30日の実測。測定条件を区別", recent_weights, "weight"),
         "Attachments/health/calories.svg": chart("食事の記録分カロリー", "kcal / 直近30日。推定範囲で表示", recent_meals, "calories"),
         "Attachments/health/steps.svg": chart("日別歩数", "歩 / 直近14日。欠測は0にしない", recent_steps, "steps"),
         "Attachments/health/sleep.svg": chart("睡眠時間", "時間 / 直近14日。日本時間の起床日で集計", recent_sleep, "sleep"),
@@ -311,7 +312,8 @@ def generate(vault, *, today=None, now=None):
         f'- **体重の最新実測日**：{latest_weight["date"] if latest_weight else "未記録"}', "",
         "[[食事ログ|食事を確認・訂正]] · [[体重記録|体重を記録]]",
         "[[健康方針|目標・生活方針]] · [[健診記録|健診・受診の記録]]", "",
-        "## 体重", "![[Attachments/health/weight.svg]]", "",
+        "## 体重（直近30日）", "![[Attachments/health/weight.svg]]", "",
+        "直近30日の実測だけを拡大表示。過去の記録は[[体重記録]]に保持しています。", "",
         "93〜95kgという記憶による申告は実測点にしません。同条件の記録が増えるまで減量ペースを判定しません。", "",
         "## 食事カロリー", "![[Attachments/health/calories.svg]]", "",
         "記録分の合計で、摂取目標ではありません。未確認の油・間食などは含まれない場合があります。未記録日を0kcalに補完しません。", "",
