@@ -44,6 +44,11 @@ def cells(line):
     return [c.strip() for c in re.split(r"(?<!\\)\|", line.strip().strip("|"))]
 
 
+def calorie_display(row):
+    """同じ上下限は単一値で表示し、推定範囲は保持する。"""
+    return f'{row["low"]:g}' if row["low"] == row["high"] else f'{row["low"]:g}〜{row["high"]:g}'
+
+
 def calorie_range(text):
     text = text.replace(",", "")
     m = re.search(r"(\d+(?:\.\d+)?)\s*[〜～–−-]\s*(\d+(?:\.\d+)?)", text)
@@ -271,7 +276,7 @@ def generate(vault, *, today=None, now=None):
     weight_status = f'最終実測：{latest_weight["date"]}、{latest_weight["value"]:g}kg（{latest_weight["condition"]}）' if latest_weight else "体重の実測なし"
     if latest_weight and (today - latest_weight["date"]).days > 30:
         weight_status += "。30日以上前の記録で、現在の体重ではありません。"
-    meal_status = f'{meals[-1]["date"]}：記録分 {meals[-1]["low"]:g}〜{meals[-1]["high"]:g} kcal' if meals else "食事の記録なし"
+    meal_status = f'{meals[-1]["date"]}：記録分 {calorie_display(meals[-1])} kcal' if meals else "食事の記録なし"
     latest_step = steps[-1] if steps else None
     step_status = f'{latest_step["date"]}：' + (f'{latest_step["value"]:g}歩' if latest_step["value"] is not None else "欠測（0歩ではありません）") if latest_step else "歩数の記録なし"
     latest_observation = max((r["stamp"] for r in steps), default=None)
@@ -292,7 +297,7 @@ def generate(vault, *, today=None, now=None):
     sleep_map = {r["date"]: r for r in sleep}
     for day in sorted(set(meal_map) | set(step_map) | set(sleep_map), reverse=True)[:14]:
         m, s, sl = meal_map.get(day), step_map.get(day), sleep_map.get(day)
-        kcal = f'{m["low"]:g}〜{m["high"]:g}' + ("（部分記録）" if m["partial"] else "（記録分）") if m else "未記録"
+        kcal = calorie_display(m) + ("（部分記録）" if m["partial"] else "（記録分）") if m else "未記録"
         walk = f'{s["value"]:g}' if s and s["value"] is not None else "欠測" if s else "未記録"
         rest = sleep_display(sl) if sl else "未記録"
         rows.append(f"| {day} | {kcal} | {walk} | {rest} |")

@@ -55,6 +55,20 @@ class DashboardTests(unittest.TestCase):
         self.assertTrue(records[-1]["partial"])
         self.assertFalse(records[0]["partial"])
 
+    def test_single_calorie_value_display_preserves_ranges(self):
+        self.note("ログ/食事ログ.md", MEAL)
+        generate(self.root, today=date(2026, 11, 8))
+        body = (self.root / "ログ/健康ダッシュボード.md").read_text(encoding="utf-8")
+        self.assertIn("1961（記録分）", body)
+        self.assertNotIn("1961〜1961", body)
+        self.assertIn("1490〜1590", body)
+        self.note("ログ/食事ログ.md", MEAL.replace("約1,490〜1,590", "2,029"))
+        generate(self.root, today=date(2026, 11, 8))
+        body = (self.root / "ログ/健康ダッシュボード.md").read_text(encoding="utf-8")
+        self.assertIn("記録分 2029 kcal", body)
+        self.assertIn("2029（部分記録）", body)
+        self.assertNotIn("2029〜2029", body)
+
     def test_same_day_correction_replaces_not_adds(self):
         body = MEAL.replace("## 日付別の詳細", "| [[#2026-11-08\\|11/8]] | a | b | c | d | 1400〜1500 |\n## 日付別の詳細")
         records = parse_meals(body)
