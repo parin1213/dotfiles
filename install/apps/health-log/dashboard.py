@@ -119,7 +119,7 @@ def parse_snapshot(body, kind="steps"):
         k, sep, v = line.partition(":")
         if sep:
             fields[k.strip()] = v.strip()
-    if kind not in {"steps", "sleep"} or fields.get("kind") != kind:
+    if kind not in {"steps", "sleep", "total_calories"} or fields.get("kind") != kind:
         return None
     try:
         day = date.fromisoformat(fields.get("window_date", fields.get("date", "")).strip('"'))
@@ -128,6 +128,25 @@ def parse_snapshot(body, kind="steps"):
         if stamp.utcoffset() is None or isinstance(value, bool) or (value is not None and (not isinstance(value, (int, float)) or not math.isfinite(value) or value < 0)):
             return None
         item = {"date": day, "stamp": stamp, "value": value}
+        if kind == "total_calories":
+            state = json.loads(fields["missing_state"])
+            elapsed = json.loads(fields["day_elapsed"])
+            if (fields.get("source") != "google_health"
+                    or json.loads(fields["unit"]) != "kcal"
+                    or json.loads(fields["time_zone"]) != "Asia/Tokyo"
+                    or json.loads(fields["data_source_family"]) != "users/me/dataSourceFamilies/google-wearables"
+                    or json.loads(fields["identity_verified"]) is not True
+                    or json.loads(fields["fit_sync_verified"]) is not False
+                    or not re.fullmatch(r"[a-f0-9]{64}", json.loads(fields["account_hash"]))
+                    or type(elapsed) is not bool
+                    or state not in {"present", "no_window", "calories_omitted"}
+                    or (value is None) != (state != "present")
+                    or (value is not None and value > 20000)):
+                return None
+            observed_day = stamp.astimezone(timezone(timedelta(hours=9))).date()
+            if day > observed_day or elapsed != (day < observed_day):
+                return None
+            item.update(missing_state=state, day_elapsed=elapsed)
         if kind == "sleep":
             state = fields.get("missing_state", '"present"').strip('"')
             if state not in {"present", "no_sessions", "summary_missing", "overlapping_sessions"}:
@@ -156,10 +175,10 @@ def load_snapshots(root, kind):
             old = latest.get(item["date"])
             if old is None or item["stamp"] > old["stamp"]:
                 latest[item["date"]] = item
-            elif item["stamp"] == old["stamp"] and (item["value"] != old["value"] or item.get("missing_state") != old.get("missing_state")):
+            elif item["stamp"] == old["stamp"] and (item["value"] != old["value"] or item.get("missing_state") != old.get("missing_state") or item.get("day_elapsed") != old.get("day_elapsed")):
                 # 同時刻の矛盾は優劣を決めず欠測として表示する。
                 old["value"] = None
-                if kind == "sleep":
+                if kind in {"sleep", "total_calories"}:
                     old["missing_state"] = "conflict"
     return [latest[k] for k in sorted(latest)]
 
@@ -170,6 +189,30 @@ def load_steps(root):
 
 def load_sleep(root):
     return load_snapshots(root, "sleep")
+
+
+def load_total_calories(root):
+    return load_snapshots(root, "total_calories")
+
+
+def expenditure_display(row, today):
+    if row is None:
+        return "未記録"
+    if row["value"] is None:
+        return "欠測（0ではありません）"
+    status = "途中取得" if row["date"] >= today or not row["day_elapsed"] else "推定・同期未確定"
+    return f'{row["value"]:.0f}（{status}）'
+
+
+def balance_display(meal, expenditure, today):
+    # 食事の未記録を0にせず、途中日の消費を終日の消費と比較しない。
+    if meal is None or expenditure is None or expenditure["value"] is None:
+        return "算出不可（記録不足）"
+    if expenditure["date"] >= today or not expenditure["day_elapsed"]:
+        return "算出保留（途中取得）"
+    low, high = meal["low"] - expenditure["value"], meal["high"] - expenditure["value"]
+    value = f"{low:+.0f}" if low == high else f"{low:+.0f}〜{high:+.0f}"
+    return value + "（記録分）"
 
 
 def sleep_display(row):
@@ -224,7 +267,7 @@ def chart(title, subtitle, data, kind):
             parts.append(f'<circle cx="{xx}" cy="{y((row["low"] + row["high"]) / 2)}" r="4" fill="#ffffff"/>')
         elif row.get("value") is None:
             parts.append(text(xx, 252, "欠測", 16, "#64748b", "middle"))
-        elif kind in {"steps", "sleep"}:
+        elif kind in {"steps", "sleep", "total_calories"}:
             yy = y(row["value"])
             col = "#a855f7" if kind == "sleep" else "#0891b2"
             label = f'{row["value"]:.2f}'.rstrip("0").rstrip(".") if kind == "sleep" else f'{row["value"]:g}'
@@ -236,6 +279,8 @@ def chart(title, subtitle, data, kind):
     footer = "橙：一部未確認 ／ 縦線：推定の下限〜上限" if kind == "calories" else "青：朝・起床時 ／ 紫：その他　欠測期間は線で結びません" if kind == "weight" else "各日の最新累積値のみ。途中取得は終日確定ではありません"
     if kind == "sleep":
         footer = "起床日ごとの最新取得値のみ。欠測は0時間にしません"
+    if kind == "total_calories":
+        footer = "推定総消費。各日の最新値のみ。途中日・同期未確定を含みます"
     parts += [text(24, 333, footer, 16), "</g></svg>"]
     return "".join(parts)
 
@@ -268,6 +313,8 @@ def generate(vault, *, today=None, now=None):
     weights = parse_weights(read_note(root, "ログ/体重記録.md"))
     steps = load_steps(root)
     sleep = load_sleep(root)
+    expenditure = load_total_calories(root)
+    recent_expenditure = [r for r in expenditure if today - timedelta(days=13) <= r["date"] <= today]
     recent_weights = [r for r in weights if today - timedelta(days=29) <= r["date"] <= today]
     recent_meals = [r for r in meals if today - timedelta(days=29) <= r["date"] <= today]
     recent_steps = [r for r in steps if today - timedelta(days=13) <= r["date"] <= today]
@@ -287,7 +334,11 @@ def generate(vault, *, today=None, now=None):
                     ("時間" if latest_sleep["value"] is not None else "（0時間ではありません）")) if latest_sleep else "睡眠の記録なし"
     sleep_observation = max((r["stamp"] for r in sleep), default=None)
     sleep_acquisition = sleep_observation.astimezone(timezone(timedelta(hours=9))).strftime("%Y-%m-%d %H:%M:%S JST") if sleep_observation else "取得記録なし"
+    latest_expenditure = expenditure[-1] if expenditure else None
+    expenditure_status = (f'{latest_expenditure["date"]}：{expenditure_display(latest_expenditure, today)} kcal'
+                          if latest_expenditure else "総消費の記録なし")
     outputs = {
+        "Attachments/health/total-calories.svg": chart("推定総消費カロリー", "kcal / 直近14日。Google Healthの機器由来データ", recent_expenditure, "total_calories"),
         "Attachments/health/weight.svg": chart("体重の実測推移", "kg / 直近30日の実測。測定条件を区別", recent_weights, "weight"),
         "Attachments/health/calories.svg": chart("食事の記録分カロリー", "kcal / 直近30日。推定範囲で表示", recent_meals, "calories"),
         "Attachments/health/steps.svg": chart("日別歩数", "歩 / 直近14日。欠測は0にしない", recent_steps, "steps"),
@@ -296,16 +347,20 @@ def generate(vault, *, today=None, now=None):
     rows = []
     meal_map, step_map = {r["date"]: r for r in meals}, {r["date"]: r for r in steps}
     sleep_map = {r["date"]: r for r in sleep}
-    for day in sorted(set(meal_map) | set(step_map) | set(sleep_map), reverse=True)[:14]:
+    expenditure_map = {r["date"]: r for r in expenditure}
+    balance_rows = []
+    for day in sorted(set(meal_map) | set(step_map) | set(sleep_map) | set(expenditure_map), reverse=True)[:14]:
         m, s, sl = meal_map.get(day), step_map.get(day), sleep_map.get(day)
         kcal = calorie_display(m) + ("（部分記録）" if m["partial"] else "（記録分）") if m else "未記録"
         walk = f'{s["value"]:g}' if s and s["value"] is not None else "欠測" if s else "未記録"
         rest = sleep_display(sl) if sl else "未記録"
         rows.append(f"| {day} | {kcal} | {walk} | {rest} |")
+        e = expenditure_map.get(day)
+        balance_rows.append(f"| {day} | {kcal} | {expenditure_display(e, today)} | {balance_display(m, e, today)} |")
     outputs["ログ/健康ダッシュボード.md"] = "\n".join([
         "---", "type: log", "tags: [健康, ダッシュボード]", "generated: true", "---", "# 健康ダッシュボード", "",
         "体重・食事・歩数・睡眠を同じ入口で振り返るページ。グラフは台帳から生成し、ここへ手入力はしません。", "",
-        "## 最新の記録", f"- **体重**：{weight_status}", f"- **食事**：{meal_status}", f"- **歩数**：{step_status}", f"- **睡眠**：{sleep_status}",
+        "## 最新の記録", f"- **体重**：{weight_status}", f"- **食事**：{meal_status}", f"- **歩数**：{step_status}", f"- **睡眠**：{sleep_status}", f"- **推定総消費**：{expenditure_status}",
         f"- **歩数の最終取得日時**：{acquisition_status}（保存された観測の時刻。同期の最終試行時刻ではありません）",
         f"- **睡眠の最終取得日時**：{sleep_acquisition}（保存された観測の時刻。同期の最終試行時刻ではありません）",
         f'- **食事の最新記録日**：{meals[-1]["date"] if meals else "未記録"}',
@@ -317,6 +372,11 @@ def generate(vault, *, today=None, now=None):
         "93〜95kgという記憶による申告は実測点にしません。同条件の記録が増えるまで減量ペースを判定しません。", "",
         "## 食事カロリー", "![[Attachments/health/calories.svg]]", "",
         "記録分の合計で、摂取目標ではありません。未確認の油・間食などは含まれない場合があります。未記録日を0kcalに補完しません。", "",
+        "## 推定総消費と食事の記録分との差", "![[Attachments/health/total-calories.svg]]", "",
+        "総消費はGoogle Healthの機器由来データによる推定で、基礎代謝を含みます。歩数・運動・基礎代謝を追加しません。Pixel Watch画面との一致は未検証です。", "",
+        "日本時間の日付で最新の観測を採用し、同日の値を合算しません。日付が過ぎても装着時間・同期の完全性は保証しません。途中取得の日は差を算出しません。", "",
+        "差＝食事の記録分−推定総消費。マイナスは記録分が少ないという意味で、実際の赤字や脂肪減少量ではありません。未記録の食事・量の推定誤差を含むため、確定した収支として扱いません。", "",
+        "| 日付（日本時間） | 食事の記録分 kcal | 推定総消費 kcal | 記録分との差 kcal |", "|---|---:|---:|---:|", *balance_rows, "",
         "## 歩数", "![[Attachments/health/steps.svg]]", "",
         "同じ日の取得値は足さず、取得時刻が最も新しい値を採用。Google Healthの値で、Google Fitとの同一性や終日確定を保証しません。", "",
         "## 睡眠", "![[Attachments/health/sleep.svg]]", "",
@@ -344,7 +404,7 @@ def generate(vault, *, today=None, now=None):
     outputs[dashboard_path] = outputs[dashboard_path].replace(
         "## 更新について\n", f"## 更新について\n表示内容の最終更新：{updated_display}。内容が同じ再生成では更新日時を変えません。\n\n", 1)
     changed = [path for path, body in outputs.items() if write_changed(root, path, body)]
-    return {"changed": changed, "meal_days": len(meals), "weight_measurements": len(weights), "step_days": len(steps), "sleep_days": len(sleep)}
+    return {"changed": changed, "meal_days": len(meals), "weight_measurements": len(weights), "step_days": len(steps), "sleep_days": len(sleep), "expenditure_days": len(expenditure)}
 
 
 if __name__ == "__main__":

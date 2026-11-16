@@ -9,6 +9,7 @@ import tomllib
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from google_once import AuthError, TOKEN_URL, post_form
 from google_steps import GoogleSteps, StepsError, request_json, save_snapshot
+from google_calories import GoogleCalories, save_snapshot as save_calories_snapshot
 from google_sleep import GoogleSleep, save_snapshot as save_sleep_snapshot
 from health_scopes import SLEEP_SCOPE, scope_set
 from server import Store, refresh_dashboard
@@ -34,7 +35,7 @@ def target_days(now, zone_name, day_count=2):
 
 
 def run_sync(bundle, store, *, zone_name, expected_account, expected_project, day_count=2, now=None, grant=post_form,
-             api=request_json, sleep_api=None, credential_writer=None):
+             api=request_json, sleep_api=None, credential_writer=None, include_calories=False, calories_api=None):
     now = now or datetime.now(timezone.utc)
     days = target_days(now, zone_name, day_count)
     try:
@@ -96,6 +97,24 @@ def run_sync(bundle, store, *, zone_name, expected_account, expected_project, da
                 except Exception:
                     result.update(status="error", error_code="sleep_vault_save_failed",
                                   sleep_error_code="sleep_vault_save_failed")
+        if include_calories:
+            result.update(calories_status="error", calories_completed_day_count=0)
+            try:
+                options = {} if calories_api is None else {"transport": calories_api}
+                calories = GoogleCalories(token, bundle.health_user_id, now=lambda: now, **options)
+                calorie_snapshots = [calories.fetch_day(day, zone_name) for day in days]
+            except Exception:
+                result.update(status="error", error_code="calories_data_request_failed",
+                              calories_error_code="calories_data_request_failed")
+            else:
+                try:
+                    for snapshot in calorie_snapshots:
+                        save_calories_snapshot(store, snapshot)
+                        result["calories_completed_day_count"] += 1
+                    result["calories_status"] = "success"
+                except Exception:
+                    result.update(status="error", error_code="calories_vault_save_failed",
+                                  calories_error_code="calories_vault_save_failed")
         with store.lock, store.exclude_sync():
             dashboard_status = refresh_dashboard(store.root)
         return result | {"dashboard_status": dashboard_status}
@@ -128,7 +147,7 @@ def main():
             raise SyncFailure("missing_runtime_credentials")
         result = run_sync(load_runtime(runtime), Store(args.vault), zone_name=settings["timezone"],
                           expected_account=settings["account"], expected_project=settings["project_id"],
-                          day_count=settings["recent_days"], now=now,
+                          day_count=settings["recent_days"], now=now, include_calories=True,
                           credential_writer=lambda bundle: encrypt_bundle(bundle, encrypted))
         code = 0 if result["status"] == "success" else 1
     except SyncFailure as error:

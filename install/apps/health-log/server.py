@@ -17,7 +17,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 from uuid import UUID
 
-KINDS = {"meal": "食事", "weight": "体重", "steps": "歩数", "sleep": "睡眠"}
+KINDS = {"meal": "食事", "weight": "体重", "steps": "歩数", "sleep": "睡眠", "total_calories": "総消費カロリー"}
 
 
 def validate(data):
@@ -42,7 +42,7 @@ def validate(data):
     if value is not None:
         if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
             raise ValueError("数値を確認してください")
-        if (kind == "sleep" and not 0 <= value <= 2880) or kind == "meal" or (kind == "weight" and not 0 < value <= 500) or (kind == "steps" and (not 0 <= value <= 200000 or int(value) != value)):
+        if (kind == "total_calories" and not 0 <= value <= 20000) or (kind == "sleep" and not 0 <= value <= 2880) or kind == "meal" or (kind == "weight" and not 0 < value <= 500) or (kind == "steps" and (not 0 <= value <= 200000 or int(value) != value)):
             raise ValueError("数値の範囲を確認してください")
     if not text.strip() and value is None:
         raise ValueError("ひとこと、または数値を入力してください。不明な数値は空欄で大丈夫です")
@@ -114,6 +114,8 @@ class Store:
             self.sync_lock.rmdir()
 
     def save(self, data):
+        if isinstance(data, dict) and data.get("kind") == "total_calories":
+            raise ValueError("総消費は検証済みAPI観測から保存します")
         with self.lock, self.exclude_sync():
             saved = self._save(data)
             return {**saved, "dashboard_status": refresh_dashboard(self.root)}
@@ -132,7 +134,7 @@ class Store:
         hash_input = record if provenance is None else {"record": record, "date": note_day, "provenance": provenance}
         digest = hashlib.sha256(json.dumps(hash_input, ensure_ascii=False, sort_keys=True).encode()).hexdigest()
         value = "null" if record["value"] is None else str(record["value"])
-        unit = {"meal": "", "weight": "kg", "steps": "steps", "sleep": "minutes"}[record["kind"]]
+        unit = {"meal": "", "weight": "kg", "steps": "steps", "sleep": "minutes", "total_calories": "kcal"}[record["kind"]]
         literal = re.sub(r"([\\!\[\]()`*_#|~])", r"\\\1", html.escape(record["text"], quote=False))
         quoted = "\n".join("> " + line for line in literal.splitlines()) or "> メモなし"
         source = "manual" if provenance is None else "google_health"

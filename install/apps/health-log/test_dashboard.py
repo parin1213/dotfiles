@@ -5,7 +5,7 @@ import unittest
 from datetime import date, datetime, timezone
 from pathlib import Path
 from xml.etree import ElementTree
-from dashboard import generate, parse_meals, parse_weights, parse_snapshot, load_steps, load_sleep, safe_path
+from dashboard import generate, parse_meals, parse_weights, parse_snapshot, load_steps, load_sleep, load_total_calories, balance_display, safe_path
 
 MEAL = """# 食事ログ
 ## 最近の食事
@@ -32,6 +32,16 @@ def sleep_snapshot(value, stamp="2026-11-08T08:00:00+00:00", day="2026-11-08", s
     return (f'---\nkind: sleep\ndate: {day}\nwindow_date: "{day}"\n'
             f'occurred_at: {stamp}\nsource: google_health\nvalue: {json.dumps(value)}\n'
             f'missing_state: {json.dumps(state)}\nsleep_sessions: []\n---\n')
+
+
+
+def expenditure_snapshot(value, day="2026-11-07", stamp="2026-11-08T08:00:00+00:00", elapsed=True, state="present"):
+    fields = {"window_date": day, "unit": "kcal", "value": value, "missing_state": state,
+              "time_zone": "Asia/Tokyo", "day_elapsed": elapsed, "identity_verified": True,
+              "fit_sync_verified": False, "account_hash": "a" * 64,
+              "data_source_family": "users/me/dataSourceFamilies/google-wearables"}
+    return ('---\nkind: total_calories\nsource: google_health\n' + f'date: {day}\noccurred_at: {stamp}\n'
+            + "\n".join(f"{k}: {json.dumps(v)}" for k, v in fields.items()) + '\n---\n')
 
 
 class DashboardTests(unittest.TestCase):
@@ -227,7 +237,7 @@ class DashboardTests(unittest.TestCase):
         self.note("ログ/体重記録.md", WEIGHT)
         self.note("ログ/2026-11-08_健康記録_0819_a.md", snapshot("null", day="2026-11-08"))
         result = generate(self.root, today=date(2026, 11, 8))
-        self.assertEqual(len(result["changed"]), 5)
+        self.assertEqual(len(result["changed"]), 6)
         content = (self.root / "ログ/健康ダッシュボード.md").read_text(encoding="utf-8")
         self.assertIn("現在の体重ではありません", content)
         self.assertIn("欠測（0歩ではありません）", content)
@@ -265,6 +275,62 @@ class DashboardTests(unittest.TestCase):
         self.assertEqual(result["weight_measurements"], 0)
         self.assertEqual(result["step_days"], 0)
         self.assertEqual(result["sleep_days"], 0)
+
+
+    def test_expenditure_latest_replaces_and_missing_not_zero(self):
+        self.note("ログ/2026-11-07_健康記録_0700_a.md", expenditure_snapshot(2000, stamp="2026-11-08T07:00:00+00:00"))
+        self.note("Attachments/health/records/2026-11-07_健康記録_0800_b.md", expenditure_snapshot(2100))
+        self.assertEqual(load_total_calories(self.root)[0]["value"], 2100)
+        self.note("Attachments/health/records/2026-11-07_健康記録_0900_c.md", expenditure_snapshot(None, stamp="2026-11-08T09:00:00+00:00", state="no_window"))
+        self.assertIsNone(load_total_calories(self.root)[0]["value"])
+        self.assertEqual(parse_snapshot(expenditure_snapshot(0), "total_calories")["value"], 0)
+
+    def test_expenditure_invalid_provenance_and_values(self):
+        for value in (True, -1, float("nan"), float("inf"), "2000", 20001):
+            self.assertIsNone(parse_snapshot(expenditure_snapshot(value), "total_calories"))
+        for old, new in (("kcal", "kJ"), ("Asia/Tokyo", "UTC"), ("google-wearables", "all-sources"),
+                         ('day_elapsed: true', 'day_elapsed: false'), ('identity_verified: true', 'identity_verified: false')):
+            body = expenditure_snapshot(2200).replace(old, new)
+            self.assertIsNone(parse_snapshot(body, "total_calories"))
+        self.assertIsNone(parse_snapshot(expenditure_snapshot(2200, elapsed=False), "total_calories"))
+        self.assertIsNone(parse_snapshot(expenditure_snapshot(None), "total_calories"))
+        self.assertIsNone(parse_snapshot(expenditure_snapshot(2200, state="no_window"), "total_calories"))
+        self.assertIsNone(parse_snapshot(expenditure_snapshot(2200).replace("+00:00", ""), "total_calories"))
+
+    def test_expenditure_conflicts_and_jst_midnight(self):
+        self.note("ログ/2026-11-07_健康記録_0800_a.md", expenditure_snapshot(2000))
+        self.note("ログ/2026-11-07_健康記録_0800_b.md", expenditure_snapshot(2100))
+        self.assertIsNone(load_total_calories(self.root)[0]["value"])
+        self.assertIsNotNone(parse_snapshot(expenditure_snapshot(2000, stamp="2026-11-07T15:00:00+00:00"), "total_calories"))
+        self.assertIsNone(parse_snapshot(expenditure_snapshot(2000, stamp="2026-11-07T14:59:59+00:00"), "total_calories"))
+        self.assertIsNotNone(parse_snapshot(expenditure_snapshot(2000, stamp="2026-11-07T14:59:59+00:00", elapsed=False), "total_calories"))
+
+    def test_balance_ranges_missing_partial_and_current_day(self):
+        today = date(2026, 11, 8)
+        meal = {"low": 1490, "high": 1590, "partial": True}
+        expense = {"value": 2200, "date": date(2026, 11, 7), "day_elapsed": True}
+        self.assertEqual(balance_display(meal, expense, today), "-710〜-610（記録分）")
+        self.assertEqual(balance_display({**meal, "low": 1590}, expense, today), "-610（記録分）")
+        self.assertIn("記録不足", balance_display(None, expense, today))
+        self.assertIn("記録不足", balance_display(meal, {**expense, "value": None}, today))
+        self.assertIn("途中取得", balance_display(meal, {**expense, "date": today}, today))
+        self.assertIn("途中取得", balance_display(meal, {**expense, "day_elapsed": False}, today))
+
+    def test_expenditure_chart_and_balance_render_without_double_count(self):
+        self.note("ログ/食事ログ.md", MEAL)
+        self.note("ログ/2026-11-07_健康記録_0800_a.md", expenditure_snapshot(2200))
+        self.note("ログ/2026-11-08_健康記録_0800_a.md", expenditure_snapshot(1200, day="2026-11-08", elapsed=False))
+        result = generate(self.root, today=date(2026, 11, 8))
+        self.assertEqual(result["expenditure_days"], 2)
+        body = (self.root / "ログ/健康ダッシュボード.md").read_text()
+        self.assertIn("-239（記録分）", body)
+        self.assertIn("算出保留（途中取得）", body)
+        self.assertIn("実際の赤字や脂肪減少量ではありません", body)
+        self.assertIn("推定・同期未確定", body)
+        svg = (self.root / "Attachments/health/total-calories.svg").read_text()
+        ElementTree.fromstring(svg)
+        self.assertIn("推定総消費", svg)
+        self.assertEqual(generate(self.root, today=date(2026, 11, 8))["changed"], [])
 
     def test_traversal_and_absolute_denied(self):
         for path in ("../escape.md", str(self.root.parent / "escape.md")):

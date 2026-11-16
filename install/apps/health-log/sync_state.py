@@ -10,7 +10,7 @@ ERROR_CODES = {"configuration_required", "credential_expired_or_invalid", "inval
     "credential_account_mismatch",
     "credential_rotation_not_saved", "authentication_failed", "data_request_failed", "vault_save_failed",
     "missing_runtime_credentials", "missing_or_invalid_credentials", "configuration_or_storage_error", "status_save_failed",
-    "sleep_data_request_failed", "sleep_vault_save_failed"}
+    "sleep_data_request_failed", "sleep_vault_save_failed", "calories_data_request_failed", "calories_vault_save_failed"}
 
 
 def safe_details(data):
@@ -19,11 +19,13 @@ def safe_details(data):
         result["error_code"] = data["error_code"]
     if data.get("sleep_error_code") in {"sleep_data_request_failed", "sleep_vault_save_failed"}:
         result["sleep_error_code"] = data["sleep_error_code"]
-    for key in ("completed_day_count", "requested_day_count", "sleep_completed_day_count"):
+    if data.get("calories_error_code") in {"calories_data_request_failed", "calories_vault_save_failed"}:
+        result["calories_error_code"] = data["calories_error_code"]
+    for key in ("completed_day_count", "requested_day_count", "sleep_completed_day_count", "calories_completed_day_count"):
         value = data.get(key)
         if type(value) is int and 0 <= value <= 2:
             result[key] = value
-    for key in ("dashboard_status", "steps_status"):
+    for key in ("dashboard_status", "steps_status", "calories_status"):
         if data.get(key) in {"success", "error"}:
             result[key] = data[key]
     if data.get("sleep_status") in {"success", "error", "not_authorized"}:
@@ -95,4 +97,8 @@ def describe(path=None):
     if sleep_status in {"success", "error"}:
         result.update(automatic_sleep=active,
                       sleep_connection="前回の取得は成功" if sleep_status == "success" else "前回の取得は失敗")
+    calories_status = state.get("calories_status")
+    result.update(automatic_calories=active if calories_status else False,
+                  calories_connection="前回の取得は成功" if calories_status == "success" else
+                      "前回の取得は失敗" if calories_status == "error" else "未接続")
     return result
