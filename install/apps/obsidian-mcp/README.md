@@ -117,10 +117,6 @@ GitHubの実際のログインとChatGPT・Claudeからの疎通は、本人操�
 
 - ラズパイのGit同期には、このリポジトリだけに書き込めるdeploy keyを使います。秘密鍵はラズパイ内の `~/.local/share/obsidian-vault/id_ed25519` に置き、他端末へコピーしません。GitHubのホスト鍵は公式APIの公開鍵で照合します。
 - GitHub OAuth Appの本人登録と、ChatGPT・Claudeでの本人ログイン。
-- OpenCode Goの接続。右側OpenCodeで `/connect` からGoを接続し、`/models` でGoのモデルを選ぶ。[Goの公式手順](https://opencode.ai/v2/docs/console/go)
-
-Windowsで標準のOpenCodeコマンドが起動しない場合は、`powershell -NoProfile -File ~/.local/bin/opencode-personal.ps1` を使います。
-miseで選択中の公式Windows実行ファイルを起動し、パッケージの内部ファイルは書き換えません。
 
 ## 既知の制約
 
