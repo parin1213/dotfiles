@@ -1,5 +1,15 @@
 {
   "terminal.integrated.env.linux": {
     "VSCODE_PROJECT_ROOT": "${workspaceFolder}"
-  }
+  },
+  "[rust]": {
+    "editor.defaultFormatter": "rust-lang.rust-analyzer",
+    "editor.formatOnSave": true,
+    "editor.tabSize": 2,
+    "editor.insertSpaces": true
+  },
+  "rust-analyzer.rustfmt.extraArgs": [
+    "--config",
+    "tab_spaces=2"
+  ]
 }
