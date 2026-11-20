@@ -155,3 +155,8 @@ fi
 # 会社固有の環境変数・エイリアス・起動スクリプトは別リポ (dotfiles-work) で管理。
 # symlink: ~/.zshrc.local -> dotfiles-work/home/.zshrc.local
 [ -f "$HOME/.zshrc.local" ] && source "$HOME/.zshrc.local"
+
+# VSCodeの表示はプロジェクト内の相対パスと、外側の末尾3階層に絞る。
+if [[ ${TERM_PROGRAM-} == vscode && -r "$HOME/.config/shell/vscode-prompt.zsh" ]]; then
+  source "$HOME/.config/shell/vscode-prompt.zsh"
+fi
