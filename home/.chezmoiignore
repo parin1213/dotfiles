@@ -1,6 +1,12 @@
 {{- /* OS ごとに無視対象を切り替える（パスは $HOME 相対のターゲット） */ -}}
 {{- $p := includeTemplate "profile" . | fromJson -}}
 {{ if ne .chezmoi.os "linux" -}}
+.config/Code
+{{ end -}}
+{{ if ne .chezmoi.os "darwin" -}}
+Library/Application Support/Code
+{{ end -}}
+{{ if ne .chezmoi.os "linux" -}}
 .vscode-server
 {{ end -}}
 {{ if not (and (eq .chezmoi.os "linux") (has "obsidian-mcp" $p.apps)) -}}
