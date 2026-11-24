@@ -61,8 +61,10 @@ def restore_network():
         if mounted:
             run("umount", str(installed))
 
-tools = work / "tools"
-tools.mkdir(exist_ok=True)
+# /run は noexec のため、実行ファイルは Live 環境の overlay に置く。
+# 認証ファイルは、他ユーザーが書き込めない /run 配下に保持する。
+tools = Path("/opt/dotfiles-maintenance-tools")
+tools.mkdir(mode=0o700, exist_ok=True)
 packages = sorted((media / "packages").glob("*.deb"))
 if not packages:
     raise SystemExit("保守用パッケージがありません")
@@ -99,5 +101,11 @@ env["LD_LIBRARY_PATH"] = str(tools / "usr/lib/x86_64-linux-gnu")
 sshd = tools / "usr/sbin/sshd"
 run(str(sshd), "-t", "-f", str(sshd_config), env=env)
 run(str(sshd), "-f", str(sshd_config), env=env)
-restore_network()
-print("保守用 SSH をポート 2222 で起動しました。内蔵ディスクはアンマウント済みです。")
+print("保守用 SSH をポート 2222 で起動しました。", flush=True)
+try:
+    restore_network()
+except subprocess.CalledProcessError as error:
+    print(f"Wi-Fi の自動接続処理で {error.cmd[0]} が終了コード {error.returncode} を返しました。")
+    print("Ubuntu の画面から Wi-Fi に接続してください。SSH は起動済みです。")
+else:
+    print("Wi-Fi に接続しました。内蔵ディスクはアンマウント済みです。")
