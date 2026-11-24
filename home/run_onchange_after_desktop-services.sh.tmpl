@@ -1,0 +1,16 @@
+{{- $p := includeTemplate "profile" . | fromJson -}}
+{{- if and (eq .chezmoi.os "linux") (or (not $p.desktop_printing) (not $p.desktop_calendar)) -}}
+#!/bin/sh
+set -eu
+{{ if not $p.desktop_calendar }}
+# 予定通知と D-Bus 経由の再起動を止め、GNOME が依存するライブラリは維持する。
+systemctl --user stop 'app-gnome-org.gnome.Evolution*'
+systemctl --user mask --now evolution-addressbook-factory.service evolution-calendar-factory.service evolution-source-registry.service evolution-user-prompter.service
+printf '%s\n' '==> カレンダー・連絡先の常駐と予定通知を停止しました'
+{{ end }}
+{{ if not $p.desktop_printing }}
+# socket/path activation も止め、印刷要求で再起動しないようにする。
+sudo -n systemctl mask --now cups.service cups.socket cups.path cups-browsed.service
+printf '%s\n' '==> 印刷とプリンターの自動検出を停止しました'
+{{ end }}
+{{- end }}

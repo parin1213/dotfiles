@@ -1,5 +1,8 @@
 {{- /* OS ごとに無視対象を切り替える（パスは $HOME 相対のターゲット） */ -}}
 {{- $p := includeTemplate "profile" . | fromJson -}}
+{{ if or (ne .chezmoi.os "linux") $p.desktop_calendar -}}
+.config/autostart/org.gnome.Evolution-alarm-notify.desktop
+{{ end -}}
 {{ if not $p.vscode_ignored_extensions -}}
 .config/Code/User/settings.json
 {{ end -}}
