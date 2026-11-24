@@ -49,6 +49,7 @@ recent_days = 2
 
 [envs.win]                      # Windows ネイティブ（machine=local-pc）
 weight = "full"
+sudo_shared_auth_minutes = 0
 vscode_ignored_extensions = []
 ghostty_font_size = 24          # ※Windows は ghostty を .chezmoiignore で除外（値は参考）
 starship_icon = ""        # nf windows
@@ -66,6 +67,7 @@ apps = []                       # win は winget が正本。app runner は未�
 
 [envs.wsl]                      # local-pc 上の WSL（machine=local-pc・kernel で判定）
 weight = "full"
+sudo_shared_auth_minutes = 0
 vscode_ignored_extensions = []
 ghostty_font_size = 24
 starship_icon = ""  # nf windows + tux = WSL らしさ（Ubuntu ロゴを避ける）
@@ -83,6 +85,8 @@ apps = []
 
 [envs.surface]                  # Surface Go 3（machine=surface-go3・GUI デスクトップ）
 weight = "lite"
+# 同じユーザーの端末間で sudo 認証を共有する時間。0 の環境は設定対象外。
+sudo_shared_auth_minutes = 30
 # 接続端末から外す拡張を同期対象外にし、開発用PCの拡張を保持する。
 vscode_ignored_extensions = [
   "anthropic.claude-code",
@@ -130,6 +134,7 @@ apps = []
 
 [envs.raspi]                    # Raspberry Pi（machine=raspi4・slim・headless）
 weight = "slim"
+sudo_shared_auth_minutes = 0
 vscode_ignored_extensions = []
 ghostty_font_size = 24
 starship_icon = ""        # nf raspberry pi
@@ -147,6 +152,7 @@ apps = ["homeassistant", "obsidian-mcp", "health-steps-sync"] # MCPはvault配�
 
 [envs.mac]                      # macOS（仕事用・現在未接続）
 weight = "full"
+sudo_shared_auth_minutes = 0
 vscode_ignored_extensions = []
 ghostty_font_size = 24
 starship_icon = ""        # nf apple
@@ -164,6 +170,7 @@ apps = []
 
 [envs.linux]                    # 未分類の汎用 Linux（fallback・headless サーバ想定）
 weight = "full"
+sudo_shared_auth_minutes = 0
 vscode_ignored_extensions = []
 ghostty_font_size = 24
 starship_icon = ""        # nf tux

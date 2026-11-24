@@ -1,0 +1,53 @@
+{{- $p := includeTemplate "profile" . | fromJson -}}
+{{- if and (eq .chezmoi.os "linux") (gt (int $p.sudo_shared_auth_minutes) 0) -}}
+#!/bin/sh
+set -eu
+sudo /usr/bin/python3 - <<'PY'
+import os
+from pathlib import Path
+import re
+import subprocess
+import tempfile
+
+user = {{ .chezmoi.username | toJson }}
+minutes = {{ $p.sudo_shared_auth_minutes }}
+if not re.fullmatch(r"[a-z_][a-z0-9_-]*[$]?", user) or not 1 <= minutes <= 60:
+    raise SystemExit("sudo 認証共有のユーザー名または時間が不正です")
+
+target = Path("/etc/sudoers.d/90-dotfiles-session")
+header = "# dotfiles: sudo の認証を同じユーザーの端末間で共有する\n"
+content = (header + f"Defaults:{user} timestamp_type=global, timestamp_timeout={minutes}\n").encode()
+if target.is_symlink() or (target.exists() and not target.is_file()):
+    raise SystemExit("sudoers の保存先が通常ファイルではありません")
+previous = target.read_bytes() if target.exists() else None
+if previous is not None and not previous.startswith(header.encode()):
+    raise SystemExit("既存の別用途の sudoers 設定は上書きしません")
+subprocess.run(["/usr/sbin/visudo", "-c"], check=True)
+if previous == content:
+    print("==> sudo の認証共有は設定済みです")
+    raise SystemExit(0)
+
+fd, name = tempfile.mkstemp(prefix=".dotfiles-session-", dir=target.parent)
+temporary = Path(name)
+try:
+    with os.fdopen(fd, "wb") as stream:
+        stream.write(content)
+        stream.flush()
+        os.fchmod(stream.fileno(), 0o440)
+        os.fchown(stream.fileno(), 0, 0)
+    subprocess.run(["/usr/sbin/visudo", "-cf", str(temporary)], check=True)
+    os.replace(temporary, target)
+    try:
+        subprocess.run(["/usr/sbin/visudo", "-c"], check=True)
+    except subprocess.CalledProcessError:
+        if previous is None:
+            target.unlink()
+        else:
+            target.write_bytes(previous)
+            target.chmod(0o440)
+        raise
+finally:
+    temporary.unlink(missing_ok=True)
+print(f"==> {user}: sudo の認証を端末間で {minutes} 分共有する設定を反映しました")
+PY
+{{- end }}
