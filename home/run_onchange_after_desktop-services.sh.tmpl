@@ -1,7 +1,11 @@
 {{- $p := includeTemplate "profile" . | fromJson -}}
-{{- if and (eq .chezmoi.os "linux") (or (not $p.desktop_printing) (not $p.desktop_calendar)) -}}
+{{- if and (eq .chezmoi.os "linux") (or (not $p.desktop_printing) (not $p.desktop_calendar) (not $p.desktop_file_search) $p.desktop_removed_packages $p.desktop_kept_packages) -}}
 #!/bin/sh
 set -eu
+{{ if not $p.desktop_file_search }}
+systemctl --user mask --now tracker-miner-fs-3.service tracker-miner-fs-control-3.service tracker-writeback-3.service tracker-xdg-portal-3.service
+printf '%s\n' '==> ファイル検索索引の常駐と自動起動を停止しました'
+{{ end }}
 {{ if not $p.desktop_calendar }}
 # 予定通知と D-Bus 経由の再起動を止め、GNOME が依存するライブラリは維持する。
 systemctl --user stop 'app-gnome-org.gnome.Evolution*'
@@ -12,5 +16,37 @@ printf '%s\n' '==> カレンダー・連絡先の常駐と予定通知を停止�
 # socket/path activation も止め、印刷要求で再起動しないようにする。
 sudo -n systemctl mask --now cups.service cups.socket cups.path cups-browsed.service
 printf '%s\n' '==> 印刷とプリンターの自動検出を停止しました'
+{{ end }}
+{{ if or $p.desktop_removed_packages $p.desktop_kept_packages }}
+python3 - <<'PY'
+import os
+import subprocess
+
+remove = {{ $p.desktop_removed_packages | toJson }}
+keep = {{ $p.desktop_kept_packages | toJson }}
+
+def installed(package):
+    result = subprocess.run(
+        ["dpkg-query", "-W", "-f=${db:Status-Status}", package],
+        capture_output=True, text=True,
+    )
+    return result.returncode == 0 and result.stdout == "installed"
+
+retained = [package for package in keep if installed(package)]
+if retained:
+    subprocess.run(["sudo", "-n", "apt-mark", "manual", *retained], check=True)
+targets = [package for package in remove if installed(package)]
+if targets:
+    command = ["apt-get", "--no-install-recommends", "--no-auto-remove", "remove", *targets]
+    preview = subprocess.run(
+        [command[0], "--simulate", *command[1:]],
+        env={**os.environ, "LC_ALL": "C"}, capture_output=True, text=True, check=True,
+    )
+    removed = {line.split()[1].split(":")[0] for line in preview.stdout.splitlines() if line.startswith("Remv ")}
+    if removed - set(remove):
+        raise SystemExit("指定外のパッケージも削除されるため中止します: " + ", ".join(sorted(removed - set(remove))))
+    subprocess.run(["sudo", "-n", command[0], "-y", *command[1:]], check=True)
+print("==> 指定されたアプリの削除と開発ツールの保持を反映しました")
+PY
 {{ end }}
 {{- end }}

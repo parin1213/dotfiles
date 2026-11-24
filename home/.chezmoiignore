@@ -1,5 +1,8 @@
 {{- /* OS ごとに無視対象を切り替える（パスは $HOME 相対のターゲット） */ -}}
 {{- $p := includeTemplate "profile" . | fromJson -}}
+{{ if or (ne .chezmoi.os "linux") $p.desktop_file_search -}}
+.config/autostart/tracker-miner-fs-3.desktop
+{{ end -}}
 {{ if or (ne .chezmoi.os "linux") $p.desktop_calendar -}}
 .config/autostart/org.gnome.Evolution-alarm-notify.desktop
 {{ end -}}
