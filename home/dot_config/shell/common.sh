@@ -156,12 +156,16 @@ fi
 alias ls='ls --color=auto'
 alias ll='ls -l'
 alias la='ls -la'
-alias fig='docker compose'
+if command -v docker >/dev/null 2>&1; then
+  alias fig='docker compose'
+fi
 alias git-difft='git -c diff.external=difft diff'
 # helpdora をパイプ越しでも色付きに (`dora codex | less` 等のため)
 # npm 公開時に dora → helpdora へ改名済み。dora は短縮 alias として維持
-alias helpdora='FORCE_COLOR=1 helpdora'
-alias dora='FORCE_COLOR=1 helpdora'
+if command -v helpdora >/dev/null 2>&1; then
+  alias helpdora='FORCE_COLOR=1 helpdora'
+  alias dora='FORCE_COLOR=1 helpdora'
+fi
 
 # WSL の op: native Linux op は Windows アプリ連携(PolKit/Linux アプリ前提)に繋がらず
 # "not signed in" になる。Windows の op.exe を WSL interop で呼べば Windows アプリ+Hello で

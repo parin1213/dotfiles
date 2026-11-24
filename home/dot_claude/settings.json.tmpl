@@ -1,4 +1,5 @@
 {
+{{- $p := includeTemplate "profile" . | fromJson -}}
 {{- /* herdr のタブ名と Spaces の $topic を更新する hook。Windows は .ps1 を powershell 経由で呼ぶ。名前は引数で変わらないので async で順序が入れ替わっても困らない。 */ -}}
 {{- $tabTitle := printf "%s/.local/bin/herdr-tab-title" .chezmoi.homeDir }}
 {{- if eq .chezmoi.os "windows" }}
@@ -54,12 +55,12 @@
   "enabledPlugins": {
     "codex@openai-codex": true,
     "concise@concise": true,
-    "rust-analyzer-lsp@claude-plugins-official": true,
+    "rust-analyzer-lsp@claude-plugins-official": {{ ne $p.weight "lite" }},
     "cc-plugin-you-should-know@builtin": true,
     "claude-md-management@claude-plugins-official": true,
-    "typescript-lsp@claude-plugins-official": true,
-    "pyright-lsp@claude-plugins-official": true,
-    "ruby-lsp@claude-plugins-official": true
+    "typescript-lsp@claude-plugins-official": {{ ne $p.weight "lite" }},
+    "pyright-lsp@claude-plugins-official": {{ ne $p.weight "lite" }},
+    "ruby-lsp@claude-plugins-official": {{ ne $p.weight "lite" }}
   },
   "extraKnownMarketplaces": {
     "openai-codex": {

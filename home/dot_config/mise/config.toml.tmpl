@@ -91,18 +91,11 @@ ast-grep = "latest"
 # サイドバーに出し、attach しているクライアントが無いセッションへも外から命令を打てる。
 "aqua:herdrdev/herdr" = "latest"
 {{ if ne $p.weight "slim" -}}
-# --- lite 以上（surface-go3 / WSL / mac / 通常 Linux）: agent core ＋ 軽い extras ＋ 個人 npm ---
+# --- lite 以上: エージェントの実行環境 ---
 # slim 機（raspi 等・素のシェル用途）では除外。必要になったら個別に mise use する。
 # node/python は npm:/pipx: の前提。低スペック機でも agent 作業はできる範囲。
-deno = "latest"
 python = "latest"
 node = "latest"
-# ruby は precompiled（jdx/ruby の tarball 展開）なので lite でも軽い。かつて full 限定
-# だったが「source compile で激重」の旧理由が precompiled 化で解消したため lite 以上に移動。
-# system ruby（apt）は使わず mise 一本化する方針。slim(raspi) は素のシェル用途で除外のまま。(2026-06-04)
-ruby = "latest"
-# ffmpeg: yt-dlp の --download-sections (somen-target-followup の章切り出し) が要求。apt は sudo 要のため mise で。
-ffmpeg = "latest"
 # pnpm は aqua backend（native binary の tarball）で入れる。npm backend では動かない:
 # mise が build script を無効にして入れるため pnpm 同梱の JS プレースホルダが native binary に
 # 差し替わらず、加えて mise の bin shim が `node <target>` で叩くので Mach-O を node に食わせて
@@ -119,6 +112,13 @@ claude-code = "latest"
 # aqua-registry#53236 (https://github.com/aquaproj/aqua-registry/pull/53236) が
 # merge されて 0.11.9+ が通るようになったら "latest" に戻す。 (2026-05-05)
 uv = "0.11.8"
+{{ end -}}
+{{ if eq $p.weight "full" -}}
+# --- full のみ: ローカル開発・文書変換・外部サービス用ツール ---
+deno = "latest"
+ruby = "latest"
+# ffmpeg: yt-dlp の --download-sections による動画の章切り出しに使う。
+ffmpeg = "latest"
 "npm:difit" = "latest"
 "npm:ntn" = "latest"
 "npm:@playwright/cli" = "latest"
@@ -136,12 +136,9 @@ uv = "0.11.8"
 # gem backend の latest はプレリリース (0.27.0.beta*) を拾うので正式版の系列で止める。
 # 戻す条件: 0.27 の正式版が出たら "0.27" に上げる。(2026-10-04)
 "gem:ruby-lsp" = "0.26"
-{{ end -}}
-{{ if eq $p.weight "full" -}}
 # --- full 機（WSL / mac / 通常 Linux）のみ: 重い/クラウド系 ---
 # lite（surface-go3 等の低スペック機）では除外。dotnet/gcloud/awscli は大型 DL、
 # terraform はニッチ。必要なら個別に mise use。
-# （ruby は precompiled 化で軽くなったため lite 以上ブロックへ移動した。）
 terraform = "latest"
 awscli = { version = "latest", symlink_bins = "true" }
 gcloud = "latest"
