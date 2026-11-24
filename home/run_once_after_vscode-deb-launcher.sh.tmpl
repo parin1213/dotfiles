@@ -1,0 +1,21 @@
+{{- $p := includeTemplate "profile" . | fromJson -}}
+{{- if and (eq .chezmoi.os "linux") $p.gui_apps -}}
+#!/bin/sh
+set -eu
+# deb版がある環境では、GNOMEのドックからその実体を起動する。
+[ -f /usr/share/applications/com.microsoft.VSCode.desktop ] || exit 0
+command -v gsettings >/dev/null 2>&1 || exit 0
+gsettings list-schemas | grep -qx org.gnome.shell || exit 0
+/usr/bin/python3 - <<'PY'
+import ast
+import subprocess
+
+args = ["gsettings", "get", "org.gnome.shell", "favorite-apps"]
+current = ast.literal_eval(subprocess.check_output(args, text=True).strip().removeprefix("@as "))
+target = ["com.microsoft.VSCode.desktop" if item == "code_code.desktop" else item for item in current]
+target = list(dict.fromkeys(target))
+if target != current:
+    subprocess.run(["gsettings", "set", "org.gnome.shell", "favorite-apps", repr(target)], check=True)
+    print("==> VS Code のドック項目を deb 版へ更新しました")
+PY
+{{- end }}
