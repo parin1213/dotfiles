@@ -49,6 +49,7 @@ recent_days = 2
 
 [envs.win]                      # Windows ネイティブ（machine=local-pc）
 weight = "full"
+vscode_ignored_extensions = []
 ghostty_font_size = 24          # ※Windows は ghostty を .chezmoiignore で除外（値は参考）
 starship_icon = ""        # nf windows
 starship_label = ""             # Windows ロゴだけで一意 → アイコンのみ
@@ -65,6 +66,7 @@ apps = []                       # win は winget が正本。app runner は未�
 
 [envs.wsl]                      # local-pc 上の WSL（machine=local-pc・kernel で判定）
 weight = "full"
+vscode_ignored_extensions = []
 ghostty_font_size = 24
 starship_icon = ""  # nf windows + tux = WSL らしさ（Ubuntu ロゴを避ける）
 starship_label = "wsl"
@@ -81,6 +83,37 @@ apps = []
 
 [envs.surface]                  # Surface Go 3（machine=surface-go3・GUI デスクトップ）
 weight = "lite"
+# 接続端末から外す拡張を同期対象外にし、開発用PCの拡張を保持する。
+vscode_ignored_extensions = [
+  "anthropic.claude-code",
+  "bierner.markdown-mermaid",
+  "bradlc.vscode-tailwindcss",
+  "denoland.vscode-deno",
+  "github.vscode-github-actions",
+  "google.gemini-cli-vscode-ide-companion",
+  "hashicorp.terraform",
+  "kikuta.open-all-vsc-ext",
+  "llvm-vs-code-extensions.vscode-clangd",
+  "mechatroner.rainbow-csv",
+  "mrmlnc.vscode-json5",
+  "ms-azuretools.vscode-containers",
+  "ms-azuretools.vscode-docker",
+  "ms-edgedevtools.vscode-edge-devtools",
+  "ms-python.debugpy",
+  "ms-python.python",
+  "ms-python.vscode-pylance",
+  "ms-python.vscode-python-envs",
+  "ms-vscode-remote.remote-containers",
+  "ms-vscode-remote.remote-wsl",
+  "ms-vscode.cmake-tools",
+  "ms-vscode.cpp-devtools",
+  "ms-vscode.cpptools-extension-pack",
+  "ms-vscode.cpptools-themes",
+  "openai.chatgpt",
+  "openai.codex-audio",
+  "oxc.oxc-vscode",
+  "rust-lang.rust-analyzer",
+]
 ghostty_font_size = 16          # 220PPI/10.5"・150% → 24pt は大きすぎる
 starship_icon = ""        # nf ubuntu
 starship_label = "surface"
@@ -97,6 +130,7 @@ apps = []
 
 [envs.raspi]                    # Raspberry Pi（machine=raspi4・slim・headless）
 weight = "slim"
+vscode_ignored_extensions = []
 ghostty_font_size = 24
 starship_icon = ""        # nf raspberry pi
 starship_label = "raspi"
@@ -113,6 +147,7 @@ apps = ["homeassistant", "obsidian-mcp", "health-steps-sync"] # MCPはvault配�
 
 [envs.mac]                      # macOS（仕事用・現在未接続）
 weight = "full"
+vscode_ignored_extensions = []
 ghostty_font_size = 24
 starship_icon = ""        # nf apple
 starship_label = ""             # Apple ロゴだけで一意 → アイコンのみ
@@ -129,6 +164,7 @@ apps = []
 
 [envs.linux]                    # 未分類の汎用 Linux（fallback・headless サーバ想定）
 weight = "full"
+vscode_ignored_extensions = []
 ghostty_font_size = 24
 starship_icon = ""        # nf tux
 starship_label = ""

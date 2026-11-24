@@ -1,5 +1,8 @@
 {{- /* OS ごとに無視対象を切り替える（パスは $HOME 相対のターゲット） */ -}}
 {{- $p := includeTemplate "profile" . | fromJson -}}
+{{ if not $p.vscode_ignored_extensions -}}
+.config/Code/User/settings.json
+{{ end -}}
 {{ if ne .chezmoi.os "linux" -}}
 .config/Code
 {{ end -}}

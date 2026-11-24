@@ -1,0 +1,7 @@
+{{- /* chezmoi:modify-template */ -}}
+{{- $p := includeTemplate "profile" . | fromJson -}}
+{{- $settings := fromJsonc (.chezmoi.stdin | default "{}") -}}
+{{- $ignored := get $settings "settingsSync.ignoredExtensions" | default list -}}
+{{- $ignored = concat $ignored $p.vscode_ignored_extensions | uniq | sortAlpha -}}
+{{- $_ := set $settings "settingsSync.ignoredExtensions" $ignored -}}
+{{ $settings | toPrettyJson }}

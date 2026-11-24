@@ -49,6 +49,7 @@
       "machine" $machine
       "env" $env
       "weight" (index $row "weight")
+      "vscode_ignored_extensions" (index $row "vscode_ignored_extensions")
       "ghostty_font_size" (index $row "ghostty_font_size")
       "starship_icon" (index $row "starship_icon")
       "starship_label" (index $row "starship_label")
